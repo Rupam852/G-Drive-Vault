@@ -6,6 +6,9 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 const ANDROID_CLIENT_ID = '366598728765-rvhkrkvmisgeu0tn27jatbsajbp12qsk.apps.googleusercontent.com';
+// Web Client ID is used as the serverClientId so Google returns a serverAuthCode
+// that the backend can exchange for Drive access tokens
+const WEB_CLIENT_ID = '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
 interface LoginProps {
@@ -18,8 +21,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     // ── NATIVE (Android / iOS) ──────────────────────────────────────────────
     if (Capacitor.isNativePlatform()) {
       try {
-        // Step 1: Initialize the plugin with the Android OAuth client ID
-        await GoogleSignIn.initialize({ clientId: ANDROID_CLIENT_ID });
+        // Step 1: Initialize the plugin with the Web/Server OAuth client ID
+        await GoogleSignIn.initialize({ clientId: WEB_CLIENT_ID });
 
         // Step 2: Open Google Account picker
         const result = await GoogleSignIn.signIn();
