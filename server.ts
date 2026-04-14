@@ -369,8 +369,19 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'shared') {
       q += " and sharedWithMe = true";
     } else if (filter === 'recent') {
-      // For recent, we search globally and sort by time
       q = "trashed = false and not properties has { key='isHidden' and value='true' }";
+    } else if (filter === 'image') {
+      q += " and mimeType contains 'image/'";
+    } else if (filter === 'video') {
+      q += " and mimeType contains 'video/'";
+    } else if (filter === 'audio') {
+      q += " and mimeType contains 'audio/'";
+    } else if (filter === 'document') {
+      q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation')";
+    } else if (filter === 'apk') {
+      q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk')";
+    } else if (filter === 'archive') {
+      q += " and (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z')";
     } else if (folderId) {
       q += ` and '${folderId}' in parents`;
     } else {

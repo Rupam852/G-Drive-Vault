@@ -157,11 +157,12 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   playsInline
                   muted
                 />
-              ) : (file.type === 'document' || file.type === 'other') && previewUrl ? (
+              ) : (file.type === 'document' || file.type === 'other') ? (
                 <iframe 
-                  src={previewUrl} 
-                  className="w-full h-full border-none bg-white pointer-events-none"
+                  src={file.webViewLink?.replace('/view', '/preview')?.replace('?usp=drivesdk', '')} 
+                  className="w-full h-full border-none bg-white font-bold"
                   title="File Preview"
+                  loading="lazy"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 py-10 opacity-40">
