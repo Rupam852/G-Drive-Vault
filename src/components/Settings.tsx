@@ -466,7 +466,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       </button>
 
       <div className="text-center">
-        <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest font-bold">Drive Vault v1.0.4</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest font-bold">Drive Vault v1.0.5</p>
       </div>
     </div>
   );

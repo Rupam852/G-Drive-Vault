@@ -837,6 +837,7 @@ app.get('/api/drive/download/:id', async (req, res) => {
 
     if (isFolder) {
       const isInline = req.query.inline === 'true';
+      res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}.zip"`);
 
@@ -877,6 +878,7 @@ app.get('/api/drive/download/:id', async (req, res) => {
       await archive.finalize();
     } else if (isGoogleDoc) {
       const isInline = req.query.inline === 'true';
+      res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}.pdf"`);
       
@@ -888,13 +890,33 @@ app.get('/api/drive/download/:id', async (req, res) => {
       exportRes.data.pipe(res);
     } else {
       const isInline = req.query.inline === 'true';
+      const range = req.headers.range;
+      
+      res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Content-Type', file.data.mimeType || 'application/octet-stream');
       res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}"`);
       
-      const mediaRes = await drive.files.get({
+      const requestOptions: any = {
         fileId,
-        alt: 'media',
-      }, { responseType: 'stream' });
+        alt: 'media'
+      };
+      
+      const fetchOptions: any = { responseType: 'stream' };
+      if (range) {
+        fetchOptions.headers = { range };
+      }
+      
+      const mediaRes = await drive.files.get(requestOptions, fetchOptions);
+      
+      if (range && mediaRes.status === 206) {
+        res.status(206);
+        if (mediaRes.headers['content-range']) {
+          res.setHeader('Content-Range', mediaRes.headers['content-range']);
+        }
+        if (mediaRes.headers['content-length']) {
+          res.setHeader('Content-Length', mediaRes.headers['content-length']);
+        }
+      }
       
       mediaRes.data.pipe(res);
     }

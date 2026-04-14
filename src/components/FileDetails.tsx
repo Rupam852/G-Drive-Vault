@@ -102,7 +102,15 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   alt={file.name} 
                   referrerPolicy="no-referrer" 
                 />
-              ) : (file.type === 'video' || file.type === 'document' || file.type === 'other') && previewUrl ? (
+              ) : file.type === 'video' && previewUrl ? (
+                <video 
+                  src={previewUrl} 
+                  className="w-full h-full bg-black"
+                  controls
+                  autoPlay
+                  playsInline
+                />
+              ) : (file.type === 'document' || file.type === 'other') && previewUrl ? (
                 <iframe 
                   src={previewUrl} 
                   className="w-full h-full border-none bg-white"
