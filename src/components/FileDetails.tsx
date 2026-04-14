@@ -87,6 +87,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             <DialogDescription>File Details</DialogDescription>
           </DialogHeader>
 
+          <div className="space-y-4 py-4">
             <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 overflow-hidden border border-slate-100 dark:border-slate-800 relative group">
               {isLoading ? (
                 <div className="flex flex-col items-center gap-2">
