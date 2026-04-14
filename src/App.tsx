@@ -875,7 +875,17 @@ export default function App() {
           </div>
         </main>
 
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <BottomNav activeTab={activeTab} setActiveTab={(tab) => {
+          if (tab === 'files') {
+            // Reset filter to ALL when nav-bar Files is tapped directly
+            setFileFilter('all');
+            setCurrentFolderId('root');
+            setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+            fetchFiles('root');
+          }
+          setActiveTab(tab);
+        }} />
+
         
         <TransferManager 
           transfers={transfers} 
