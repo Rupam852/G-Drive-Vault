@@ -23,10 +23,20 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow any origin for now to solve the Capacitor/Android issues, 
+    // but log it for debugging
+    console.log(`[CORS Request] Origin: ${origin || 'no-origin (direct/mobile)'}`);
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-goog-tokens', 'Range']
+}));
 app.use(express.json());
 app.use((req, res, next) => {
-  console.log(`[HTTP ${req.method}] ${req.url} - Cookies:`, req.headers.cookie || 'none');
+  console.log(`[HTTP ${req.method}] ${req.url} - x-goog-tokens:`, req.headers['x-goog-tokens'] ? 'present' : 'missing');
   next();
 });
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.APP_URL;

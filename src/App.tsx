@@ -98,12 +98,16 @@ export default function App() {
         fetchTrash(activeTokens);
         fetchHiddenFiles(activeTokens);
       } else {
-        console.log('[App] User not authenticated');
+        const errText = await res.statusText;
+        console.log('[App] User not authenticated:', errText);
+        // Only toast if we actually had tokens but it failed (not if just first load)
+        if (activeTokens) toast.error(`Failed to fetch profile: ${res.status} ${errText}`);
         setUser(null);
         if (!activeTokens) setIsLoading(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[App] Fetch user error:', err);
+      toast.error(`Network error: ${err.message || 'Check your internet connection or backend URL'}`);
       setUser(null);
       setIsLoading(false);
     } finally {
