@@ -21,8 +21,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     // ── NATIVE (Android / iOS) ──────────────────────────────────────────────
     if (Capacitor.isNativePlatform()) {
       try {
-        // Step 1: Initialize the plugin with the Web/Server OAuth client ID
-        await GoogleSignIn.initialize({ clientId: WEB_CLIENT_ID });
+        // Step 1: Initialize the plugin.
+        // IMPORTANT: scopes MUST be provided — the plugin only calls
+        // requestOfflineAccess() (which returns serverAuthCode) when scopes
+        // are present. Without scopes, serverAuthCode is always null.
+        await GoogleSignIn.initialize({
+          clientId: WEB_CLIENT_ID,
+          scopes: [
+            'https://www.googleapis.com/auth/drive',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+          ],
+        });
 
         // Step 2: Open Google Account picker
         const result = await GoogleSignIn.signIn();

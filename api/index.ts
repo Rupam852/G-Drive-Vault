@@ -27,6 +27,8 @@ app.use(cors({
     'https://g-drive-vault.vercel.app',
     'http://localhost:3000',
     'http://localhost:5173',
+    'capacitor://localhost',   // Capacitor Android/iOS WebView origin
+    'http://localhost',        // Capacitor fallback origin
   ],
   credentials: true,
 }));
