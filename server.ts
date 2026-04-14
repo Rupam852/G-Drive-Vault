@@ -377,7 +377,7 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'audio') {
       q += " and mimeType contains 'audio/'";
     } else if (filter === 'document') {
-      q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation')";
+      q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')";
     } else if (filter === 'apk') {
       q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk')";
     } else if (filter === 'archive') {
@@ -437,10 +437,10 @@ app.get('/api/drive/breakdown', async (req, res) => {
         const mime = f.mimeType;
         const name = (f.name || '').toLowerCase();
 
-        if (mime.includes('image')) type = 'image';
+        else if (mime.includes('image')) type = 'image';
         else if (mime.includes('video')) type = 'video';
         else if (mime.includes('audio')) type = 'audio';
-        else if (mime.includes('pdf') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('presentation')) type = 'document';
+        else if (mime.includes('pdf') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('presentation') || mime.includes('text/')) type = 'document';
         else if (mime === 'application/vnd.android.package-archive' || name.endsWith('.apk')) type = 'apk';
         else if (mime.includes('zip') || mime.includes('rar') || mime.includes('tar') || mime.includes('7z')) type = 'archive';
 

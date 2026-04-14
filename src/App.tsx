@@ -210,7 +210,7 @@ export default function App() {
         type = 'video';
       } else if (f.mimeType.includes('audio')) {
         type = 'audio';
-      } else if (f.mimeType.includes('pdf') || f.mimeType.includes('document') || f.mimeType.includes('spreadsheet') || f.mimeType.includes('presentation')) {
+      } else if (f.mimeType.includes('pdf') || f.mimeType.includes('document') || f.mimeType.includes('spreadsheet') || f.mimeType.includes('presentation') || f.mimeType.includes('text/')) {
         type = 'document';
       } else if (f.mimeType === 'application/vnd.android.package-archive' || f.name.toLowerCase().endsWith('.apk')) {
         type = 'apk';
