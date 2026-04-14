@@ -1,0 +1,7 @@
+node_modules
+dist
+android
+.DS_Store
+.env
+*.log
+.git
