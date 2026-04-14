@@ -1,6 +1,5 @@
 import express from 'express';
 import crypto from 'crypto';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { google } from 'googleapis';
@@ -883,39 +882,11 @@ app.get('/api/drive/download/:id', async (req, res) => {
   }
 });
 
-// Vite Middleware integration or Static serving
-async function setupApp() {
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    // In production (Vercel or manual build), serve static files from dist
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    // Important: Handle all routes by serving index.html for SPA support
-    app.get('*', (req, res) => {
-      // Check if file exists in dist, if not, serve index.html
-      const filePath = path.join(distPath, req.path);
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-}
 
-// For local running
-if (!process.env.VERCEL) {
-  setupApp().then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running locally on http://localhost:${PORT}`);
-    });
-  });
-} else {
-  // On Vercel, we just need to ensure middleware is setup or handled per-request
-  // However, Vercel's rewrites in vercel.json usually handle routing to this file.
-  setupApp();
-}
+// Vercel: Static files are served from outputDirectory (dist) by Vercel CDN.
+// Express only handles /api/* and /auth/* routes.
+// For local dev, server.ts handles everything including Vite middleware.
 
-// Export the Express app for Vercel
+// Export the Express app for Vercel serverless
 export default app;
+
