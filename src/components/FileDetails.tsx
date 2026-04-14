@@ -297,24 +297,31 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation */}
+      {/* REFINED DELETE CONFIRMATION */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="bg-white dark:bg-slate-900 border-none rounded-3xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete File?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{file.name}"? This action cannot be undone.
+        <AlertDialogContent className="bg-slate-900 border border-white/5 rounded-[2rem] p-8 shadow-2xl max-w-[320px]">
+          <AlertDialogHeader className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-2">
+              <Trash2 size={32} />
+            </div>
+            <AlertDialogTitle className="text-xl font-black text-white">Delete File?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 text-sm leading-relaxed">
+              Are you sure you want to move <span className="text-white font-bold">"{file.name}"</span> to trash?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex gap-2 p-4 pt-2">
-            <div className="flex-1">
-              <AlertDialogCancel>
-                Cancel
-              </AlertDialogCancel>
-            </div>
-            <AlertDialogAction className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 font-bold" onClick={handleDelete}>
-              Delete
+          <AlertDialogFooter className="flex flex-col gap-3 mt-8 sm:flex-col sm:space-x-0">
+            <AlertDialogAction 
+              className="w-full h-14 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-base shadow-lg shadow-red-500/20 border-none transition-all active:scale-95" 
+              onClick={handleDelete}
+            >
+              Delete File
             </AlertDialogAction>
+            <AlertDialogCancel 
+              className="w-full h-14 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 border-none font-bold text-base transition-all"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Go Back
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

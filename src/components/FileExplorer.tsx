@@ -81,6 +81,23 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [selectedFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
+  
+  // CLEAR MENU/SELECTION IF FILE DISAPPEARS (Deleted)
+  useEffect(() => {
+    if (actionMenuFile && !files.find(f => f.id === actionMenuFile.id)) {
+      setActionMenuFile(null);
+    }
+    if (selectedFile && !files.find(f => f.id === selectedFile.id)) {
+      setSelectedFile(null);
+    }
+    if (isSelectionMode) {
+      const validSelectedIds = new Set([...selectedIds].filter(id => files.find(f => f.id === id)));
+      if (validSelectedIds.size !== selectedIds.size) {
+        setSelectedIds(validSelectedIds);
+        if (validSelectedIds.size === 0) setIsSelectionMode(false);
+      }
+    }
+  }, [files]);
 
 
   const filteredFiles = files
