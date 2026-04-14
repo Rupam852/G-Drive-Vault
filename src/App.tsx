@@ -6,6 +6,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import Dashboard from './components/Dashboard';
 import FileExplorer from './components/FileExplorer';
 import Settings from './components/Settings';
@@ -19,6 +21,7 @@ import Login from './components/Login';
 import { FileItem } from './types';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
+
 
 
 // Define API Base URL for mobile and production environments
@@ -312,6 +315,40 @@ export default function App() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []); // ← empty deps: truly runs once on mount
+
+  // ── ANDROID BACK GESTURE / BUTTON ─────────────────────────────────
+  // Priority order:
+  //   1. Close any open dialog (move/share)
+  //   2. Navigate up in folder hierarchy
+  //   3. Go back to Home tab
+  //   4. Minimize app (don't kill it)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handler = CapApp.addListener('backButton', ({ canGoBack }) => {
+      // 1. Close dialogs first
+      if (isMoveOpen) { setIsMoveOpen(false); return; }
+      if (isShareOpen) { setIsShareOpen(false); return; }
+
+      // 2. Navigate up in folder hierarchy
+      if (breadcrumb.length > 1) {
+        const parent = breadcrumb[breadcrumb.length - 2];
+        navigateToFolder(parent.id, parent.name, true);
+        return;
+      }
+
+      // 3. Go back to Home tab if on another tab
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return;
+      }
+
+      // 4. At root with no dialogs — minimize app
+      CapApp.minimizeApp();
+    });
+
+    return () => { handler.then(h => h.remove()); };
+  }, [breadcrumb, activeTab, isMoveOpen, isShareOpen]);
 
   // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
   // Polls every 5 minutes (not 30s) to avoid battery drain and heating.
