@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (file && isOpen && file.type !== 'folder') {
       loadPreview();
     } else {
@@ -58,9 +58,10 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     }
   };
 
-  const Icon = iconMap[file.type] || File;
+  // Safe check for blank screen prevention
+  if (!file) return null;
 
-
+  const Icon = iconMap[file.type as keyof typeof iconMap] || File;
 
   const handleDelete = () => {
     onDelete(file.id);
@@ -183,8 +184,6 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
         </DialogContent>
       </Dialog>
 
-
-
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="bg-white dark:bg-slate-900 border-none rounded-3xl">
@@ -195,8 +194,8 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel variant="outline" size="default" className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="rounded-xl bg-red-600 hover:bg-red-700" onClick={handleDelete}>
+            <AlertDialogCancel className="rounded-xl border-slate-200">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="rounded-xl bg-red-600 hover:bg-red-700 font-bold" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
