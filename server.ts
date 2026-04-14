@@ -142,6 +142,41 @@ app.get('/api/auth/url', (req, res) => {
   res.json({ url });
 });
 
+// Native OAuth handler for Mobile Apps
+app.post('/api/auth/native', async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).send('Missing code');
+
+  try {
+    const client = getOAuth2Client(req);
+    const { tokens } = await client.getToken(code);
+    client.setCredentials(tokens);
+
+    // Get user info to establish session
+    const oauth2 = google.oauth2({ version: 'v2', auth: client });
+    const userinfo = await oauth2.userinfo.get();
+
+    // Store tokens and user in session
+    const authData = {
+      user: {
+        id: userinfo.data.id,
+        email: userinfo.data.email,
+        name: userinfo.data.name,
+        picture: userinfo.data.picture,
+      },
+      tokens,
+    };
+
+    (req as any).session.user = authData.user;
+    (req as any).session.tokens = authData.tokens;
+
+    res.json(authData);
+  } catch (err) {
+    console.error('Native Auth Error:', err);
+    res.status(500).send('Authentication failed');
+  }
+});
+
 app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
   const { code } = req.query;
   const client = getOAuth2Client(req);

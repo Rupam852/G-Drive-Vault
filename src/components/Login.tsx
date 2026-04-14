@@ -1,16 +1,53 @@
+import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
+import { Capacitor } from '@capacitor/core';
 import { Shield, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 interface LoginProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (tokens?: any) => void;
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const handleGoogleLogin = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+    
+    // Check if running on native platform (Android/iOS)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        console.log('[Login] Initiating Native Google Sign-In');
+        const result = await GoogleSignIn.signIn();
+        
+        if (result.serverAuthCode) {
+          console.log('[Login] Native sign-in success, exchanging code for tokens');
+          const response = await fetch(`${API_BASE_URL}/api/auth/native`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: result.serverAuthCode }),
+          });
+
+          if (!response.ok) throw new Error('Native auth exchange failed');
+          
+          const authData = await response.json();
+          console.log('[Login] Native auth exchange successful');
+          
+          // Save tokens locally
+          localStorage.setItem('drive_vault_tokens', JSON.stringify(authData.tokens));
+          onLoginSuccess(authData.tokens);
+          toast.success('Signed in with Google');
+        } else {
+          throw new Error('No server auth code received from Google');
+        }
+      } catch (error: any) {
+        console.error('Native login error:', error);
+        toast.error('Native login failed: ' + (error.message || 'Unknown error'));
+      }
+      return;
+    }
+
+    // Web Fallback (Existing Popup Logic)
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/auth/url`);
       if (!response.ok) throw new Error('Failed to get auth URL');
       const { url } = await response.json();
