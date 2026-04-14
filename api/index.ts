@@ -903,7 +903,20 @@ app.get('/api/drive/download/:id', async (req, res) => {
       
       const fetchOptions: any = { responseType: 'stream' };
       if (range) {
-        fetchOptions.headers = { range };
+        // Parse range to force smaller chunks for Vercel (Max 4.5MB limit)
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const fileSize = file.data.size ? parseInt(file.data.size, 10) : null;
+        
+        // Enforce 3MB maximum chunk size
+        const MAX_CHUNK = 3 * 1024 * 1024; 
+        let end = parts[1] ? parseInt(parts[1], 10) : (fileSize ? fileSize - 1 : start + MAX_CHUNK);
+        
+        if (end - start + 1 > MAX_CHUNK) {
+          end = start + MAX_CHUNK - 1;
+        }
+        
+        fetchOptions.headers = { range: `bytes=${start}-${end}` };
       }
       
       const mediaRes = await drive.files.get(requestOptions, fetchOptions);

@@ -37,9 +37,10 @@ interface DashboardProps {
   onMove?: (id: string, newParentId?: string) => void;
   onStar?: (id: string, starred: boolean) => void;
   onNavigateToFiles?: () => void;
+  isDownloadEnabled?: boolean;
 }
 
-export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles }: DashboardProps) {
+export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -162,16 +163,20 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   };
 
   const handleDownload = async (file: FileItem) => {
-    if (file.type === 'folder') {
-      const folderUrl = file.webViewLink || `https://drive.google.com/drive/folders/${file.id}`;
-      window.open(folderUrl, '_blank');
-      toast.info('Folders can\'t be downloaded directly. Opened in Google Drive.');
+    if (!file || !tokens) return;
+
+    if (isDownloadEnabled === false) {
+      toast.error('Download Error: File Permission is disabled in Settings.');
       return;
     }
 
+    const dlId = Math.random().toString(36).substring(7);
     const controller = new AbortController();
-    const dlId = `dl-${Date.now()}`;
-    setActiveDownloads(prev => [...prev, { id: dlId, name: file.name, progress: -1, controller }]);
+    
+    const isFolder = file.type === 'folder';
+    const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
+
+    setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
 
     try {
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
@@ -218,13 +223,13 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         const base64 = await new Promise<string>((resolve, reject) => {
           const fr = new FileReader(); fr.onloadend = () => resolve((fr.result as string).split(',')[1]); fr.onerror = reject; fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: file.name, data: base64, directory: Directory.Downloads, recursive: true });
-        toast.success(`✅ Saved to Downloads: ${file.name}`);
+        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Downloads, recursive: true });
+        toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = blobUrl; a.download = file.name; a.click();
+        const a = document.createElement('a'); a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        toast.success(`Downloaded: ${file.name}`);
+        toast.success(`Downloaded: ${finalFilename}`);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') toast.info(`Cancelled: ${file.name}`);

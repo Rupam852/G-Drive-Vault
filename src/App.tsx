@@ -52,6 +52,10 @@ export default function App() {
   
   const [transfers, setTransfers] = useState<TransferState[]>([]);
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
+  const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
+    const saved = localStorage.getItem('drive_vault_download_permission');
+    return saved !== null ? saved === 'true' : true;
+  });
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -771,6 +775,7 @@ export default function App() {
               }
             }}
             onNavigateToFiles={() => setActiveTab('files')}
+            isDownloadEnabled={isDownloadEnabled}
           />
         );
       case 'files':
@@ -798,6 +803,7 @@ export default function App() {
             }}
             onHide={handleHideFile}
             activeSubTab={currentFilter}
+            isDownloadEnabled={isDownloadEnabled}
           />
         );
 
@@ -815,6 +821,11 @@ export default function App() {
             onPermanentDelete={handlePermanentDelete}
             transfers={transfers}
             onClearTransfers={() => setTransfers([])}
+            isDownloadEnabled={isDownloadEnabled}
+            setIsDownloadEnabled={(val) => {
+              setIsDownloadEnabled(val);
+              localStorage.setItem('drive_vault_download_permission', val.toString());
+            }}
           />
         );
       default:

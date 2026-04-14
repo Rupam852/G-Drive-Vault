@@ -103,13 +103,18 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   referrerPolicy="no-referrer" 
                 />
               ) : file.type === 'video' && previewUrl ? (
-                <video 
-                  src={previewUrl} 
-                  className="w-full h-full bg-black"
-                  controls
-                  autoPlay
-                  playsInline
-                />
+                <div className="relative w-full h-full">
+                  <video 
+                    src={previewUrl} 
+                    className="w-full h-full bg-black"
+                    controls
+                    autoPlay
+                    playsInline
+                    onError={() => {
+                      toast.error("Low speed or large file. Try 'Open' button if preview fails.");
+                    }}
+                  />
+                </div>
               ) : (file.type === 'document' || file.type === 'other') && previewUrl ? (
                 <iframe 
                   src={previewUrl} 
@@ -132,18 +137,24 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                     variant="secondary" 
                     size="sm" 
                     className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
-                    onClick={() => window.open(previewUrl.replace('&inline=true', ''), '_blank')}
+                    onClick={() => {
+                      if (previewUrl) {
+                        window.open(previewUrl.replace('&inline=true', ''), '_blank');
+                      }
+                    }}
                   >
                     <Maximize2 size={14} />
                   </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
-                    onClick={() => window.open(file.webViewLink, '_blank')}
-                  >
-                    <ExternalLink size={14} />
-                  </Button>
+                  {file.webViewLink && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
+                      onClick={() => window.open(file.webViewLink, '_blank')}
+                    >
+                      <ExternalLink size={14} />
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -201,9 +212,9 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               Are you sure you want to delete "{file.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl border-slate-200">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="rounded-xl bg-red-600 hover:bg-red-700 font-bold" onClick={handleDelete}>
+          <AlertDialogFooter className="flex gap-2 p-4">
+            <AlertDialogCancel className="flex-1 rounded-xl border-slate-200 mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 font-bold" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

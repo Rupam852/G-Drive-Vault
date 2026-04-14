@@ -31,8 +31,9 @@ interface FileExplorerProps {
   onTabChange: (tab: string) => void;
 
   onStar: (id: string, starred: boolean) => void;
-  onMove: (id: string, newParentId?: string) => void;
+  onMove: (id: string, targetId: string) => void;
   onHide: (id: string) => void;
+  isDownloadEnabled?: boolean;
   activeSubTab: string;
 }
 
@@ -46,7 +47,7 @@ const iconMap = {
   other: File,
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
@@ -76,7 +77,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     })
     .sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name);
-      if (sortBy === 'size') return b.sizeBytes - a.sizeBytes;
+      if (sortBy === 'size') return a.sizeBytes - b.sizeBytes;
       if (sortBy === 'type') return a.type.localeCompare(b.type);
       return b.timestamp - a.timestamp;
     });
@@ -90,17 +91,20 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   };
 
   const handleDownload = async (file: FileItem) => {
-    // Folders: Google Drive doesn't support folder downloads — open in Drive instead
-    if (file.type === 'folder') {
-      const folderUrl = file.webViewLink || `https://drive.google.com/drive/folders/${file.id}`;
-      window.open(folderUrl, '_blank');
-      toast.info('Folders can\'t be downloaded directly. Opened in Google Drive.');
+    if (!file || !tokens) return;
+    
+    if (isDownloadEnabled === false) {
+      toast.error('Download Error: File Permission is disabled in Settings.');
       return;
     }
 
+    const dlId = Math.random().toString(36).substring(7);
     const controller = new AbortController();
-    const dlId = `dl-${Date.now()}`;
-    setActiveDownloads(prev => [...prev, { id: dlId, name: file.name, progress: -1, controller }]);
+    
+    const isFolder = file.type === 'folder';
+    const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
+
+    setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
 
     try {
       // Get one-time ticket
@@ -158,14 +162,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           fr.onerror = reject;
           fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: file.name, data: base64, directory: Directory.Downloads, recursive: true });
-        toast.success(`✅ Saved to Downloads: ${file.name}`);
+        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Downloads, recursive: true });
+        toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = blobUrl; a.download = file.name; a.click();
+        a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        toast.success(`Downloaded: ${file.name}`);
+        toast.success(`Downloaded: ${finalFilename}`);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {

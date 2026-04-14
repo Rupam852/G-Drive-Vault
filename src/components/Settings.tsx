@@ -24,6 +24,8 @@ interface SettingsProps {
   onPermanentDelete: (id: string) => void;
   transfers: TransferState[];
   onClearTransfers: () => void;
+  isDownloadEnabled: boolean;
+  setIsDownloadEnabled: (val: boolean) => void;
 }
 
 export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers }: SettingsProps) {
@@ -93,6 +95,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Bell, label: 'Notifications', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', onClick: () => setIsNotificationsOpen(true) },
     { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true) },
+    { icon: HardDrive, label: 'File Permission', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', toggle: true, checked: isDownloadEnabled, onChange: setIsDownloadEnabled },
     { icon: isDarkMode ? Sun : Moon, label: 'Dark Mode', color: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', toggle: true },
   ];
 
@@ -138,8 +141,8 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               <span className="flex-1 text-left font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
               {item.toggle ? (
                 <Switch 
-                  checked={isDarkMode} 
-                  onCheckedChange={setIsDarkMode}
+                  checked={item.checked !== undefined ? item.checked : isDarkMode} 
+                  onCheckedChange={item.onChange || setIsDarkMode}
                   className="data-[state=checked]:bg-blue-600"
                 />
               ) : (
@@ -466,7 +469,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       </button>
 
       <div className="text-center">
-        <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest font-bold">Drive Vault v1.0.5</p>
+        <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest font-bold">Drive Vault v1.0.7</p>
       </div>
     </div>
   );
