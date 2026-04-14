@@ -424,7 +424,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
     do {
       const response: any = await drive.files.list({
         q: "trashed = false",
-        pageSize: 1000,
+        pageSize: 500,
         fields: 'nextPageToken, files(mimeType, size, name)',
         pageToken: pageToken
       });
@@ -437,7 +437,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
         const mime = f.mimeType;
         const name = (f.name || '').toLowerCase();
 
-        else if (mime.includes('image')) type = 'image';
+        if (mime.includes('image')) type = 'image';
         else if (mime.includes('video')) type = 'video';
         else if (mime.includes('audio')) type = 'audio';
         else if (mime.includes('pdf') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('presentation') || mime.includes('text/')) type = 'document';
