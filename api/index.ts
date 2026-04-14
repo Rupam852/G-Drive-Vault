@@ -351,16 +351,31 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'shared') {
       q += " and sharedWithMe = true";
     } else if (filter === 'recent') {
-      // For recent, we search globally and sort by time
       q = "trashed = false and not properties has { key='isHidden' and value='true' }";
-    } else if (folderId) {
-      q += ` and '${folderId}' in parents`;
     } else {
-      q += " and 'root' in parents";
+      // Type-based filters — search globally (no folder constraint) with mimeType filter
+      const mimeFilters: Record<string, string> = {
+        image:    "mimeType contains 'image/'",
+        video:    "mimeType contains 'video/'",
+        audio:    "mimeType contains 'audio/'",
+        document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation')",
+        folder:   "mimeType = 'application/vnd.google-apps.folder'",
+        apk:      "(mimeType = 'application/vnd.android.package-archive' or name contains '.apk')",
+        archive:  "(mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z')",
+      };
+
+      if (filter && mimeFilters[filter]) {
+        // Global search by type — no parent constraint
+        q += ` and ${mimeFilters[filter]}`;
+      } else if (folderId) {
+        q += ` and '${folderId}' in parents`;
+      } else {
+        q += " and 'root' in parents";
+      }
     }
 
     const response = await drive.files.list({
-      pageSize: 100,
+      pageSize: filter && ['image','video','audio','document','folder','apk','archive','other'].includes(filter) ? 200 : 100,
       fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
       q: q,
       orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined
@@ -371,6 +386,7 @@ app.get('/api/drive/files', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch files' });
   }
 });
+
 
 app.get('/api/drive/breakdown', async (req, res) => {
   const tokens = getTokensFromRequest(req);

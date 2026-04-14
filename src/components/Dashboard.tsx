@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { formatBytes } from '../utils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+
 
 
 interface DashboardProps {
@@ -154,7 +156,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
   const handleDownload = async (file: FileItem) => {
     try {
-      toast.info('Preparing download…');
+      toast.info(`Downloading ${file.name}…`);
 
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
         method: 'POST',
@@ -166,23 +168,38 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
       const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
       const res = await fetch(downloadUrl);
-      if (!res.ok) throw new Error('Download request failed');
-
+      if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-      toast.success(`Downloaded: ${file.name}`);
+
+      if (Capacitor.isNativePlatform()) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        await Filesystem.writeFile({
+          path: file.name,
+          data: base64,
+          directory: Directory.Downloads,
+          recursive: true,
+        });
+        toast.success(`✅ Saved to Downloads: ${file.name}`);
+      } else {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        toast.success(`Downloaded: ${file.name}`);
+      }
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Failed to download file');
     }
   };
+
 
 
   const handleOpenFile = (file: FileItem) => {

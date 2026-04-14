@@ -15,6 +15,7 @@
     "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capawesome/capacitor-google-sign-in": "^0.1.2",
     "@fontsource-variable/geist": "^5.2.8",
     "@google/genai": "^1.29.0",

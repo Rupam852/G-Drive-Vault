@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion } from 'motion/react';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileItem } from '../types';
 import FileDetails from './FileDetails';
 import { toast } from 'sonner';
@@ -85,9 +86,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
   const handleDownload = async (file: FileItem) => {
     try {
-      toast.info('Preparing download…');
+      toast.info(`Downloading ${file.name}…`);
 
-      // Step 1: Get a one-time download ticket (must use full URL on mobile)
+      // Get a one-time ticket
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,33 +98,37 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       const { ticketId } = await ticketRes.json();
 
       const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error('Download request failed');
+      const blob = await res.blob();
 
       if (Capacitor.isNativePlatform()) {
-        // On Android: fetch blob then trigger download via anchor
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download request failed');
-        const blob = await res.blob();
+        // On Android: save to real Downloads folder via Filesystem API
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]); // strip data:...;base64, prefix
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        await Filesystem.writeFile({
+          path: file.name,
+          data: base64,
+          directory: Directory.Downloads,
+          recursive: true,
+        });
+        toast.success(`✅ Saved to Downloads: ${file.name}`);
+      } else {
+        // On web: anchor blob download
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
         a.download = file.name;
-        document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         toast.success(`Downloaded: ${file.name}`);
-      } else {
-        // On web: same blob approach
-        const res = await fetch(downloadUrl);
-        if (!res.ok) throw new Error('Download request failed');
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        toast.success('Download started!');
       }
     } catch (error) {
       console.error('Download error:', error);

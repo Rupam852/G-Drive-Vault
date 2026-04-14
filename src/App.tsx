@@ -736,7 +736,7 @@ export default function App() {
     setFileFilter(type);
     setCurrentFolderId('root');
     setBreadcrumb([{id: 'root', name: 'My Drive'}]);
-    fetchFiles('root');
+    fetchFiles('root', undefined, type); // Pass type so backend searches ALL Drive by mimeType
     setActiveTab('files');
   };
 
