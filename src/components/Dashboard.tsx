@@ -1,6 +1,7 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info } from 'lucide-react';
+import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X } from 'lucide-react';
+
 import { StorageStats, FileItem } from '@/src/types';
 import { motion } from 'motion/react';
 import React, { useRef, useState } from 'react';
@@ -47,6 +48,10 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   const [renameValue, setRenameValue] = useState('');
   const [showStorageDetails, setShowStorageDetails] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeDownloads, setActiveDownloads] = useState<{
+    id: string; name: string; progress: number; controller: AbortController;
+  }[]>([]);
+
 
   const handleRefresh = async () => {
     if (onRefreshStorage) {
@@ -155,54 +160,77 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   };
 
   const handleDownload = async (file: FileItem) => {
-    try {
-      toast.info(`Downloading ${file.name}…`);
+    if (file.type === 'folder') {
+      const folderUrl = file.webViewLink || `https://drive.google.com/drive/folders/${file.id}`;
+      window.open(folderUrl, '_blank');
+      toast.info('Folders can\'t be downloaded directly. Opened in Google Drive.');
+      return;
+    }
 
+    const controller = new AbortController();
+    const dlId = `dl-${Date.now()}`;
+    setActiveDownloads(prev => [...prev, { id: dlId, name: file.name, progress: -1, controller }]);
+
+    try {
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokens }), signal: controller.signal,
       });
-      if (!ticketRes.ok) throw new Error('Ticket request failed');
+      if (!ticketRes.ok) throw new Error('Ticket failed');
       const { ticketId } = await ticketRes.json();
 
-      const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
-      const res = await fetch(downloadUrl);
+      const res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
       if (!res.ok) throw new Error('Download failed');
-      const blob = await res.blob();
+
+      const contentLength = res.headers.get('Content-Length');
+      const total = contentLength ? parseInt(contentLength) : 0;
+      const reader = res.body!.getReader();
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value); received += value.length;
+          const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
+          setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: pct } : d));
+        }
+      }
+      setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+      const blob = new Blob(chunks);
 
       if (Capacitor.isNativePlatform()) {
         const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
+          const fr = new FileReader(); fr.onloadend = () => resolve((fr.result as string).split(',')[1]); fr.onerror = reject; fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({
-          path: file.name,
-          data: base64,
-          directory: Directory.Downloads,
-          recursive: true,
-        });
+        await Filesystem.writeFile({ path: file.name, data: base64, directory: Directory.Downloads, recursive: true });
         toast.success(`✅ Saved to Downloads: ${file.name}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = file.name;
-        a.click();
+        const a = document.createElement('a'); a.href = blobUrl; a.download = file.name; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         toast.success(`Downloaded: ${file.name}`);
       }
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download file');
+    } catch (err: any) {
+      if (err.name === 'AbortError') toast.info(`Cancelled: ${file.name}`);
+      else { console.error('Download error:', err); toast.error('Failed to download file'); }
+    } finally {
+      setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
     }
   };
 
-
+  const handleCopyShareLink = (file: FileItem) => {
+    const link = file.webViewLink ||
+      (file.type === 'folder'
+        ? `https://drive.google.com/drive/folders/${file.id}?usp=sharing`
+        : `https://drive.google.com/file/d/${file.id}/view?usp=sharing`);
+    navigator.clipboard.writeText(link)
+      .then(() => toast.success('🔗 Link copied! Anyone with the link can view in Google Drive.'))
+      .catch(() => toast.error('Failed to copy link'));
+  };
 
   const handleOpenFile = (file: FileItem) => {
+
     if (file.type === 'folder') {
       if (onNavigateToFiles) onNavigateToFiles();
     } else if (file.webViewLink) {
@@ -435,51 +463,103 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         </DropdownMenu>
       </div>
 
+      {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
+      {activeDownloads.length > 0 && (
+        <div className="fixed top-0 left-0 right-0 z-[999] space-y-1 p-3 pointer-events-none">
+          {activeDownloads.map(dl => (
+            <div key={dl.id} className="bg-slate-900/97 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl border border-slate-700/60 pointer-events-auto">
+              <div className="w-8 h-8 rounded-lg bg-blue-900/40 flex items-center justify-center shrink-0">
+                <Download size={16} className="text-blue-400 animate-bounce" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate mb-1.5">{dl.name}</p>
+                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  {dl.progress >= 0 ? (
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
+                      style={{ width: `${dl.progress}%` }}
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full animate-[shimmer_1.5s_infinite]" />
+                  )}
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-blue-400 shrink-0 w-8 text-right">
+                {dl.progress >= 0 ? `${dl.progress}%` : ''}
+              </span>
+              <button
+                onClick={() => dl.controller.abort()}
+                className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* New Folder Dialog */}
       <Dialog open={isNewFolderOpen} onOpenChange={setIsNewFolderOpen}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-none rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg font-bold dark:text-white">Create New Folder</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-3">
             <Input 
               placeholder="Folder name" 
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500"
+              className="h-12 bg-slate-50 dark:bg-slate-800 border-2 border-blue-500 rounded-xl text-sm focus-visible:ring-0"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
             />
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsNewFolderOpen(false)} className="rounded-xl flex-1">Cancel</Button>
-            <Button onClick={handleCreateFolder} className="rounded-xl flex-1 bg-blue-600 hover:bg-blue-700">Create</Button>
-          </DialogFooter>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleCreateFolder}
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-base font-semibold"
+            >Create</Button>
+            <Button
+              variant="ghost"
+              onClick={() => setIsNewFolderOpen(false)}
+              className="w-full h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >Cancel</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Rename Dialog */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-none rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>Rename {renameFile?.type === 'folder' ? 'Folder' : 'File'}</DialogTitle>
+        <DialogContent className="sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl px-6 pb-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg font-bold dark:text-white">
+              Rename {renameFile?.type === 'folder' ? 'Folder' : 'File'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Input 
-              placeholder="New name" 
+          <div className="py-3">
+            <Input
+              placeholder="New name"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500"
+              className="h-12 bg-slate-50 dark:bg-slate-800 border-2 border-blue-500 rounded-xl text-sm focus-visible:ring-0"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleRename()}
             />
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsRenameOpen(false)} className="rounded-xl flex-1">Cancel</Button>
-            <Button onClick={handleRename} className="rounded-xl flex-1 bg-blue-600 hover:bg-blue-700">Rename</Button>
-          </DialogFooter>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleRename}
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-base font-semibold"
+            >Rename</Button>
+            <Button
+              variant="ghost"
+              onClick={() => setIsRenameOpen(false)}
+              className="w-full h-11 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >Cancel</Button>
+          </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Action Menu Dialog */}
       <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
@@ -518,7 +598,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
             <button
               onClick={() => {
-                if (actionMenuFile && onShare) onShare(actionMenuFile.id);
+                if (actionMenuFile) handleCopyShareLink(actionMenuFile);
                 setActionMenuFile(null);
               }}
               className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
@@ -526,8 +606,12 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
               <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
                 <Share2 size={20} />
               </div>
-              <span className="font-medium dark:text-white">Share</span>
+              <div>
+                <span className="font-medium dark:text-white block">Share</span>
+                <span className="text-[10px] text-slate-400">Copy viewer link</span>
+              </div>
             </button>
+
 
             <button
               onClick={() => {
