@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import Dashboard from './components/Dashboard';
 import FileExplorer from './components/FileExplorer';
@@ -274,60 +274,89 @@ export default function App() {
     fetchFiles(folderId);
   };
 
+  // ── MOUNT ONLY: fetch user + attach event listeners ──────────────────────
+  // This runs ONCE. Do NOT add currentFolderId or user here — that would
+  // restart the whole effect (and re-add listeners) on every navigation.
   useEffect(() => {
     fetchUser();
 
-    // Background polling for storage and files updates
-    const pollInterval = setInterval(() => {
-      if (user) {
-        console.log('[App] Polling background updates...');
-        fetchStorage();
-        fetchStorageBreakdown();
-        fetchRecentFiles();
-        fetchFiles(currentFolderId);
-      }
-    }, 30000); // 30 seconds
-
     const handleMessage = (event: MessageEvent) => {
-      console.log('[App] Received message from popup:', event.data);
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         const newTokens = event.data.tokens;
         if (newTokens) {
-          console.log('[App] Received new tokens, saving to localStorage');
           setTokens(newTokens);
           localStorage.setItem('drive_vault_tokens', JSON.stringify(newTokens));
           toast.success('Successfully signed in with Google');
           fetchUser(newTokens);
         } else {
-          // Fallback for old message format
           toast.success('Successfully signed in with Google');
           setTimeout(() => fetchUser(), 800);
         }
       }
     };
-    
+
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.folderId) {
         navigateToFolder(event.state.folderId, event.state.folderName, true);
       } else {
-        // Root fallback
         navigateToFolder('root', 'My Drive', true);
       }
     };
 
     window.addEventListener('message', handleMessage);
     window.addEventListener('popstate', handlePopState);
-    
-    // Initial state
     window.history.replaceState({ folderId: 'root', folderName: 'My Drive' }, '', '');
-    
+
     return () => {
-      clearInterval(pollInterval);
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [currentFolderId]); // Removed 'user' from deps — adding it caused fetchUser()
-                         // to re-run with no tokens after login, which reset user to null
+  }, []); // ← empty deps: truly runs once on mount
+
+  // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
+  // Polls every 5 minutes (not 30s) to avoid battery drain and heating.
+  // Pauses automatically when the app goes to background (screen off,
+  // app switched, etc.) via the Page Visibility API.
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!user || !tokens) return; // Don't poll if not authenticated
+
+    const POLL_MS = 5 * 60 * 1000; // 5 minutes
+
+    const runPoll = () => {
+      if (document.hidden) return; // Skip if app is in background
+      fetchStorage();
+      fetchRecentFiles();
+      fetchFiles(currentFolderId);
+      // NOTE: fetchStorageBreakdown intentionally excluded from polling —
+      // it scans every file in Drive and is too expensive for background use.
+    };
+
+    const startPolling = () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = setInterval(runPoll, POLL_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // App went to background — stop polling to save battery
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      } else {
+        // App came back to foreground — refresh immediately then restart poll
+        runPoll();
+        startPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, tokens]); // Only restart polling when auth state changes
 
   useEffect(() => {
     if (isDarkMode) {
