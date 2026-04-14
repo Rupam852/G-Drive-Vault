@@ -107,14 +107,14 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
         <Card className="border-none shadow-sm bg-white dark:bg-slate-900">
           <CardContent className="p-4 flex items-center gap-4">
             <Avatar className="w-16 h-16 rounded-2xl">
-              <AvatarImage src={user.picture} referrerPolicy="no-referrer" />
+              <AvatarImage src={user?.picture} referrerPolicy="no-referrer" />
               <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold rounded-2xl">
-                {user.name?.[0] || 'U'}
+                {user?.name?.[0] || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="font-bold text-slate-900 dark:text-white text-lg">{user.name}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">{user?.name || 'User'}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{user?.email || 'No email provided'}</p>
             </div>
             <button 
               onClick={() => setIsProfileOpen(true)}
@@ -191,7 +191,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {trashedFiles.length === 0 ? (
+              {(trashedFiles || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                     <Trash2 size={40} />
@@ -199,7 +199,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                   <p className="font-medium">Trash is empty</p>
                 </div>
               ) : (
-                trashedFiles.map((file) => (
+                (trashedFiles || []).map((file) => (
                   <div
                     key={file.id}
                     onClick={() => toggleSelect(file.id)}
@@ -252,7 +252,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {hiddenFiles.length === 0 ? (
+              {(hiddenFiles || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                     <EyeOff size={40} />
@@ -260,7 +260,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                   <p className="font-medium">No hidden files</p>
                 </div>
               ) : (
-                hiddenFiles.map((file) => (
+                (hiddenFiles || []).map((file) => (
                   <div
                     key={file.id}
                     onClick={() => toggleHiddenSelect(file.id)}
@@ -311,7 +311,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {transfers.length === 0 ? (
+              {(transfers || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                     <SendToBack size={40} />
@@ -319,7 +319,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                   <p className="font-medium">No recent transfers.</p>
                 </div>
               ) : (
-                transfers.slice().reverse().map(transfer => (
+                (transfers || []).slice().reverse().map(transfer => (
                   <div key={transfer.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
                       <span className="font-medium truncate pr-4 text-slate-900 dark:text-slate-100">{transfer.name}</span>

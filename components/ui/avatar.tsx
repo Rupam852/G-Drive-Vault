@@ -21,7 +21,9 @@ function Avatar({
         className
       )}
       {...props}
-    />
+    >
+      {props.children}
+    </AvatarPrimitive.Root>
   )
 }
 
