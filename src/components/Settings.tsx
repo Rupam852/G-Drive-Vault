@@ -1,4 +1,4 @@
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RotateCcw, X, CheckCircle2, EyeOff, Eye, SendToBack } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RotateCcw, X, CheckCircle2, EyeOff, Eye, SendToBack, HardDrive } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -28,7 +28,7 @@ interface SettingsProps {
   setIsDownloadEnabled: (val: boolean) => void;
 }
 
-export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers }: SettingsProps) {
+export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled }: SettingsProps) {
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [isHiddenOpen, setIsHiddenOpen] = useState(false);
   const [isTransfersOpen, setIsTransfersOpen] = useState(false);

@@ -162,7 +162,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           fr.onerror = reject;
           fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Downloads, recursive: true });
+        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Documents, recursive: true });
         toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);
@@ -700,7 +700,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
             <button
               onClick={() => {
-                if (actionMenuFile && onMove) onMove(actionMenuFile.id);
+                if (actionMenuFile) onMove(actionMenuFile.id, 'root');
                 setActionMenuFile(null);
               }}
               className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"

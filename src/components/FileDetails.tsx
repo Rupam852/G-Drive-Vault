@@ -213,7 +213,9 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-2 p-4">
-            <AlertDialogCancel className="flex-1 rounded-xl border-slate-200 mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 rounded-xl border-slate-200 mt-0" asChild>
+              <Button variant="outline">Cancel</Button>
+            </AlertDialogCancel>
             <AlertDialogAction className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 font-bold" onClick={handleDelete}>
               Delete
             </AlertDialogAction>

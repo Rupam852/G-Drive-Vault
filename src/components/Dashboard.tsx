@@ -223,7 +223,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         const base64 = await new Promise<string>((resolve, reject) => {
           const fr = new FileReader(); fr.onloadend = () => resolve((fr.result as string).split(',')[1]); fr.onerror = reject; fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Downloads, recursive: true });
+        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Documents, recursive: true });
         toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);
