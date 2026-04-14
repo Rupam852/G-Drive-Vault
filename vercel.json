@@ -1,5 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "dist/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -7,10 +14,6 @@
     },
     {
       "source": "/auth/(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/(.*)",
       "destination": "/api/index.ts"
     }
   ]
