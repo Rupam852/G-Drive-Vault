@@ -61,6 +61,11 @@ export default function App() {
 
   const fetchUser = async (currentTokens?: any) => {
     const activeTokens = currentTokens || tokens;
+    // Persist tokens to state immediately so polling/effects don't lose them
+    if (currentTokens) {
+      setTokens(currentTokens);
+      localStorage.setItem('drive_vault_tokens', JSON.stringify(currentTokens));
+    }
     console.log('[App] Fetching user profile, using tokens:', !!activeTokens);
     
     try {
@@ -321,7 +326,8 @@ export default function App() {
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user, currentFolderId]);
+  }, [currentFolderId]); // Removed 'user' from deps — adding it caused fetchUser()
+                         // to re-run with no tokens after login, which reset user to null
 
   useEffect(() => {
     if (isDarkMode) {
