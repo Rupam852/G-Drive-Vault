@@ -836,8 +836,9 @@ app.get('/api/drive/download/:id', async (req, res) => {
     const isGoogleDoc = file.data.mimeType.startsWith('application/vnd.google-apps.') && !isFolder;
 
     if (isFolder) {
+      const isInline = req.query.inline === 'true';
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.data.name}.zip"`);
+      res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}.zip"`);
 
       const archive = archiver('zip', { zlib: { level: 9 } });
       archive.pipe(res);
@@ -875,8 +876,9 @@ app.get('/api/drive/download/:id', async (req, res) => {
       await addFolderToZip(fileId, '');
       await archive.finalize();
     } else if (isGoogleDoc) {
+      const isInline = req.query.inline === 'true';
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.data.name}.pdf"`);
+      res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}.pdf"`);
       
       const exportRes = await drive.files.export({
         fileId,
@@ -885,8 +887,9 @@ app.get('/api/drive/download/:id', async (req, res) => {
       
       exportRes.data.pipe(res);
     } else {
+      const isInline = req.query.inline === 'true';
       res.setHeader('Content-Type', file.data.mimeType || 'application/octet-stream');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.data.name}"`);
+      res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}"`);
       
       const mediaRes = await drive.files.get({
         fileId,

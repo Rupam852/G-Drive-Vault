@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatBytes } from '../utils';
+import FileDetails from './FileDetails';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
@@ -44,6 +45,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [actionMenuFile, setActionMenuFile] = useState<FileItem | null>(null);
   const [renameFile, setRenameFile] = useState<FileItem | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [renameValue, setRenameValue] = useState('');
   const [showStorageDetails, setShowStorageDetails] = useState(false);
@@ -246,13 +248,10 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   };
 
   const handleOpenFile = (file: FileItem) => {
-
     if (file.type === 'folder') {
       if (onNavigateToFiles) onNavigateToFiles();
-    } else if (file.webViewLink) {
-      window.open(file.webViewLink, '_blank');
     } else {
-      toast.error('Cannot open this file');
+      setSelectedFile(file);
     }
   };
 
@@ -685,6 +684,15 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
           </div>
         </DialogContent>
       </Dialog>
+
+      <FileDetails 
+        file={selectedFile}
+        isOpen={!!selectedFile}
+        tokens={tokens}
+        onClose={() => setSelectedFile(null)}
+        onDelete={onDelete || (() => {})}
+        onShare={onShare}
+      />
     </div>
   );
 }

@@ -417,6 +417,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       <FileDetails 
         file={selectedFile}
         isOpen={!!selectedFile}
+        tokens={tokens}
         onClose={() => setSelectedFile(null)}
         onDelete={onDelete}
         onShare={onShare}

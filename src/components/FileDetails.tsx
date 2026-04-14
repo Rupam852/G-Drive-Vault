@@ -3,12 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { FileItem } from '../types';
-import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, ExternalLink } from 'lucide-react';
+import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, ExternalLink, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
 interface FileDetailsProps {
   file: FileItem | null;
   isOpen: boolean;
+  tokens: any;
   onClose: () => void;
   onDelete: (id: string) => void;
   onShare?: (id: string) => void;
@@ -22,10 +25,38 @@ const iconMap = {
   other: File,
 };
 
-export default function FileDetails({ file, isOpen, onClose, onDelete, onShare }: FileDetailsProps) {
+export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, onShare }: FileDetailsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!file) return null;
+  React.useEffect(() => {
+    if (file && isOpen && file.type !== 'folder') {
+      loadPreview();
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file, isOpen]);
+
+  const loadPreview = async () => {
+    if (!file || !tokens) return;
+    setIsLoading(true);
+    try {
+      const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokens }),
+      });
+      if (ticketRes.ok) {
+        const { ticketId } = await ticketRes.json();
+        setPreviewUrl(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true`);
+      }
+    } catch (e) {
+      console.error('Preview error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const Icon = iconMap[file.type] || File;
 
@@ -56,48 +87,45 @@ export default function FileDetails({ file, isOpen, onClose, onDelete, onShare }
             <DialogDescription>File Details</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
             <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 overflow-hidden border border-slate-100 dark:border-slate-800 relative group">
-              {file.type === 'image' && file.thumbnail ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs font-semibold text-slate-400">Loading Preview...</p>
+                </div>
+              ) : file.type === 'image' && (file.thumbnail || previewUrl) ? (
                 <img 
-                  src={file.thumbnail.replace('=s220', '=s1000')} 
+                  src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} 
                   className="w-full h-full object-contain bg-black" 
                   alt={file.name} 
                   referrerPolicy="no-referrer" 
                 />
-              ) : file.type === 'video' ? (
+              ) : (file.type === 'video' || file.type === 'document' || file.type === 'other') && previewUrl ? (
                 <iframe 
-                  src={`https://drive.google.com/file/d/${file.id}/preview`} 
-                  className="w-full h-full border-none"
+                  src={previewUrl} 
+                  className="w-full h-full border-none bg-white"
                   allow="autoplay"
+                  title="File Preview"
                 />
-              ) : file.type === 'document' ? (
-                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
-                  <FileText size={48} className="text-blue-500 opacity-50" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Document Preview</p>
-                    <p className="text-[10px] text-slate-400">Standard Google Drive Viewer</p>
-                  </div>
-                  <iframe 
-                    src={`https://drive.google.com/file/d/${file.id}/preview`} 
-                    className="absolute inset-0 w-full h-full border-none opacity-0 hover:opacity-100 transition-opacity bg-white"
-                    title="Document Preview"
-                  />
-                </div>
-              ) : file.type !== 'folder' ? (
-                <iframe 
-                  src={`https://drive.google.com/file/d/${file.id}/preview`} 
-                  className="w-full h-full border-none"
-                  allow="autoplay"
-                />
-              ) : file.thumbnail ? (
+              ) : file.type === 'folder' && file.thumbnail ? (
                 <img src={file.thumbnail.replace('=s220', '=s1000')} className="w-full h-full object-cover" alt={file.name} referrerPolicy="no-referrer" />
               ) : (
-                <Icon size={64} />
+                <div className="flex flex-col items-center gap-2">
+                  <Icon size={48} className="opacity-30" />
+                  <p className="text-[10px] uppercase font-bold tracking-widest opacity-40">Preview Unavailable</p>
+                </div>
               )}
               
-              {file.type !== 'folder' && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {file.type !== 'folder' && previewUrl && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
+                    onClick={() => window.open(previewUrl.replace('&inline=true', ''), '_blank')}
+                  >
+                    <Maximize2 size={14} />
+                  </Button>
                   <Button 
                     variant="secondary" 
                     size="sm" 
