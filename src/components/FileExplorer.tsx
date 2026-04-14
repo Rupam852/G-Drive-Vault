@@ -6,9 +6,13 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion } from 'motion/react';
+import { Capacitor } from '@capacitor/core';
 import { FileItem } from '../types';
 import FileDetails from './FileDetails';
 import { toast } from 'sonner';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+
 
 interface FileExplorerProps {
   files: FileItem[];
@@ -79,23 +83,54 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     }
   };
 
-  const handleDownload = async (id: string) => {
+  const handleDownload = async (file: FileItem) => {
     try {
-      const response = await fetch('/api/drive/download/ticket', {
+      toast.info('Preparing download…');
+
+      // Step 1: Get a one-time download ticket (must use full URL on mobile)
+      const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens })
+        body: JSON.stringify({ tokens }),
       });
-      
-      if (!response.ok) throw new Error('Failed to get download ticket');
-      
-      const { ticketId } = await response.json();
-      window.location.assign(`/api/drive/download/${id}?ticket=${ticketId}`);
+      if (!ticketRes.ok) throw new Error('Ticket request failed');
+      const { ticketId } = await ticketRes.json();
+
+      const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
+
+      if (Capacitor.isNativePlatform()) {
+        // On Android: fetch blob then trigger download via anchor
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('Download request failed');
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        toast.success(`Downloaded: ${file.name}`);
+      } else {
+        // On web: same blob approach
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('Download request failed');
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        toast.success('Download started!');
+      }
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to start download');
+      toast.error('Failed to download file');
     }
   };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -536,7 +571,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
             <button
               onClick={() => {
-                if (actionMenuFile) handleDownload(actionMenuFile.id);
+                if (actionMenuFile) handleDownload(actionMenuFile);
                 setActionMenuFile(null);
               }}
               className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
