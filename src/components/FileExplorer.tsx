@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, Grid, List as ListIcon, MoreVertical, File, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -66,6 +66,21 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [activeDownloads, setActiveDownloads] = useState<{
     id: string; name: string; progress: number; controller: AbortController;
   }[]>([]);
+
+  // CENTRAL BACK GESTURE HANDLING
+  useEffect(() => {
+    const handleVaultBack = (e: any) => {
+      if (selectedFile) { e.preventDefault(); setSelectedFile(null); return; }
+      if (actionMenuFile) { e.preventDefault(); setActionMenuFile(null); return; }
+      if (isNewFolderOpen) { e.preventDefault(); setIsNewFolderOpen(false); return; }
+      if (isRenameOpen) { e.preventDefault(); setIsRenameOpen(false); return; }
+      if (isMoveDialogOpen) { e.preventDefault(); setIsMoveDialogOpen(false); return; }
+      if (isSelectionMode) { e.preventDefault(); setIsSelectionMode(false); setSelectedIds(new Set()); return; }
+    };
+
+    window.addEventListener('vault-back', handleVaultBack);
+    return () => window.removeEventListener('vault-back', handleVaultBack);
+  }, [selectedFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
 
 
   const filteredFiles = files
@@ -162,7 +177,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           fr.onerror = reject;
           fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Documents, recursive: true });
+        await Filesystem.writeFile({ path: 'Download/' + finalFilename, data: base64, directory: Directory.ExternalStorage, recursive: true });
         toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);

@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Trust proxy is required for secure cookies in Cloud Run/AI Studio
 app.set('trust proxy', 1);
@@ -71,15 +71,31 @@ const getOAuth2Client = (req: express.Request) => {
 // Help to get or create folder path
 const folderCreationLocks = new Map<string, Promise<string>>();
 
-// Download Tickets for authenticated downloads without header support (window.location)
-const downloadTickets = new Map<string, { tokens: any, expires: number }>();
-// Cleanup expired tickets every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, ticket] of downloadTickets.entries()) {
-    if (now > ticket.expires) downloadTickets.delete(id);
+// Stateless Download Tickets (signed payloads) for serverless compatibility
+const TICKET_SECRET = process.env.SESSION_SECRET || 'drive-vault-preview-secret';
+
+function signTicket(payload: any) {
+  const data = Buffer.from(JSON.stringify({
+    ...payload,
+    exp: Date.now() + 10 * 60000 // 10 minutes expiry
+  })).toString('base64');
+  const signature = crypto.createHmac('sha256', TICKET_SECRET).update(data).digest('hex');
+  return `${data}.${signature}`;
+}
+
+function verifyTicket(ticket: string) {
+  try {
+    const [data, signature] = ticket.split('.');
+    const expectedSignature = crypto.createHmac('sha256', TICKET_SECRET).update(data).digest('hex');
+    if (signature !== expectedSignature) return null;
+    
+    const payload = JSON.parse(Buffer.from(data, 'base64').toString());
+    if (Date.now() > payload.exp) return null;
+    return payload.tokens;
+  } catch (e) {
+    return null;
   }
-}, 60000);
+}
 
 async function getOrCreateFolderPath(drive: any, pathParts: string[], parentId: string) {
   let currentParentId = parentId || 'root';
@@ -230,11 +246,9 @@ const getTokensFromRequest = (req: express.Request) => {
   const headerTokens = req.headers['x-goog-tokens'];
   const queryTokens = req.query.tokens;
   const ticketId = req.query.ticket as string;
-  
-  if (ticketId && downloadTickets.has(ticketId)) {
-    const ticket = downloadTickets.get(ticketId);
-    downloadTickets.delete(ticketId); // Single use
-    return ticket?.tokens;
+  if (ticketId) {
+    const tokensFromTicket = verifyTicket(ticketId);
+    if (tokensFromTicket) return tokensFromTicket;
   }
 
   const tokenStr = (headerTokens || queryTokens) as string;
@@ -775,16 +789,10 @@ app.get('/api/drive/hidden', async (req, res) => {
 });
 
 app.post('/api/drive/download/ticket', (req, res) => {
-  // Use tokens from body for POST, as they can be very large and exceed header limits
   const tokens = req.body.tokens || getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
   
-  const ticketId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-  downloadTickets.set(ticketId, {
-    tokens,
-    expires: Date.now() + 60000 // 1 minute expiry
-  });
-  
+  const ticketId = signTicket({ tokens });
   res.json({ ticketId });
 });
 
@@ -848,7 +856,7 @@ app.get('/api/drive/download/:id', async (req, res) => {
       await archive.finalize();
     } else if (isGoogleDoc) {
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.data.name}.pdf"`);
+      res.setHeader('Content-Disposition', `inline; filename="${file.data.name}.pdf"`);
       
       const exportRes = await drive.files.export({
         fileId,
@@ -857,13 +865,54 @@ app.get('/api/drive/download/:id', async (req, res) => {
       
       exportRes.data.pipe(res);
     } else {
-      res.setHeader('Content-Type', file.data.mimeType || 'application/octet-stream');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.data.name}"`);
+      const isInline = req.query.inline === 'true';
+      const range = req.headers.range;
       
-      const mediaRes = await drive.files.get({
+      const fileSize = file.data.size ? parseInt(file.data.size, 10) : 0;
+      const mimeType = file.data.mimeType || 'application/octet-stream';
+      
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}"`);
+      
+      const requestOptions: any = {
         fileId,
-        alt: 'media',
-      }, { responseType: 'stream' });
+        alt: 'media'
+      };
+      
+      const fetchOptions: any = { responseType: 'stream' };
+      
+      // On Render.com (Full Server), we don't strictly need to cap at 3.5MB, 
+      // but keeping some chunking is good for stability and memory.
+      const MAX_CHUNK = 10 * 1024 * 1024; // 10MB chunks for persistent servers
+      
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        
+        // Cap only if excessively large
+        if (end - start + 1 > MAX_CHUNK) {
+          end = start + MAX_CHUNK - 1;
+        }
+        
+        if (fileSize > 0 && end >= fileSize) end = fileSize - 1;
+        
+        console.log(`[Preview] Serving Range: bytes=${start}-${end}/${fileSize || '*'}`);
+        fetchOptions.headers = { range: `bytes=${start}-${end}` };
+        
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize || '*'}`);
+        res.setHeader('Content-Length', (end - start + 1).toString());
+      }
+      
+      const mediaRes = await drive.files.get(requestOptions, fetchOptions);
+      
+      if (!res.headersSent) {
+        if (mediaRes.status === 206) res.status(206);
+        if (mediaRes.headers['content-range']) res.setHeader('Content-Range', mediaRes.headers['content-range']);
+        if (mediaRes.headers['content-length']) res.setHeader('Content-Length', mediaRes.headers['content-length']);
+      }
       
       mediaRes.data.pipe(res);
     }

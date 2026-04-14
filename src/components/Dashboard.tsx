@@ -4,7 +4,7 @@ import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, R
 
 import { StorageStats, FileItem } from '@/src/types';
 import { motion } from 'motion/react';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -55,6 +55,19 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     id: string; name: string; progress: number; controller: AbortController;
   }[]>([]);
 
+  // CENTRAL BACK GESTURE HANDLING
+  useEffect(() => {
+    const handleVaultBack = (e: any) => {
+      if (selectedFile) { e.preventDefault(); setSelectedFile(null); return; }
+      if (actionMenuFile) { e.preventDefault(); setActionMenuFile(null); return; }
+      if (isNewFolderOpen) { e.preventDefault(); setIsNewFolderOpen(false); return; }
+      if (isRenameOpen) { e.preventDefault(); setIsRenameOpen(false); return; }
+      if (showStorageDetails) { e.preventDefault(); setShowStorageDetails(false); return; }
+    };
+
+    window.addEventListener('vault-back', handleVaultBack);
+    return () => window.removeEventListener('vault-back', handleVaultBack);
+  }, [selectedFile, isNewFolderOpen, isRenameOpen, showStorageDetails]);
 
   const handleRefresh = async () => {
     if (onRefreshStorage) {
@@ -223,7 +236,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         const base64 = await new Promise<string>((resolve, reject) => {
           const fr = new FileReader(); fr.onloadend = () => resolve((fr.result as string).split(',')[1]); fr.onerror = reject; fr.readAsDataURL(blob);
         });
-        await Filesystem.writeFile({ path: finalFilename, data: base64, directory: Directory.Documents, recursive: true });
+        await Filesystem.writeFile({ path: 'Download/' + finalFilename, data: base64, directory: Directory.ExternalStorage, recursive: true });
         toast.success(`✅ Saved to Downloads: ${finalFilename}`);
       } else {
         const blobUrl = URL.createObjectURL(blob);

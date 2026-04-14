@@ -329,29 +329,47 @@ export default function App() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    const handler = CapApp.addListener('backButton', ({ canGoBack }) => {
-      // 1. Close dialogs first
-      if (isMoveOpen) { setIsMoveOpen(false); return; }
-      if (isShareOpen) { setIsShareOpen(false); return; }
+    const setupAppBackListener = async () => {
+      const listener = await CapApp.addListener('backButton', async ({ canGoBack }) => {
+        // Dispatch custom event to see if any sub-component wants to consume the back gesture
+        const backEvent = new CustomEvent('vault-back', { 
+          cancelable: true,
+          detail: { canGoBack }
+        });
+        window.dispatchEvent(backEvent);
 
-      // 2. Navigate up in folder hierarchy
-      if (breadcrumb.length > 1) {
-        const parent = breadcrumb[breadcrumb.length - 2];
-        navigateToFolder(parent.id, parent.name, true);
-        return;
-      }
+        // If a component called preventDefault(), it "consumed" the back press
+        if (backEvent.defaultPrevented) return;
 
-      // 3. Go back to Home tab if on another tab
-      if (activeTab !== 'home') {
-        setActiveTab('home');
-        return;
-      }
+        // --- Fallback Global Priorities ---
+        
+        // 1. Close global dialogs managed in App.tsx
+        if (isMoveOpen) { setIsMoveOpen(false); return; }
+        if (isShareOpen) { setIsShareOpen(false); return; }
 
-      // 4. At root with no dialogs — minimize app
-      CapApp.minimizeApp();
-    });
+        // 2. Navigate up in folders (Stay in Files tab context)
+        if (breadcrumb.length > 1) {
+          const parent = breadcrumb[breadcrumb.length - 2];
+          navigateToFolder(parent.id, parent.name, true);
+          return;
+        }
 
-    return () => { handler.then(h => h.remove()); };
+        // 3. If on a non-home tab, go to home
+        if (activeTab !== 'home') {
+          setActiveTab('home');
+          return;
+        }
+
+        // 4. Finally, minimize
+        CapApp.minimizeApp();
+      });
+      return listener;
+    };
+
+    const listenerPromise = setupAppBackListener();
+    return () => {
+      listenerPromise.then(l => l.remove());
+    };
   }, [breadcrumb, activeTab, isMoveOpen, isShareOpen]);
 
   // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
@@ -543,6 +561,10 @@ export default function App() {
     if (tab === 'all') {
       fetchFiles(currentFolderId);
     } else {
+      // If we are looking at specific categories (recent/starred), 
+      // it doesn't make sense to show a specific folder breadcrumb.
+      setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+      setCurrentFolderId('root');
       fetchFiles('root', undefined, tab);
     }
   };

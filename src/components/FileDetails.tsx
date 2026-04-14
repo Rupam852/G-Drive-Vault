@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { FileItem } from '../types';
-import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, ExternalLink, Maximize2 } from 'lucide-react';
+import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, ExternalLink, Maximize2, Minimize2, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
@@ -29,32 +30,67 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isExpanded) setIsExpanded(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isExpanded]);
+
+  // Handle hardware back button for Android via Central Event
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleVaultBack = (e: any) => {
+      // If modal is open, we "consume" the back gesture
+      e.preventDefault();
+      
+      if (isExpanded) {
+        setIsExpanded(false);
+      } else if (showDeleteConfirm) {
+        setShowDeleteConfirm(false);
+      } else {
+        onClose();
+      }
+    };
+
+    window.addEventListener('vault-back', handleVaultBack);
+    return () => window.removeEventListener('vault-back', handleVaultBack);
+  }, [isOpen, isExpanded, showDeleteConfirm, onClose]);
+
+  useEffect(() => {
+    let active = true;
     if (file && isOpen && file.type !== 'folder') {
-      loadPreview();
+      loadPreview(active);
     } else {
       setPreviewUrl(null);
     }
-  }, [file, isOpen]);
+    return () => { active = false; };
+  }, [file?.id, isOpen]);
 
-  const loadPreview = async () => {
+  const loadPreview = async (active: boolean) => {
     if (!file || !tokens) return;
     setIsLoading(true);
+    setPreviewUrl(null); // Clear old preview first
     try {
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokens }),
       });
-      if (ticketRes.ok) {
+      if (ticketRes.ok && active) {
         const { ticketId } = await ticketRes.json();
-        setPreviewUrl(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true`);
+        // Use a unique parameter to force reload the iframe/img
+        const url = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
+        setPreviewUrl(url);
       }
     } catch (e) {
       console.error('Preview error:', e);
     } finally {
-      setIsLoading(false);
+      if (active) setIsLoading(false);
     }
   };
 
@@ -78,22 +114,32 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-none">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 pr-8">
-              <Icon className="text-blue-500 shrink-0" size={20} />
-              <span className="truncate text-base font-bold">{file.name}</span>
-            </DialogTitle>
-            <DialogDescription>File Details</DialogDescription>
-          </DialogHeader>
+      <Dialog open={isOpen && !isExpanded} onOpenChange={onClose}>
+        <DialogContent className="w-[95vw] sm:max-w-lg bg-[#0F172A] border-slate-800 text-white rounded-[2rem] overflow-hidden p-0 gap-0 shadow-2xl">
+          <div className="p-6 pb-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+                  <Icon size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div className="space-y-4 py-4">
-            <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 overflow-hidden border border-slate-100 dark:border-slate-800 relative group">
+          <div className="p-6 space-y-6">
+            <div className={`
+              ${file.type === 'video' ? 'aspect-video' : file.type === 'document' ? 'aspect-[3/4]' : 'aspect-auto max-h-[350px]'} 
+              w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group cursor-pointer
+            `}
+              onClick={() => setIsExpanded(true)}
+            >
               {isLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-xs font-semibold text-slate-400">Loading Preview...</p>
                 </div>
               ) : file.type === 'image' && (file.thumbnail || previewUrl) ? (
                 <img 
@@ -103,105 +149,152 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   referrerPolicy="no-referrer" 
                 />
               ) : file.type === 'video' && previewUrl ? (
-                <div className="relative w-full h-full">
-                  <video 
-                    src={previewUrl} 
-                    className="w-full h-full bg-black"
-                    controls
-                    autoPlay
-                    playsInline
-                    onError={() => {
-                      toast.error("Low speed or large file. Try 'Open' button if preview fails.");
-                    }}
-                  />
-                </div>
+                <video 
+                  src={previewUrl} 
+                  className="w-full h-full object-contain bg-black"
+                  poster={file.thumbnail?.replace('=s220', '=s1000')}
+                  autoPlay
+                  playsInline
+                  muted
+                />
               ) : (file.type === 'document' || file.type === 'other') && previewUrl ? (
                 <iframe 
                   src={previewUrl} 
-                  className="w-full h-full border-none bg-white"
-                  allow="autoplay"
+                  className="w-full h-full border-none bg-white pointer-events-none"
                   title="File Preview"
                 />
-              ) : file.type === 'folder' && file.thumbnail ? (
-                <img src={file.thumbnail.replace('=s220', '=s1000')} className="w-full h-full object-cover" alt={file.name} referrerPolicy="no-referrer" />
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <Icon size={48} className="opacity-30" />
-                  <p className="text-[10px] uppercase font-bold tracking-widest opacity-40">Preview Unavailable</p>
+                <div className="flex flex-col items-center gap-2 py-10 opacity-40">
+                  <Icon size={64} />
+                  <p className="text-[10px] uppercase font-bold tracking-[0.2em]">Preview Unavailable</p>
                 </div>
               )}
               
-              {file.type !== 'folder' && previewUrl && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
-                    onClick={() => {
-                      if (previewUrl) {
-                        window.open(previewUrl.replace('&inline=true', ''), '_blank');
-                      }
-                    }}
-                  >
-                    <Maximize2 size={14} />
-                  </Button>
-                  {file.webViewLink && (
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 rounded-full bg-black/50 hover:bg-black/70 text-white border-none"
-                      onClick={() => window.open(file.webViewLink, '_blank')}
-                    >
-                      <ExternalLink size={14} />
-                    </Button>
-                  )}
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-white flex items-center gap-2">
+                  <Maximize2 size={18} />
+                  <span className="text-xs font-bold">Tap to Fullscreen</span>
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-y-6 px-1">
               <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
-                  <HardDrive size={10} /> Size
+                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                   <HardDrive size={12} /> Size
                 </p>
-                <p className="text-sm font-medium">{file.size}</p>
+                <p className="text-xl font-black text-white">{file.size}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
-                  <Calendar size={10} /> Date
+                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                   <Calendar size={12} /> Date
                 </p>
-                <p className="text-sm font-medium">{file.date}</p>
+                <p className="text-xl font-black text-white">{file.date}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
-                  <Info size={10} /> Type
+              <div className="col-span-2 space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                   <Info size={12} /> Type
                 </p>
-                <p className="text-sm font-medium capitalize">{file.type}</p>
+                <p className="text-xl font-black text-white capitalize">{file.type}</p>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col gap-3 sm:justify-center pt-2">
-            <div className="grid grid-cols-2 gap-2 w-full">
-              <Button variant="outline" className="rounded-xl h-11 border-slate-200 dark:border-slate-700" onClick={handleShare}>
-                <Share2 size={18} className="mr-2" /> Share
+          <div className="p-6 pt-2 space-y-3 bg-white/5 border-t border-slate-800/50">
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="rounded-2xl h-14 border-slate-800 bg-transparent text-white hover:bg-slate-800 font-bold" 
+                onClick={handleShare}
+              >
+                <Share2 size={20} className="mr-2" /> Share
               </Button>
               
-              {file.webViewLink && (
-                <Button variant="outline" className="rounded-xl h-11 text-green-600 border-green-100 bg-green-50 dark:bg-green-900/20 dark:border-green-900/30" onClick={() => window.open(file.webViewLink, '_blank')}>
-                  <ExternalLink size={18} className="mr-2" /> Open
+              <Button 
+                variant="outline" 
+                className="rounded-2xl h-14 border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold" 
+                onClick={() => {
+                  if (file.webViewLink) window.open(file.webViewLink, '_blank');
+                  else if (previewUrl) window.open(previewUrl.replace('&inline=true', ''), '_blank');
+                }}
+              >
+                <ExternalLink size={20} className="mr-2" /> Open
+              </Button>
+            </div>
+            
+            <Button 
+              variant="destructive" 
+              className="w-full rounded-2xl h-14 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 font-bold shadow-none" 
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 size={20} className="mr-2" /> Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* IMMERSIVE FULLSCREEN OVERLAY */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl flex flex-col md:p-6"
+          >
+            <div className="flex items-center justify-between p-4 md:p-0 mb-4 z-10 w-full max-w-7xl mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-xl text-white">
+                  <Icon size={20} />
+                </div>
+                <h2 className="text-white font-bold truncate max-w-[200px]">{file.name}</h2>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setIsExpanded(false)}
+                  className="h-10 w-10 p-0 rounded-full bg-white/10 hover:bg-white/20 text-white border-none"
+                >
+                  <Minimize2 size={20} />
                 </Button>
+                <Button 
+                  onClick={() => {
+                    setIsExpanded(false);
+                    onClose();
+                  }}
+                  className="h-10 w-10 p-0 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border-none"
+                >
+                  <X size={20} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full bg-[#0F172A]/50 rounded-[2.5rem] overflow-hidden flex items-center justify-center relative group max-w-7xl mx-auto border border-white/5 shadow-2xl">
+              {file.type === 'image' ? (
+                <img src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} className="w-full h-full object-contain" alt={file.name} />
+              ) : file.type === 'video' ? (
+                <video src={previewUrl || ''} className="w-full h-full object-contain" controls autoPlay playsInline poster={file.thumbnail?.replace('=s220', '=s1000')} />
+              ) : (
+                <iframe src={previewUrl || ''} className="w-full h-full border-none bg-white" title="Immersive Preview" />
               )}
             </div>
             
-            <div className="w-full">
-              <Button variant="destructive" className="w-full rounded-xl h-11 shadow-lg shadow-red-200 dark:shadow-none" onClick={() => setShowDeleteConfirm(true)}>
-                <Trash2 size={18} className="mr-2" /> Delete
-              </Button>
+            <div className="p-6 flex justify-center gap-4 z-10">
+               <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
+                 <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-blue-500/20 transition-colors text-white group-hover:text-blue-400">
+                    <Share2 size={24} />
+                 </div>
+                 <span className="text-[10px] font-bold text-slate-500 group-hover:text-white uppercase tracking-widest">Share</span>
+               </button>
+               <button onClick={() => setShowDeleteConfirm(true)} className="flex flex-col items-center gap-1 group">
+                 <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-red-500/20 transition-colors text-white group-hover:text-red-400">
+                    <Trash2 size={24} />
+                 </div>
+                 <span className="text-[10px] font-bold text-slate-500 group-hover:text-white uppercase tracking-widest">Delete</span>
+               </button>
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
