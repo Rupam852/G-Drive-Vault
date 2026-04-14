@@ -46,9 +46,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       return;
     }
 
-    // Web Fallback (Existing Popup Logic)
+    // Web Fallback - use relative URL so it always works on same domain (Vercel)
+    // No need for VITE_API_BASE_URL here since frontend and backend are on same origin
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/url`);
+      const response = await fetch('/api/auth/url');
       if (!response.ok) throw new Error('Failed to get auth URL');
       const { url } = await response.json();
 
