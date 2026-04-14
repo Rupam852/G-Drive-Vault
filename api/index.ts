@@ -23,13 +23,10 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
-  origin: [
-    'https://g-drive-vault.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'capacitor://localhost',   // Capacitor Android/iOS WebView origin
-    'http://localhost',        // Capacitor fallback origin
-  ],
+  // Allow all origins — the APK itself is the security boundary for native
+  // mobile requests. Capacitor WebView can use various origins depending on
+  // the Capacitor version (capacitor://localhost, http://localhost, etc.)
+  origin: (origin, callback) => callback(null, true),
   credentials: true,
 }));
 app.use(express.json());
