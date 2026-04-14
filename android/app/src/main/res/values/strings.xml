@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DriveVault</string>
+    <string name="title_activity_main">DriveVault</string>
+    <string name="package_name">com.rupam.drivevault</string>
+    <string name="custom_url_scheme">com.rupam.drivevault</string>
+</resources>
