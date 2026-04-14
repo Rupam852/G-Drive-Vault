@@ -23,7 +23,14 @@ const PORT = 3000;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://g-drive-vault.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 app.use((req, res, next) => {
   console.log(`[HTTP ${req.method}] ${req.url} - Cookies:`, req.headers.cookie || 'none');
@@ -47,10 +54,11 @@ app.use(session({
 const getOAuth2Client = (req: express.Request) => {
   // Use APP_URL if available (injected by AI Studio), otherwise fallback to dynamic detection
   // The OAuth skill recommends using APP_URL as it's more reliable behind proxies
-  let baseUrl = process.env.APP_URL;
+  // Priority: APP_URL > VITE_API_BASE_URL > dynamic detection
+  let baseUrl = process.env.APP_URL || process.env.VITE_API_BASE_URL;
   
   if (!baseUrl) {
-    const protocol = req.protocol === 'http' && req.get('x-forwarded-proto') === 'https' ? 'https' : req.protocol;
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
     const host = req.get('host');
     baseUrl = `${protocol}://${host}`;
   }
