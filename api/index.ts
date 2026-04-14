@@ -239,7 +239,10 @@ const getTokensFromRequest = (req: express.Request) => {
   
   if (ticketId && downloadTickets.has(ticketId)) {
     const ticket = downloadTickets.get(ticketId);
-    downloadTickets.delete(ticketId); // Single use
+    // Prevent CORS preflight (OPTIONS) from consuming the one-time ticket
+    if (req.method !== 'OPTIONS') {
+      downloadTickets.delete(ticketId); // Single use
+    }
     return ticket?.tokens;
   }
 
@@ -811,6 +814,9 @@ app.post('/api/drive/download/ticket', (req, res) => {
 });
 
 app.get('/api/drive/download/:id', async (req, res) => {
+  // Expose headers for progress tracking and filename reading
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition');
+
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
 

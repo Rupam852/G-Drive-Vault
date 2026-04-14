@@ -180,7 +180,20 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
       const { ticketId } = await ticketRes.json();
 
       const res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
-      if (!res.ok) throw new Error('Download failed');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Download failed (${res.status})`);
+      }
+
+      if (!res.body) throw new Error('Download stream is unavailable');
+
+      // Request permissions on native platform
+      if (Capacitor.isNativePlatform()) {
+        const status = await Filesystem.requestPermissions();
+        if (status.publicStorage !== 'granted') {
+          throw new Error('Permission to write to Downloads was denied.');
+        }
+      }
 
       const contentLength = res.headers.get('Content-Length');
       const total = contentLength ? parseInt(contentLength) : 0;
@@ -213,7 +226,10 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
       }
     } catch (err: any) {
       if (err.name === 'AbortError') toast.info(`Cancelled: ${file.name}`);
-      else { console.error('Download error:', err); toast.error('Failed to download file'); }
+      else { 
+        console.error('Download error:', err); 
+        toast.error(`Error: ${err.message || 'Failed to download file'}`);
+      }
     } finally {
       setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
     }

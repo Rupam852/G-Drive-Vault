@@ -115,7 +115,20 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
       const res = await fetch(downloadUrl, { signal: controller.signal });
-      if (!res.ok) throw new Error('Download failed');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Download failed (${res.status})`);
+      }
+
+      if (!res.body) throw new Error('Download stream is unavailable');
+
+      // Request permissions on native platform
+      if (Capacitor.isNativePlatform()) {
+        const status = await Filesystem.requestPermissions();
+        if (status.publicStorage !== 'granted') {
+          throw new Error('Permission to write to Downloads was denied.');
+        }
+      }
 
       // Stream with progress tracking
       const contentLength = res.headers.get('Content-Length');
@@ -159,7 +172,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         toast.info(`Cancelled: ${file.name}`);
       } else {
         console.error('Download error:', err);
-        toast.error('Failed to download file');
+        toast.error(`Error: ${err.message || 'Failed to download file'}`);
       }
     } finally {
       setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
