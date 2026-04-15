@@ -107,7 +107,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         headers: tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {}
       });
       const data = await res.json();
-      const folders = (data.files || []).filter((f: any) =>
+      // API returns array directly (not wrapped in { files: [] })
+      const list = Array.isArray(data) ? data : (data.files || []);
+      const folders = list.filter((f: any) =>
         (f.type === 'folder' || f.mimeType === 'application/vnd.google-apps.folder') &&
         !selectedIds.has(f.id)
       );
@@ -115,6 +117,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     } catch { setMoveBrowseFolders([]); }
     finally { setMoveBrowseLoading(false); }
   };
+
 
   // Reset browser when dialog opens
   useEffect(() => {
@@ -564,158 +567,216 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         </motion.div>
       )}
 
-      {/* FAB: Upload + New Folder */}
-      <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3">
-        <motion.button whileTap={{ scale: 0.92 }} onClick={() => setIsNewFolderOpen(true)}
-          className="w-12 h-12 bg-slate-800 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-white shadow-xl">
-          <Folder size={22} />
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.92 }} onClick={() => setShowUploadSheet(true)}
-          className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40">
-          <Plus size={32} />
+      {/* ── FAB: Google Drive style single + button ── */}
+      <div className="fixed bottom-24 right-4 z-50">
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setShowUploadSheet(true)}
+          className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40"
+        >
+          <Plus size={30} />
         </motion.button>
       </div>
 
+      {/* ── GOOGLE DRIVE STYLE UPLOAD BOTTOM SHEET ── */}
       {showUploadSheet && (
-        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" onClick={() => setShowUploadSheet(false)}>
+        <div
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowUploadSheet(false)}
+        >
           <motion.div
-            initial={{ y: "100%" }} animate={{ y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 38 }}
             onClick={e => e.stopPropagation()}
-            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl p-6 pb-10 shadow-2xl"
+            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1e1e1e] rounded-t-3xl shadow-2xl"
           >
-            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5" />
-            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-4">Upload to current folder</h3>
-            <div className="flex flex-col gap-3">
-              <button onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
-                <div className="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 shrink-0">
-                  <Plus size={22} />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-blue-700 dark:text-blue-300">Files</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Images, Videos, Docs, APKs — all types</p>
-                </div>
+            {/* Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-2" />
+
+            {/* Title */}
+            <div className="px-5 pb-2 pt-1 flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">New</p>
+              <button
+                onClick={() => setShowUploadSheet(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500"
+              >
+                <X size={16} />
               </button>
-              <button onClick={() => folderInputRef.current?.click()}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 active:scale-95 transition-all">
-                <div className="w-11 h-11 bg-yellow-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-yellow-500/30 shrink-0">
-                  <Folder size={22} />
+            </div>
+
+            {/* Options grid — Google Drive style */}
+            <div className="px-4 pb-4 grid grid-cols-4 gap-2">
+              {/* New Folder */}
+              <button
+                onClick={() => { setShowUploadSheet(false); setIsNewFolderOpen(true); }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600 shadow-sm">
+                  <Folder size={28} />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-yellow-700 dark:text-yellow-300">Folder</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Full folder structure with all files inside</p>
-                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">New<br/>Folder</span>
               </button>
-              <button onClick={() => zipInputRef.current?.click()}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
-                <div className="w-11 h-11 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-purple-500/30 shrink-0">
-                  <Archive size={22} />
+
+              {/* Upload Files */}
+              <button
+                onClick={() => { fileInputRef.current?.click(); setShowUploadSheet(false); }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">
+                  <Plus size={28} />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-purple-700 dark:text-purple-300">ZIP / Archive</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">.zip .rar .7z .tar.gz files</p>
-                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Upload<br/>Files</span>
               </button>
+
+              {/* Upload Folder */}
+              <button
+                onClick={() => { folderInputRef.current?.click(); setShowUploadSheet(false); }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 shadow-sm">
+                  <Archive size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Upload<br/>Folder</span>
+              </button>
+
+              {/* Camera */}
+              <button
+                onClick={() => {
+                  const i = document.createElement('input');
+                  i.type = 'file'; i.accept = 'image/*';
+                  (i as any).capture = 'environment';
+                  i.onchange = (e: any) => handleFileChange(e);
+                  i.click();
+                  setShowUploadSheet(false);
+                }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 shadow-sm">
+                  <Camera size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Camera</span>
+              </button>
+            </div>
+
+            {/* Divider + storage info */}
+            <div className="border-t border-slate-100 dark:border-slate-800 mx-4" />
+            <div className="px-6 py-4 pb-8">
+              <p className="text-xs text-slate-400 text-center">Files will be uploaded to the current folder</p>
             </div>
           </motion.div>
         </div>
       )}
 
-      {/* ── MOVE BROWSER (full-screen folder navigator) ── */}
+      {/* ── MOVE BROWSER — Google Drive bottom sheet style ── */}
       {isMoveDialogOpen && (
-        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
-          {/* Header */}
-          <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-4 flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsMoveDialogOpen(false)}
-              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300"
-            >
-              <X size={18} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Move to...</h2>
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                {moveBrowsePath.map((crumb, i) => (
-                  <React.Fragment key={crumb.id}>
-                    {i > 0 && <span className="text-slate-300 text-xs shrink-0">/</span>}
-                    <button
-                      onClick={() => {
-                        const newPath = moveBrowsePath.slice(0, i + 1);
-                        setMoveBrowsePath(newPath);
-                        fetchMoveFolders(crumb.id);
-                      }}
-                      className={`text-xs whitespace-nowrap font-medium ${
-                        i === moveBrowsePath.length - 1
-                          ? 'text-blue-600'
-                          : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                    >
-                      {crumb.name}
-                    </button>
-                  </React.Fragment>
-                ))}
+        <div
+          className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex flex-col justify-end"
+          onClick={() => setIsMoveDialogOpen(false)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+            onClick={e => e.stopPropagation()}
+            className="bg-white dark:bg-[#1e1e1e] rounded-t-3xl flex flex-col max-h-[85vh] shadow-2xl"
+          >
+            {/* Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            {/* Header */}
+            <div className="px-4 pt-2 pb-3 flex items-center gap-3 shrink-0 border-b border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setIsMoveDialogOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Move to</h2>
+                {/* Breadcrumb */}
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar mt-0.5">
+                  {moveBrowsePath.map((crumb, i) => (
+                    <React.Fragment key={crumb.id}>
+                      {i > 0 && <ChevronRight size={12} className="text-slate-300 shrink-0" />}
+                      <button
+                        onClick={() => {
+                          const newPath = moveBrowsePath.slice(0, i + 1);
+                          setMoveBrowsePath(newPath);
+                          fetchMoveFolders(crumb.id);
+                        }}
+                        className={`text-xs whitespace-nowrap font-semibold ${
+                          i === moveBrowsePath.length - 1
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        {crumb.name}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* "Move Here" sticky button */}
-          <div className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0">
-            <button
-              onClick={() => {
-                const target = moveBrowsePath[moveBrowsePath.length - 1];
-                handleBulkMove(target.id);
-                setIsMoveDialogOpen(false);
-              }}
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Move size={18} />
-              Move Here — {moveBrowsePath[moveBrowsePath.length - 1].name}
-            </button>
-          </div>
-
-          {/* Folder list */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {/* Back button */}
-            {moveBrowsePath.length > 1 && (
-              <button
-                onClick={navigateMoveBack}
-                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 active:scale-95 transition-all"
-              >
-                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                  <ChevronRight size={20} className="rotate-180" />
-                </div>
-                <span className="font-medium text-slate-500 dark:text-slate-400">.. Back</span>
-              </button>
-            )}
-
-            {moveBrowseLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : moveBrowseFolders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
-                <Folder size={40} className="opacity-30" />
-                <p className="text-sm font-medium">No folders here</p>
-                <p className="text-xs text-slate-300">Tap "Move Here" to move to this location</p>
-              </div>
-            ) : (
-              moveBrowseFolders.map(folder => (
+            {/* Folder list */}
+            <div className="flex-1 overflow-y-auto">
+              {moveBrowsePath.length > 1 && (
                 <button
-                  key={folder.id}
-                  onClick={() => navigateMoveInto(folder)}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 active:scale-95 transition-all text-left"
+                  onClick={navigateMoveBack}
+                  className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-500 shrink-0">
-                    <Folder size={20} />
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 shrink-0">
+                    <ChevronRight size={20} className="rotate-180" />
                   </div>
-                  <span className="flex-1 font-medium text-slate-800 dark:text-white truncate">{folder.name}</span>
-                  <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                  <span className="font-medium text-slate-500 dark:text-slate-400 text-sm">Back</span>
                 </button>
-              ))
-            )}
-          </div>
+              )}
+
+              {moveBrowseLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : moveBrowseFolders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-14 text-slate-400 gap-3">
+                  <Folder size={48} className="opacity-20" />
+                  <p className="text-sm font-semibold">No subfolders here</p>
+                  <p className="text-xs text-slate-300 text-center px-8">Tap "Move here" to move to this location</p>
+                </div>
+              ) : (
+                moveBrowseFolders.map(folder => (
+                  <button
+                    key={folder.id}
+                    onClick={() => navigateMoveInto(folder)}
+                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 transition-colors text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-500 shrink-0">
+                      <Folder size={22} />
+                    </div>
+                    <span className="flex-1 font-medium text-slate-800 dark:text-white truncate text-sm">{folder.name}</span>
+                    <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Move Here button — fixed at bottom */}
+            <div className="px-4 py-4 pb-8 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-[#1e1e1e]">
+              <button
+                onClick={() => {
+                  const target = moveBrowsePath[moveBrowsePath.length - 1];
+                  handleBulkMove(target.id);
+                  setIsMoveDialogOpen(false);
+                }}
+                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-blue-500/20"
+              >
+                <Move size={18} />
+                Move here — <span className="truncate max-w-[120px]">{moveBrowsePath[moveBrowsePath.length - 1].name}</span>
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
