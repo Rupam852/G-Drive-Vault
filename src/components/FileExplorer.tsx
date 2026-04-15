@@ -59,6 +59,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [newFolderName, setNewFolderName] = useState('');
   const [renameValue, setRenameValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const longPressTimer = useRef<any>(null);
@@ -232,12 +234,13 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
       Array.from(selectedFiles).forEach((file: any) => {
-        onUpload(file, file.webkitRelativePath);
+        // Pass relativePath for folder uploads, undefined for single files
+        onUpload(file, file.webkitRelativePath || undefined);
       });
       if (fileInputRef.current) fileInputRef.current.value = '';
-      const folderInput = document.getElementById('folderInput') as HTMLInputElement;
-      if (folderInput) folderInput.value = '';
+      if (folderInputRef.current) folderInputRef.current.value = '';
     }
+    setShowUploadSheet(false);
   };
 
   const handleCreateFolder = () => {
@@ -298,8 +301,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             )}
           </div>
           <div className="flex gap-2">
-            <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
-            <input type="file" id="folderInput" className="hidden" webkitdirectory="" directory="" onChange={handleFileChange} />
+            {/* Hidden file inputs */}
+            <input type="file" ref={fileInputRef} className="hidden" multiple accept="*/*" onChange={handleFileChange} />
+            <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" directory="" onChange={handleFileChange} />
           </div>
         </div>
         
@@ -459,55 +463,53 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onShare={onShare}
       />
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-6 z-50">
-        <DropdownMenu>
-          <DropdownMenuTrigger className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40 active:scale-90 transition-all hover:bg-blue-700">
-            <Plus size={32} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="bg-white dark:bg-slate-800 border-none shadow-2xl rounded-2xl p-2 mb-4 min-w-[180px]">
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-600">
-                <Camera size={18} />
-              </div>
-              <span className="font-medium">Camera</span>
-            </DropdownMenuItem>
-            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2" />
-            <DropdownMenuItem onClick={() => document.getElementById('folderInput')?.click()} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600">
-                <Folder size={18} />
-              </div>
-              <span className="font-medium">Upload Folder</span>
-            </DropdownMenuItem>
-            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2" />
-            <DropdownMenuItem onClick={() => setIsNewFolderOpen(true)} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                <Folder size={18} />
-              </div>
-              <span className="font-medium">New Folder</span>
-            </DropdownMenuItem>
-            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1 mx-2" />
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600">
-                <Plus size={18} />
-              </div>
-              <span className="font-medium">Upload All</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
-                <ImageIcon size={18} />
-              </div>
-              <span className="font-medium">Images & Videos</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="rounded-xl cursor-pointer py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600">
-                <Archive size={18} />
-              </div>
-              <span className="font-medium">ZIP & Archives</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {/* FAB: Upload + New Folder */}
+      <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3">
+        <motion.button whileTap={{ scale: 0.92 }} onClick={() => setIsNewFolderOpen(true)}
+          className="w-12 h-12 bg-slate-800 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-white shadow-xl">
+          <Folder size={22} />
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.92 }} onClick={() => setShowUploadSheet(true)}
+          className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40">
+          <Plus size={32} />
+        </motion.button>
       </div>
+
+      {showUploadSheet && (
+        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" onClick={() => setShowUploadSheet(false)}>
+          <motion.div
+            initial={{ y: "100%" }} animate={{ y: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            onClick={e => e.stopPropagation()}
+            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl p-6 pb-10 shadow-2xl"
+          >
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5" />
+            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-4">Upload to current folder</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
+                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                  <Plus size={26} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-blue-700 dark:text-blue-300">Files</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Images, Videos, Docs, APKs</p>
+                </div>
+              </button>
+              <button onClick={() => folderInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 active:scale-95 transition-all">
+                <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
+                  <Folder size={26} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-yellow-700 dark:text-yellow-300">Folder</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Upload entire folder</p>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Move Dialog */}
       <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
