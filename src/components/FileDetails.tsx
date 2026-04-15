@@ -61,18 +61,10 @@ function buildPreviewUrl(file: FileItem, tokens: any): string | null {
   }
 }
 
-/** For iframe-based previews (docs/PDFs), use Google's Drive Viewer as a fallback */
-function buildGoogleViewerUrl(fileId: string, accessToken: string): string {
-  const directUrl = encodeURIComponent(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${accessToken}`
-  );
-  return `https://docs.google.com/viewer?url=${directUrl}&embedded=true`;
-}
 
 export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, onShare }: FileDetailsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewError, setPreviewError] = useState(false);
@@ -108,18 +100,10 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       const url = buildPreviewUrl(file, tokens);
       setPreviewUrl(url);
 
-      // For documents, also build a Google Viewer URL as fallback
-      if ((file.type === 'document' || file.type === 'other') && tokens?.access_token) {
-        setIframeUrl(buildGoogleViewerUrl(file.id, tokens.access_token));
-      } else {
-        setIframeUrl(null);
-      }
-
       // Give browser a moment then stop spinner
       setTimeout(() => setIsLoading(false), 400);
     } else {
       setPreviewUrl(null);
-      setIframeUrl(null);
       setPreviewError(false);
     }
   }, [file?.id, isOpen, retryCount]);
@@ -242,24 +226,40 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       );
     }
 
-    // Documents and other types → try iframe with Google Viewer
-    const src = iframeUrl || previewUrl;
+    // Documents & other types → show "Open with Google Drive" box
     return (
-      <iframe
-        src={src}
-        className="w-full h-full border-none"
-        title="File Preview"
-        loading="lazy"
-        onError={() => {
-          // If Google Viewer fails, fall back to direct URL
-          if (src === iframeUrl && previewUrl) {
-            setIframeUrl(null);
-          } else {
-            setPreviewError(true);
-          }
-        }}
-        style={{ background: 'white' }}
-      />
+      <div className="flex flex-col items-center gap-5 p-8 w-full">
+        {/* File icon with glow */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-xl" />
+          <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <Icon size={48} />
+          </div>
+        </div>
+
+        <div className="text-center space-y-1 max-w-[240px]">
+          <p className="text-white font-bold text-sm truncate">{file.name}</p>
+          <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">{file.type}</p>
+        </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); handleOpenInDrive(); }}
+          className="flex items-center gap-3 bg-white text-slate-800 font-bold px-6 py-3.5 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all text-sm"
+        >
+          <img
+            src="https://www.google.com/favicon.ico"
+            alt="Google"
+            className="w-5 h-5"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          Open with Google Drive
+          <ExternalLink size={14} className="text-slate-500" />
+        </button>
+
+        <p className="text-slate-600 text-[10px] text-center max-w-[200px]">
+          Preview not available for this file type. Open in Google Drive to view.
+        </p>
+      </div>
     );
   };
 
