@@ -46,6 +46,18 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedHiddenIds, setSelectedHiddenIds] = useState<string[]>([]);
 
+  // Notifications state
+  const [notifPush, setNotifPush] = useState(true);
+  const [notifEmail, setNotifEmail] = useState(true);
+  const [notifSharedActivity, setNotifSharedActivity] = useState(false);
+  const [notifSecurity, setNotifSecurity] = useState(true);
+
+  // Security & Privacy state
+  const [secTwoFactor, setSecTwoFactor] = useState(false);
+  const [secBiometric, setSecBiometric] = useState(true);
+  const [privHideSearches, setPrivHideSearches] = useState(false);
+  const [privAnalytics, setPrivAnalytics] = useState(true);
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -379,18 +391,18 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {[
-              { label: 'Push Notifications', desc: 'Receive alerts on your device', checked: true },
-              { label: 'Email Alerts', desc: 'Get updates in your inbox', checked: true },
-              { label: 'Shared File Activity', desc: 'When someone edits your file', checked: false },
-              { label: 'Security Alerts', desc: 'Unusual login detection', checked: true }
-            ].map((n, i) => (
+            {([
+              { label: 'Push Notifications', desc: 'Receive alerts on your device', checked: notifPush, onChange: setNotifPush },
+              { label: 'Email Alerts', desc: 'Get updates in your inbox', checked: notifEmail, onChange: setNotifEmail },
+              { label: 'Shared File Activity', desc: 'When someone edits your file', checked: notifSharedActivity, onChange: setNotifSharedActivity },
+              { label: 'Security Alerts', desc: 'Unusual login detection', checked: notifSecurity, onChange: setNotifSecurity }
+            ] as { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }[]).map((n, i) => (
               <div key={i} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
                 <div className="space-y-0.5">
                   <p className="font-medium">{n.label}</p>
                   <p className="text-xs text-slate-500">{n.desc}</p>
                 </div>
-                <Switch defaultChecked={n.checked} className="data-[state=checked]:bg-blue-600" />
+                <Switch checked={n.checked} onCheckedChange={n.onChange} className="data-[state=checked]:bg-blue-600" />
               </div>
             ))}
           </div>
@@ -413,11 +425,11 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               </div>
               <div className="flex items-center justify-between">
                 <Label>Two-Factor Authentication</Label>
-                <Switch className="data-[state=checked]:bg-blue-600" />
+                <Switch checked={secTwoFactor} onCheckedChange={setSecTwoFactor} className="data-[state=checked]:bg-blue-600" />
               </div>
               <div className="flex items-center justify-between">
                 <Label>Biometric Login</Label>
-                <Switch defaultChecked className="data-[state=checked]:bg-blue-600" />
+                <Switch checked={secBiometric} onCheckedChange={setSecBiometric} className="data-[state=checked]:bg-blue-600" />
               </div>
             </div>
             <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
@@ -427,14 +439,26 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               </div>
               <div className="flex items-center justify-between">
                 <Label>Hide from Shared Searches</Label>
-                <Switch className="data-[state=checked]:bg-blue-600" />
+                <Switch checked={privHideSearches} onCheckedChange={setPrivHideSearches} className="data-[state=checked]:bg-blue-600" />
               </div>
               <div className="flex items-center justify-between">
                 <Label>Usage Analytics</Label>
-                <Switch defaultChecked className="data-[state=checked]:bg-blue-600" />
+                <Switch checked={privAnalytics} onCheckedChange={setPrivAnalytics} className="data-[state=checked]:bg-blue-600" />
               </div>
             </div>
-            <Button variant="outline" className="w-full rounded-2xl border-red-200 text-red-600 hover:bg-red-50 h-12">Reset Security Settings</Button>
+            <Button
+              variant="outline"
+              className="w-full rounded-2xl border-red-200 text-red-600 hover:bg-red-50 h-12"
+              onClick={() => {
+                setSecTwoFactor(false);
+                setSecBiometric(true);
+                setPrivHideSearches(false);
+                setPrivAnalytics(true);
+                toast.success('Security settings reset');
+              }}
+            >
+              Reset Security Settings
+            </Button>
           </div>
         </div>
       )}

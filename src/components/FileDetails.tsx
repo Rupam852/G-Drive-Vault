@@ -271,11 +271,16 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
 
             <div className="flex-1 w-full bg-[#0F172A]/50 rounded-[2.5rem] overflow-hidden flex items-center justify-center relative group max-w-7xl mx-auto border border-white/5 shadow-2xl">
               {file.type === 'image' ? (
-                <img src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} className="w-full h-full object-contain" alt={file.name} />
+                <img src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} className="w-full h-full object-contain" alt={file.name} referrerPolicy="no-referrer" />
               ) : file.type === 'video' ? (
                 <video src={previewUrl || ''} className="w-full h-full object-contain" controls autoPlay playsInline poster={file.thumbnail?.replace('=s220', '=s1000')} />
               ) : (
-                <iframe src={previewUrl || ''} className="w-full h-full border-none bg-white" title="Immersive Preview" />
+                <iframe
+                  src={file.webViewLink?.replace('/view', '/preview')?.replace('?usp=drivesdk', '') || file.webViewLink || ''}
+                  className="w-full h-full border-none bg-white"
+                  title="Immersive Preview"
+                  allow="autoplay"
+                />
               )}
             </div>
             

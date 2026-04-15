@@ -34,7 +34,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-goog-tokens', 'Range']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   console.log(`[HTTP ${req.method}] ${req.url} - x-goog-tokens:`, req.headers['x-goog-tokens'] ? 'present' : 'missing');
   next();
@@ -305,7 +306,11 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Multer config for memory storage
-const upload = multer({ storage: multer.memoryStorage() });
+// 500MB limit — Render supports large uploads unlike Vercel (4.5MB cap)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 } // 500MB
+});
 
 app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
   const tokens = getTokensFromRequest(req);
@@ -903,9 +908,9 @@ app.get('/api/drive/download/:id', async (req, res) => {
       
       const fetchOptions: any = { responseType: 'stream' };
       
-      // On Render.com (Full Server), we don't strictly need to cap at 3.5MB, 
-      // but keeping some chunking is good for stability and memory.
-      const MAX_CHUNK = 10 * 1024 * 1024; // 10MB chunks for persistent servers
+      // Render.com has no response size limit — stream large files freely.
+      // 50MB chunks keep memory stable on the free-tier 512MB instance.
+      const MAX_CHUNK = 50 * 1024 * 1024; // 50MB chunks
       
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
