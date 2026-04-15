@@ -421,6 +421,23 @@ export default function App() {
     };
   }, [user, tokens]); // Only restart polling when auth state changes
 
+  // ── RENDER KEEP-ALIVE: Ping every 10 min to prevent cold starts ─────────
+  // Render free tier sleeps after 15 min of inactivity causing 401/timeout
+  // on next login. This silent ping keeps the server warm.
+  useEffect(() => {
+    if (!user) return; // Only ping when logged in
+    const KEEP_ALIVE_MS = 10 * 60 * 1000; // 10 minutes
+    const ping = () => {
+      if (document.hidden) return; // Don't ping if app is in background
+      fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {},
+        credentials: 'include',
+      }).catch(() => {}); // Silently ignore errors
+    };
+    const id = setInterval(ping, KEEP_ALIVE_MS);
+    return () => clearInterval(id);
+  }, [user, tokens]);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');

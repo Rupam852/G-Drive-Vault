@@ -1,21 +1,53 @@
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 import { Capacitor } from '@capacitor/core';
-import { Shield, Lock } from 'lucide-react';
+import { Shield, Lock, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 const ANDROID_CLIENT_ID = '366598728765-rvhkrkvmisgeu0tn27jatbsajbp12qsk.apps.googleusercontent.com';
 // Web Client ID is used as the serverClientId so Google returns a serverAuthCode
 // that the backend can exchange for Drive access tokens
 const WEB_CLIENT_ID = '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 interface LoginProps {
   onLoginSuccess: (tokens?: any) => void;
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
+  const [serverReady, setServerReady] = useState(false);
+  const [waking, setWaking] = useState(false);
+
+  // Wake up Render server as soon as login page appears
+  // so it's ready by the time the user taps Sign In
+  useEffect(() => {
+    let cancelled = false;
+    const warmUp = async () => {
+      setWaking(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(60000), // wait up to 60s for Render cold start
+        });
+        // Any response (even 401) means server is awake
+        if (!cancelled) {
+          setServerReady(true);
+          setWaking(false);
+        }
+      } catch {
+        // Network error — still mark ready so user can try
+        if (!cancelled) {
+          setServerReady(true);
+          setWaking(false);
+        }
+      }
+    };
+    warmUp();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleGoogleLogin = async () => {
 
     // ── NATIVE (Android / iOS) ──────────────────────────────────────────────
@@ -97,11 +129,32 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
         <Button
           onClick={handleGoogleLogin}
-          className="w-full h-14 bg-white hover:bg-slate-100 text-slate-900 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all active:scale-95"
+          disabled={waking}
+          className="w-full h-14 bg-white hover:bg-slate-100 text-slate-900 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-wait"
         >
-          <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
-          Sign in with Google
+          {waking ? (
+            <>
+              <div className="w-5 h-5 border-2 border-slate-400 border-t-slate-900 rounded-full animate-spin" />
+              Connecting to server...
+            </>
+          ) : (
+            <>
+              <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
+              Sign in with Google
+            </>
+          )}
         </Button>
+
+        {waking && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-amber-400 flex items-center justify-center gap-1.5"
+          >
+            <Wifi size={12} className="animate-pulse" />
+            Waking up server... (~30 sec first time)
+          </motion.p>
+        )}
 
         <button
           onClick={() => onLoginSuccess()}
