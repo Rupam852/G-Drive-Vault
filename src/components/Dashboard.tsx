@@ -25,7 +25,7 @@ interface DashboardProps {
   files: FileItem[];
   storageInfo: any;
   storageBreakdown?: any;
-  onUpload: (file: File) => void;
+  onUpload: (file: File, relativePath?: string, targetFolderId?: string) => void;
   setActiveTab: (tab: string) => void;
   onRefreshStorage?: () => void;
   onCategoryClick?: (type: string) => void;
@@ -82,7 +82,8 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
       Array.from(selectedFiles).forEach((file: File) => {
-        onUpload(file);
+        // Dashboard (Home tab) always uploads to My Drive root
+        onUpload(file, file.webkitRelativePath || undefined, 'root');
       });
       if (fileInputRef.current) fileInputRef.current.value = '';
       const folderInput = document.getElementById('folderInputDash') as HTMLInputElement;

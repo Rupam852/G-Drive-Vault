@@ -43,6 +43,7 @@ export default function App() {
   const [fileFilter, setFileFilter] = useState<string>('all');
   const [currentFilter, setCurrentFilter] = useState('all');
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
+  const currentFolderIdRef = useRef<string>('root'); // always latest, no stale closure
   const [breadcrumb, setBreadcrumb] = useState<{id: string, name: string}[]>([{id: 'root', name: 'My Drive'}]);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
@@ -266,6 +267,7 @@ export default function App() {
 
   const navigateToFolder = (folderId: string, folderName: string, isBacking: boolean = false) => {
     setCurrentFolderId(folderId);
+    currentFolderIdRef.current = folderId; // keep ref in sync
     setFileFilter('all');
     setBreadcrumb(prev => {
       const index = prev.findIndex(b => b.id === folderId);
@@ -590,7 +592,10 @@ export default function App() {
     }
   };
 
-  const handleUploadFile = async (file: File, relativePath?: string) => {
+  // targetFolderId allows callers (Dashboard) to force a specific folder (e.g. 'root')
+  // When called from FileExplorer, targetFolderId is undefined → uses currentFolderIdRef (current folder)
+  const handleUploadFile = async (file: File, relativePath?: string, targetFolderId?: string) => {
+    const uploadToFolder = targetFolderId ?? currentFolderIdRef.current ?? 'root';
     const transferId = Math.random().toString(36).substring(7);
     
     setTransfers(prev => [...prev, {
@@ -604,7 +609,7 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      if (currentFolderId) formData.append('parentId', currentFolderId);
+      formData.append('parentId', uploadToFolder);
       if (relativePath) formData.append('relativePath', relativePath);
       
       const xhr = new XMLHttpRequest();
