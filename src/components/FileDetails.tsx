@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { FileItem } from '../types';
-import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, ExternalLink, Maximize2, Minimize2, X } from 'lucide-react';
+import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, Maximize2, Minimize2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -226,12 +226,9 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               <Button 
                 variant="outline" 
                 className="rounded-2xl h-14 border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold" 
-                onClick={() => {
-                  if (file.webViewLink) window.open(file.webViewLink, '_blank');
-                  else if (previewUrl) window.open(previewUrl.replace('&inline=true', ''), '_blank');
-                }}
+                onClick={() => setIsExpanded(true)}
               >
-                <ExternalLink size={20} className="mr-2" /> Open
+                <Maximize2 size={20} className="mr-2" /> View
               </Button>
             </div>
             
@@ -287,12 +284,19 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               ) : file.type === 'video' ? (
                 <video src={previewUrl || ''} className="w-full h-full object-contain" controls autoPlay playsInline poster={file.thumbnail?.replace('=s220', '=s1000')} />
               ) : (
-                <iframe
-                  src={file.webViewLink?.replace('/view', '/preview')?.replace('?usp=drivesdk', '') || file.webViewLink || ''}
-                  className="w-full h-full border-none bg-white"
-                  title="Immersive Preview"
-                  allow="autoplay"
-                />
+                previewUrl ? (
+                  <iframe
+                    src={previewUrl}
+                    className="w-full h-full border-none bg-white"
+                    title="Immersive Preview"
+                    allow="autoplay"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-4 text-slate-400">
+                    <Icon size={64} className="opacity-30" />
+                    <p className="text-sm font-bold">Preview not available</p>
+                  </div>
+                )
               )}
             </div>
             
