@@ -31,6 +31,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -64,9 +65,11 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   useEffect(() => {
     let active = true;
     if (file && isOpen && file.type !== 'folder') {
+      setPreviewError(false);
       loadPreview(active);
     } else {
       setPreviewUrl(null);
+      setPreviewError(false);
     }
     return () => { active = false; };
   }, [file?.id, isOpen]);
@@ -140,13 +143,28 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               {isLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-slate-400">Loading preview...</p>
+                </div>
+              ) : previewError ? (
+                <div className="flex flex-col items-center gap-3 py-10">
+                  <Icon size={48} className="opacity-30" />
+                  <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-500">Preview failed</p>
+                  {previewUrl && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); window.open(previewUrl, '_blank'); }}
+                      className="text-[10px] font-bold text-blue-400 border border-blue-400/30 px-3 py-1.5 rounded-full hover:bg-blue-400/10 transition-colors"
+                    >
+                      Open in Browser
+                    </button>
+                  )}
                 </div>
               ) : file.type === 'image' && (file.thumbnail || previewUrl) ? (
                 <img 
-                  src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} 
+                  src={previewUrl || file.thumbnail?.replace('=s220', '=s1000') || ''} 
                   className="w-full h-full object-contain bg-black" 
                   alt={file.name} 
-                  referrerPolicy="no-referrer" 
+                  referrerPolicy="no-referrer"
+                  onError={() => setPreviewError(true)}
                 />
               ) : file.type === 'video' && previewUrl ? (
                 <video 
@@ -156,26 +174,16 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   autoPlay
                   playsInline
                   muted
+                  onError={() => setPreviewError(true)}
                 />
-              ) : (file.type === 'document' || file.type === 'other' || file.type === 'audio') ? (
-                previewUrl ? (
-                  <iframe 
-                    src={previewUrl}
-                    className="w-full h-full border-none bg-white"
-                    title="File Preview"
-                    loading="lazy"
-                  />
-                ) : isLoading ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-xs text-slate-400">Loading preview...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 py-10 opacity-40">
-                    <Icon size={64} />
-                    <p className="text-[10px] uppercase font-bold tracking-[0.2em]">Preview Unavailable</p>
-                  </div>
-                )
+              ) : (file.type === 'document' || file.type === 'other' || file.type === 'audio') && previewUrl ? (
+                <iframe 
+                  src={previewUrl}
+                  className="w-full h-full border-none bg-white"
+                  title="File Preview"
+                  loading="lazy"
+                  onError={() => setPreviewError(true)}
+                />
               ) : (
                 <div className="flex flex-col items-center gap-2 py-10 opacity-40">
                   <Icon size={64} />
@@ -279,24 +287,48 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </div>
 
             <div className="flex-1 w-full bg-[#0F172A]/50 rounded-[2.5rem] overflow-hidden flex items-center justify-center relative group max-w-7xl mx-auto border border-white/5 shadow-2xl">
-              {file.type === 'image' ? (
-                <img src={previewUrl || file.thumbnail?.replace('=s220', '=s1000')} className="w-full h-full object-contain" alt={file.name} referrerPolicy="no-referrer" />
-              ) : file.type === 'video' ? (
-                <video src={previewUrl || ''} className="w-full h-full object-contain" controls autoPlay playsInline poster={file.thumbnail?.replace('=s220', '=s1000')} />
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-3 text-slate-400">
+                  <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm font-medium">Loading preview...</p>
+                </div>
+              ) : file.type === 'image' && (previewUrl || file.thumbnail) ? (
+                <img 
+                  src={previewUrl || file.thumbnail?.replace('=s220', '=s1000') || ''} 
+                  className="w-full h-full object-contain" 
+                  alt={file.name} 
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : file.type === 'video' && previewUrl ? (
+                <video 
+                  src={previewUrl} 
+                  className="w-full h-full object-contain" 
+                  controls 
+                  autoPlay 
+                  playsInline 
+                  poster={file.thumbnail?.replace('=s220', '=s1000')} 
+                />
+              ) : previewUrl ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-none bg-white"
+                  title="Immersive Preview"
+                  allow="autoplay"
+                />
               ) : (
-                previewUrl ? (
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full border-none bg-white"
-                    title="Immersive Preview"
-                    allow="autoplay"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-slate-400">
-                    <Icon size={64} className="opacity-30" />
-                    <p className="text-sm font-bold">Preview not available</p>
-                  </div>
-                )
+                <div className="flex flex-col items-center gap-4 text-slate-400">
+                  <Icon size={64} className="opacity-30" />
+                  <p className="text-sm font-bold">Preview not available</p>
+                  {previewError && (
+                    <button
+                      onClick={() => window.open(`https://drive.google.com/file/d/${file.id}/view`, '_blank')}
+                      className="text-xs font-bold text-blue-400 border border-blue-400/30 px-4 py-2 rounded-full hover:bg-blue-400/10 transition-colors"
+                    >
+                      Open in Google Drive
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             

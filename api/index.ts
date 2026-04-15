@@ -822,6 +822,9 @@ app.post('/api/drive/download/ticket', (req, res) => {
 app.get('/api/drive/download/:id', async (req, res) => {
   // Expose headers for progress tracking and filename reading
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Disposition');
+  // Allow embedding in iframes for inline preview (remove X-Frame-Options restriction)
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.setHeader('Content-Security-Policy', "frame-ancestors *");
 
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
