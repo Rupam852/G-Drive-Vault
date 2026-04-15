@@ -31,7 +31,7 @@ interface FileExplorerProps {
   onTabChange: (tab: string) => void;
 
   onStar: (id: string, starred: boolean) => void;
-  onMove: (id: string, targetId: string) => void;
+  onMove: (ids: string | string[], targetId?: string) => void;
   onHide: (id: string) => void;
   isDownloadEnabled?: boolean;
   activeSubTab: string;
@@ -64,7 +64,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const longPressTimer = useRef<any>(null);
+  const pressTimerRef = useRef<any>(null);
+  const isPressingRef = useRef(false);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [moveBrowsePath, setMoveBrowsePath] = useState<{id: string, name: string}[]>([{id: "root", name: "My Drive"}]);
   const [moveBrowseFolders, setMoveBrowseFolders] = useState<FileItem[]>([]);
@@ -171,15 +172,44 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       return b.timestamp - a.timestamp;
     });
 
+  const toggleSelection = (file: FileItem) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(file.id)) next.delete(file.id);
+      else next.add(file.id);
+      
+      const isEmpty = next.size === 0;
+      if (isEmpty) setIsSelectionMode(false);
+      else setIsSelectionMode(true);
+      
+      return next;
+    });
+  };
+
+  const handlePressStart = (file: FileItem) => {
+    isPressingRef.current = true;
+    pressTimerRef.current = setTimeout(() => {
+      if (isPressingRef.current) {
+        // Vibrate if on mobile
+        if (Capacitor.isNativePlatform()) {
+          try { (window as any).navigator.vibrate?.(40); } catch(e){}
+        }
+        toggleSelection(file);
+      }
+    }, 600); // 600ms for long press
+  };
+
+  const handlePressEnd = () => {
+    isPressingRef.current = false;
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
   const handleItemClick = (file: FileItem) => {
     if (isSelectionMode) {
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        if (next.has(file.id)) next.delete(file.id);
-        else next.add(file.id);
-        if (next.size === 0) setIsSelectionMode(false);
-        return next;
-      });
+      toggleSelection(file);
       return;
     }
     if (file.type === 'folder') {
@@ -337,7 +367,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   };
 
   const handleBulkMove = (targetFolderId: string) => {
-    selectedIds.forEach(id => onMove(id, targetFolderId));
+    // Call onMove with all selected IDs and the target folder
+    onMove(Array.from(selectedIds) as any, targetFolderId);
     setSelectedIds(new Set());
     setIsSelectionMode(false);
     setIsMoveDialogOpen(false);
@@ -444,7 +475,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 onClick={() => handleItemClick(file)}
-                className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all ${
+                onPointerDown={() => handlePressStart(file)}
+                onPointerUp={handlePressEnd}
+                onPointerLeave={handlePressEnd}
+                className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all touch-none select-none ${
                   selectedIds.has(file.id) 
                     ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
                     : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -484,7 +518,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03 }}
               onClick={() => handleItemClick(file)}
-              className={`flex items-center gap-4 p-3 rounded-2xl transition-colors cursor-pointer group relative ${
+              onPointerDown={() => handlePressStart(file)}
+              onPointerUp={handlePressEnd}
+              onPointerLeave={handlePressEnd}
+              className={`flex items-center gap-4 p-3 rounded-2xl transition-colors cursor-pointer group relative touch-none select-none ${
                 selectedIds.has(file.id) 
                   ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800'

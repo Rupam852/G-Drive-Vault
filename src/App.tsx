@@ -734,29 +734,56 @@ export default function App() {
     }
   };
 
-  const handleMoveFile = async (newParentId: string) => {
-    if (!fileToMove) return;
-    try {
+  const handleMoveFile = async (newParentId: string, ids?: string[]) => {
+    const targetIds = ids || (fileToMove ? [fileToMove.id] : []);
+    if (targetIds.length === 0) return;
+
+    const moveCount = targetIds.length;
+    let successCount = 0;
+
+    const performMove = async (id: string) => {
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
       
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${fileToMove.id}/move`, { 
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/move`, { 
         method: 'POST',
         headers,
         body: JSON.stringify({ 
           newParentId, 
-          oldParentId: currentFolderId 
+          oldParentId: 'root' // Server handles picking up correct old parents if needed, but 'root' is safe fallback
         }),
         credentials: 'include' 
       });
+      return res.ok;
+    };
+
+    try {
+      if (moveCount > 1) toast.loading(`Moving ${moveCount} items...`, { id: 'move-toast' });
       
-      if (res.ok) {
-        setFiles(prev => prev.filter(f => f.id !== fileToMove.id));
-        toast.success('File moved successfully');
+      for (const id of targetIds) {
+        const success = await performMove(id);
+        if (success) successCount++;
+      }
+
+      if (successCount > 0) {
+        setFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
+        setRecentFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
+        fetchStorage();
+        if (moveCount > 1) {
+          toast.success(`Moved ${successCount} items successfully`, { id: 'move-toast' });
+        } else {
+          toast.success('File moved successfully');
+        }
+      } else {
+        if (moveCount > 1) toast.error('Failed to move items', { id: 'move-toast' });
+        else toast.error('Failed to move file');
       }
     } catch (err) {
-      console.error('Error moving file:', err);
-      toast.error('Failed to move file');
+      console.error('Error moving files:', err);
+      toast.error('Failed to move items');
+    } finally {
+      setIsMoveOpen(false);
+      setFileToMove(null);
     }
   };
 
@@ -821,11 +848,16 @@ export default function App() {
             onShare={handleShareFile}
             onHide={handleHideFile}
             onStar={handleStarFile}
-            onMove={(id, _targetFolderId) => {
-              const file = files.find(f => f.id === id) || recentFiles.find(f => f.id === id);
-              if (file) {
-                setFileToMove(file);
-                setIsMoveOpen(true);
+            onMove={(ids, targetFolderId) => {
+              const idList = Array.isArray(ids) ? ids : [ids];
+              if (targetFolderId) {
+                handleMoveFile(targetFolderId, idList);
+              } else {
+                const file = recentFiles.find(f => f.id === idList[0]);
+                if (file) {
+                  setFileToMove(file);
+                  setIsMoveOpen(true);
+                }
               }
             }}
             onNavigateToFiles={() => setActiveTab('files')}
@@ -848,11 +880,16 @@ export default function App() {
             onShare={handleShareFile}
             onTabChange={handleTabChange}
             onStar={handleStarFile}
-            onMove={(id, _targetFolderId) => {
-              const file = files.find(f => f.id === id);
-              if (file) {
-                setFileToMove(file);
-                setIsMoveOpen(true);
+            onMove={(ids, targetFolderId) => {
+              const idList = Array.isArray(ids) ? ids : [ids];
+              if (targetFolderId) {
+                handleMoveFile(targetFolderId, idList);
+              } else {
+                const file = files.find(f => f.id === idList[0]);
+                if (file) {
+                  setFileToMove(file);
+                  setIsMoveOpen(true);
+                }
               }
             }}
             onHide={handleHideFile}
@@ -898,11 +935,16 @@ export default function App() {
           onDelete={handleDeleteFile}
           onShare={handleShareFile}
           onStar={handleStarFile}
-          onMove={(id, _targetFolderId) => {
-            const file = recentFiles.find(f => f.id === id);
-            if (file) {
-              setFileToMove(file);
-              setIsMoveOpen(true);
+          onMove={(ids, targetFolderId) => {
+            const idList = Array.isArray(ids) ? ids : [ids];
+            if (targetFolderId) {
+              handleMoveFile(targetFolderId, idList);
+            } else {
+              const file = recentFiles.find(f => f.id === idList[0]);
+              if (file) {
+                setFileToMove(file);
+                setIsMoveOpen(true);
+              }
             }
           }}
         />;

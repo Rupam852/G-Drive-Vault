@@ -34,7 +34,7 @@ interface DashboardProps {
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onHide?: (id: string) => void;
-  onMove?: (id: string, newParentId?: string) => void;
+  onMove?: (ids: string | string[], newParentId?: string) => void;
   onStar?: (id: string, starred: boolean) => void;
   onNavigateToFiles?: () => void;
   isDownloadEnabled?: boolean;
