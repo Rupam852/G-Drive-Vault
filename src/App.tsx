@@ -584,10 +584,10 @@ export default function App() {
     if (tab === 'all') {
       fetchFiles(currentFolderId);
     } else {
-      // If we are looking at specific categories (recent/starred), 
-      // it doesn't make sense to show a specific folder breadcrumb.
+      // Switching to recent/starred/shared resets folder to root
       setBreadcrumb([{id: 'root', name: 'My Drive'}]);
       setCurrentFolderId('root');
+      currentFolderIdRef.current = 'root'; // keep ref in sync
       fetchFiles('root', undefined, tab);
     }
   };
@@ -630,13 +630,13 @@ export default function App() {
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const uploadedFile = JSON.parse(xhr.responseText);
-          const mapped = mapDriveFiles([uploadedFile])[0];
-          setFiles(prev => [mapped, ...prev]);
+          setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
+          toast.success(`Uploaded ${file.name} to ${uploadToFolder === 'root' ? 'My Drive' : 'current folder'}`);
+          // Re-fetch files for the EXACT folder the file was uploaded to
+          // This ensures the file appears in the correct location and list is up-to-date
+          fetchFiles(uploadToFolder);
           fetchStorage();
           fetchRecentFiles();
-          setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
-          toast.success(`Uploaded ${file.name}`);
         } else {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
           toast.error(`Failed to upload ${file.name}`);
