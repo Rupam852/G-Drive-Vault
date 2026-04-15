@@ -26,39 +26,14 @@ const iconMap = {
   other: File,
 };
 
-/** Build the best possible preview URL for a given file, using Google APIs directly */
-function buildPreviewUrl(file: FileItem, tokens: any): string | null {
+/** For images: instant direct URL. For video/audio: proxy ticket URL (range-request support). */
+function getImageUrl(file: FileItem, tokens: any): string | null {
   const accessToken = tokens?.access_token;
   if (!accessToken) return null;
-
-  // Google Drive direct media URL — works for images, video, audio, binary files
-  // No proxy needed; just pass the access_token as a query param
-  const directMedia = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`;
-
-  switch (file.type) {
-    case 'image':
-      // Use high-res thumbnail if available (no auth needed for thumbnails)
-      if (file.thumbnail) return file.thumbnail.replace('=s220', '=s1600');
-      return directMedia;
-
-    case 'video':
-    case 'audio':
-      // Stream directly from Google
-      return directMedia;
-
-    case 'document': {
-      // Google Docs/Sheets/Slides → export as PDF
-      const mimeType = (file as any).mimeType || '';
-      if (mimeType.includes('vnd.google-apps')) {
-        return `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=application%2Fpdf&access_token=${accessToken}`;
-      }
-      // PDFs and other docs → direct media
-      return directMedia;
-    }
-
-    default:
-      return directMedia;
-  }
+  // High-res thumbnail (no auth needed)
+  if (file.thumbnail) return file.thumbnail.replace('=s220', '=s1600');
+  // Fallback: direct API with token
+  return `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`;
 }
 
 
@@ -91,21 +66,63 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [isOpen, isExpanded, showDeleteConfirm, onClose]);
 
-  // Build preview URLs immediately — no async/server needed
+  // Load preview: images are instant, videos/audio use backend proxy for proper streaming
   useEffect(() => {
+    let active = true;
     if (file && isOpen && file.type !== 'folder') {
       setPreviewError(false);
-      setIsLoading(true);
+      setPreviewUrl(null);
 
-      const url = buildPreviewUrl(file, tokens);
-      setPreviewUrl(url);
-
-      // Give browser a moment then stop spinner
-      setTimeout(() => setIsLoading(false), 400);
+      if (file.type === 'image') {
+        // Images: instant — no server needed
+        setIsLoading(false);
+        setPreviewUrl(getImageUrl(file, tokens));
+      } else if (file.type === 'video' || file.type === 'audio') {
+        // Video/Audio: use backend proxy ticket for proper range-request streaming
+        setIsLoading(true);
+        (async () => {
+          try {
+            const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tokens }),
+            });
+            if (ticketRes.ok && active) {
+              const { ticketId } = await ticketRes.json();
+              const url = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
+              setPreviewUrl(url);
+            } else if (active) {
+              // Fallback: try direct Google API URL
+              const accessToken = tokens?.access_token;
+              if (accessToken) {
+                setPreviewUrl(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`);
+              } else {
+                setPreviewError(true);
+              }
+            }
+          } catch {
+            if (active) {
+              // Fallback: try direct Google API URL
+              const accessToken = tokens?.access_token;
+              if (accessToken) {
+                setPreviewUrl(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`);
+              } else {
+                setPreviewError(true);
+              }
+            }
+          } finally {
+            if (active) setIsLoading(false);
+          }
+        })();
+      } else {
+        // Documents & others: no preview, show "Open with Google Drive"
+        setIsLoading(false);
+      }
     } else {
       setPreviewUrl(null);
       setPreviewError(false);
     }
+    return () => { active = false; };
   }, [file?.id, isOpen, retryCount]);
 
   if (!file) return null;
