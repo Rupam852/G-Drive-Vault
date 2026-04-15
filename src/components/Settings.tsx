@@ -45,6 +45,21 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedHiddenIds, setSelectedHiddenIds] = useState<string[]>([]);
+  const [uploadHistory, setUploadHistory] = useState<any[]>([]);
+
+  // Load upload history from localStorage
+  React.useEffect(() => {
+    try {
+      const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
+      setUploadHistory(hist);
+    } catch {}
+  }, []);
+
+  const clearUploadHistory = () => {
+    localStorage.removeItem('drive_vault_upload_history');
+    setUploadHistory([]);
+    toast.success('Upload history cleared');
+  };
 
   // Notifications state
   const [notifPush, setNotifPush] = useState(true);
@@ -113,7 +128,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
 
   const menuItems = [
     { icon: User, label: 'Profile Settings', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', onClick: () => setIsProfileOpen(true) },
-    { icon: History, label: 'Transfer History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
+    { icon: History, label: 'Upload History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
     { icon: Trash2, label: 'Trash Bin', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', onClick: () => setIsTrashOpen(true) },
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Bell, label: 'Notifications', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', onClick: () => setIsNotificationsOpen(true) },
@@ -301,48 +316,57 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isTransfersOpen && (
-        <div className="fixed inset-0 z-[60] bg-white dark:bg-slate-900 flex flex-col">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+        <div className="fixed inset-0 z-[60] bg-slate-50 dark:bg-slate-950 flex flex-col">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setIsTransfersOpen(false)} className="rounded-full">
                 <X size={20} />
               </Button>
-              <h2 className="text-xl font-bold">Transfer History</h2>
+              <div>
+                <h2 className="text-xl font-bold">Upload History</h2>
+                <p className="text-xs text-slate-400">{uploadHistory.length} uploads recorded</p>
+              </div>
             </div>
-            {(transfers || []).length > 0 && (
-              <Button variant="outline" size="sm" onClick={onClearTransfers} className="rounded-xl text-slate-500 border-slate-200">
+            {uploadHistory.length > 0 && (
+              <Button variant="outline" size="sm" onClick={clearUploadHistory} className="rounded-xl text-slate-500 border-slate-200">
                 Clear All
               </Button>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-3">
-            {(transfers || []).length === 0 ? (
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {uploadHistory.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                 <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                   <History size={40} />
                 </div>
-                <p className="font-medium">No recent transfers.</p>
+                <p className="font-semibold">No uploads yet</p>
+                <p className="text-xs text-center text-slate-400">Your upload history will appear here</p>
               </div>
             ) : (
-              (transfers || []).slice().reverse().map(transfer => (
-                <div key={transfer.id || Math.random()} className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium truncate pr-4 text-slate-900 dark:text-slate-100">{transfer.name || 'Unknown'}</span>
-                    <span className="text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide bg-white dark:bg-slate-900 shrink-0">
-                      {transfer.status || 'pending'}
-                    </span>
-                  </div>
-                  {transfer.status === 'uploading' && (
-                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden mt-2">
-                      <div 
-                        className="bg-blue-500 h-full rounded-full transition-all duration-300"
-                        style={{ width: `${transfer.progress || 0}%` }}
-                      />
+              uploadHistory.map((item, idx) => {
+                const date = new Date(item.date);
+                const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                const sizeStr = item.size ? (item.size > 1048576 ? `${(item.size/1048576).toFixed(1)} MB` : item.size > 1024 ? `${(item.size/1024).toFixed(0)} KB` : `${item.size} B`) : '';
+                return (
+                  <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                      <Cloud size={20} className="text-blue-500" />
                     </div>
-                  )}
-                </div>
-              ))
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {item.folderName || 'My Drive'} {sizeStr ? `• ${sizeStr}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
+                      <p className="text-[10px] text-slate-400">{timeStr}</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

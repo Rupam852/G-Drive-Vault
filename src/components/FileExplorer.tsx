@@ -117,6 +117,16 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     });
 
   const handleItemClick = (file: FileItem) => {
+    if (isSelectionMode) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(file.id)) next.delete(file.id);
+        else next.add(file.id);
+        if (next.size === 0) setIsSelectionMode(false);
+        return next;
+      });
+      return;
+    }
     if (file.type === 'folder') {
       onNavigate(file.id, file.name);
     } else {
@@ -463,6 +473,44 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onShare={onShare}
       />
 
+      {/* ── BULK SELECT ACTION BAR ── */}
+      {isSelectionMode && selectedIds.size > 0 && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          className="fixed bottom-0 left-0 right-0 z-[60] bg-slate-900 dark:bg-slate-800 border-t border-slate-700 pb-safe"
+        >
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}
+                className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white"
+              >
+                <X size={16} />
+              </button>
+              <span className="text-white font-semibold text-sm">{selectedIds.size} selected</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setIsMoveDialogOpen(true); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold active:scale-95 transition-all"
+              >
+                <Move size={16} />
+                Move
+              </button>
+              <button
+                onClick={() => { handleBulkDelete(); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold active:scale-95 transition-all"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* FAB: Upload + New Folder */}
       <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3">
         <motion.button whileTap={{ scale: 0.92 }} onClick={() => setIsNewFolderOpen(true)}
@@ -657,6 +705,27 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             </DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-1">
+            <button
+              onClick={() => {
+                if (actionMenuFile) {
+                  setIsSelectionMode(true);
+                  setSelectedIds(new Set([actionMenuFile.id]));
+                }
+                setActionMenuFile(null);
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                <Check size={20} />
+              </div>
+              <div>
+                <span className="font-semibold text-blue-600 dark:text-blue-400 block">Select</span>
+                <span className="text-[10px] text-slate-400">Multi-select to delete or move</span>
+              </div>
+            </button>
+
+            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+
             <button
               onClick={() => {
                 if (actionMenuFile) handleItemClick(actionMenuFile);

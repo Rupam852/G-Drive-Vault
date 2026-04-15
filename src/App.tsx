@@ -631,9 +631,15 @@ export default function App() {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
-          toast.success(`Uploaded ${file.name} to ${uploadToFolder === 'root' ? 'My Drive' : 'current folder'}`);
-          // Re-fetch files for the EXACT folder the file was uploaded to
-          // This ensures the file appears in the correct location and list is up-to-date
+          // Save to upload history in localStorage
+          const folderLabel = uploadToFolder === 'root' ? 'My Drive' : (breadcrumb[breadcrumb.length - 1]?.name || 'Folder');
+          const histEntry = { id: transferId, name: file.name, folderId: uploadToFolder, folderName: folderLabel, date: new Date().toISOString(), size: file.size };
+          try {
+            const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
+            hist.unshift(histEntry);
+            localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
+          } catch {}
+          toast.success(`Uploaded ${file.name} to ${folderLabel}`);
           fetchFiles(uploadToFolder);
           fetchStorage();
           fetchRecentFiles();
