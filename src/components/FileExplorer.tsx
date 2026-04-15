@@ -60,6 +60,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [renameValue, setRenameValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const [showUploadSheet, setShowUploadSheet] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -313,7 +314,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           <div className="flex gap-2">
             {/* Hidden file inputs */}
             <input type="file" ref={fileInputRef} className="hidden" multiple accept="*/*" onChange={handleFileChange} />
-            <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" directory="" onChange={handleFileChange} />
+            <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" directory="" multiple onChange={handleFileChange} />
+            <input type="file" ref={zipInputRef} className="hidden" accept=".zip,.rar,.7z,.tar,.gz,application/zip,application/x-zip-compressed" multiple onChange={handleFileChange} />
           </div>
         </div>
         
@@ -533,25 +535,35 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           >
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5" />
             <h3 className="text-base font-bold text-slate-800 dark:text-white mb-4">Upload to current folder</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <button onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                  <Plus size={26} />
+                className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
+                <div className="w-11 h-11 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 shrink-0">
+                  <Plus size={22} />
                 </div>
-                <div className="text-center">
+                <div className="text-left">
                   <p className="text-sm font-bold text-blue-700 dark:text-blue-300">Files</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Images, Videos, Docs, APKs</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Images, Videos, Docs, APKs — all types</p>
                 </div>
               </button>
               <button onClick={() => folderInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 active:scale-95 transition-all">
-                <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
-                  <Folder size={26} />
+                className="flex items-center gap-4 p-4 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 active:scale-95 transition-all">
+                <div className="w-11 h-11 bg-yellow-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-yellow-500/30 shrink-0">
+                  <Folder size={22} />
                 </div>
-                <div className="text-center">
+                <div className="text-left">
                   <p className="text-sm font-bold text-yellow-700 dark:text-yellow-300">Folder</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Upload entire folder</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Full folder structure with all files inside</p>
+                </div>
+              </button>
+              <button onClick={() => zipInputRef.current?.click()}
+                className="flex items-center gap-4 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
+                <div className="w-11 h-11 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-purple-500/30 shrink-0">
+                  <Archive size={22} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-purple-700 dark:text-purple-300">ZIP / Archive</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">.zip .rar .7z .tar.gz files</p>
                 </div>
               </button>
             </div>

@@ -212,7 +212,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
 
       {/* MODALS - Changed from AnimatePresence to standard conditional rendering to fix black screen */}
       {isTrashOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 flex items-center justify-between border-b dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" onClick={() => setIsTrashOpen(false)} className="rounded-full">
@@ -270,7 +270,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isHiddenOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 flex items-center justify-between border-b dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" onClick={() => setIsHiddenOpen(false)} className="rounded-full">
@@ -324,7 +324,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isTransfersOpen && (
-        <div className="fixed inset-0 z-[60] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setIsTransfersOpen(false)} className="rounded-full">
@@ -389,7 +389,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isProfileOpen && (
-        <div className="fixed inset-0 z-[110] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setIsProfileOpen(false)} className="rounded-full"><X size={20} /></Button>
@@ -423,7 +423,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isNotificationsOpen && (
-        <div className="fixed inset-0 z-[110] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setIsNotificationsOpen(false)} className="rounded-full"><X size={20} /></Button>
@@ -450,7 +450,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
       )}
 
       {isSecurityOpen && (
-        <div className="fixed inset-0 z-[110] bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => setIsSecurityOpen(false)} className="rounded-full"><X size={20} /></Button>
