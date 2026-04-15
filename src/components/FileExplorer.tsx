@@ -548,24 +548,35 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       {/* New Folder Dialog */}
       <Dialog open={isNewFolderOpen} onOpenChange={setIsNewFolderOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-none rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-800 border-none rounded-3xl px-6 pb-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">Create New Folder</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Input 
-              placeholder="Folder name" 
+          <div className="py-3">
+            <Input
+              placeholder="Folder name"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              className="h-12 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500"
+              className="h-12 bg-slate-100 dark:bg-slate-700 border-2 border-blue-500 rounded-xl text-sm text-slate-900 dark:text-white focus-visible:ring-0 placeholder:text-slate-400"
               autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
             />
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsNewFolderOpen(false)} className="rounded-xl flex-1">Cancel</Button>
-            <Button onClick={handleCreateFolder} className="rounded-xl flex-1 bg-blue-600 hover:bg-blue-700">Create</Button>
-          </DialogFooter>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleCreateFolder}
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold"
+            >
+              Create
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => { setIsNewFolderOpen(false); setNewFolderName(""); }}
+              className="w-full h-11 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold border border-slate-200 dark:border-slate-600"
+            >
+              Cancel
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
