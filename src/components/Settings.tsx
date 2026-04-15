@@ -61,6 +61,14 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
     toast.success('Upload history cleared');
   };
 
+  const deleteHistoryItem = (id: string, idx: number) => {
+    const updated = uploadHistory.filter((_, i) => i !== idx);
+    setUploadHistory(updated);
+    try {
+      localStorage.setItem('drive_vault_upload_history', JSON.stringify(updated));
+    } catch {}
+  };
+
   // Notifications state
   const [notifPush, setNotifPush] = useState(true);
   const [notifEmail, setNotifEmail] = useState(true);
@@ -350,7 +358,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                 const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
                 const sizeStr = item.size ? (item.size > 1048576 ? `${(item.size/1048576).toFixed(1)} MB` : item.size > 1024 ? `${(item.size/1024).toFixed(0)} KB` : `${item.size} B`) : '';
                 return (
-                  <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm group">
                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
                       <Cloud size={20} className="text-blue-500" />
                     </div>
@@ -360,9 +368,17 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                         {item.folderName || 'My Drive'} {sizeStr ? `• ${sizeStr}` : ''}
                       </p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
-                      <p className="text-[10px] text-slate-400">{timeStr}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
+                        <p className="text-[10px] text-slate-400">{timeStr}</p>
+                      </div>
+                      <button
+                        onClick={() => deleteHistoryItem(item.id, idx)}
+                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   </div>
                 );
