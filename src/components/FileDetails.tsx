@@ -157,13 +157,25 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                   playsInline
                   muted
                 />
-              ) : (file.type === 'document' || file.type === 'other') ? (
-                <iframe 
-                  src={file.webViewLink?.replace('/view', '/preview')?.replace('?usp=drivesdk', '')} 
-                  className="w-full h-full border-none bg-white font-bold"
-                  title="File Preview"
-                  loading="lazy"
-                />
+              ) : (file.type === 'document' || file.type === 'other' || file.type === 'audio') ? (
+                previewUrl ? (
+                  <iframe 
+                    src={previewUrl}
+                    className="w-full h-full border-none bg-white"
+                    title="File Preview"
+                    loading="lazy"
+                  />
+                ) : isLoading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-slate-400">Loading preview...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-10 opacity-40">
+                    <Icon size={64} />
+                    <p className="text-[10px] uppercase font-bold tracking-[0.2em]">Preview Unavailable</p>
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col items-center gap-2 py-10 opacity-40">
                   <Icon size={64} />

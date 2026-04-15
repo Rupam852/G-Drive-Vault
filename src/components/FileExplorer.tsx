@@ -939,15 +939,22 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
             <button
               onClick={() => {
-                if (actionMenuFile) onMove(actionMenuFile.id, 'root');
-                setActionMenuFile(null);
+                if (actionMenuFile) {
+                  // Add this file to selectedIds, then open the move browser
+                  setSelectedIds(new Set([actionMenuFile.id]));
+                  setActionMenuFile(null);
+                  setIsMoveDialogOpen(true);
+                }
               }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
             >
               <div className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
                 <Move size={20} />
               </div>
-              <span className="font-medium dark:text-white">Move</span>
+              <div>
+                <span className="font-medium dark:text-white block">Move</span>
+                <span className="text-[10px] text-slate-400">Choose destination folder</span>
+              </div>
             </button>
 
             <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
