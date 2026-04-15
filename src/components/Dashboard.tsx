@@ -71,6 +71,15 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [selectedFile, isNewFolderOpen, isRenameOpen, showStorageDetails]);
 
+  // Set webkitdirectory via setAttribute — required for Android WebView folder picker
+  useEffect(() => {
+    if (dashFolderInputRef.current) {
+      dashFolderInputRef.current.setAttribute('webkitdirectory', '');
+      dashFolderInputRef.current.setAttribute('directory', '');
+      dashFolderInputRef.current.setAttribute('multiple', '');
+    }
+  }, []);
+
   const handleRefresh = async () => {
     if (onRefreshStorage) {
       setIsRefreshing(true);

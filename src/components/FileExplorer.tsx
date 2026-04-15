@@ -87,6 +87,16 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [selectedFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
+
+  // Set webkitdirectory via setAttribute — React JSX does NOT pass unknown attrs to DOM
+  // This makes the folder picker show a FOLDER chooser (not individual files) on Android
+  useEffect(() => {
+    if (folderInputRef.current) {
+      folderInputRef.current.setAttribute('webkitdirectory', '');
+      folderInputRef.current.setAttribute('directory', '');
+      folderInputRef.current.setAttribute('multiple', '');
+    }
+  }, []);
   
   // Fetch folders for move browser
   const fetchMoveFolders = async (folderId: string) => {
