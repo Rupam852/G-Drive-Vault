@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const longPressTimer = useRef<any>(null);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [moveBrowsePath, setMoveBrowsePath] = useState<{id: string, name: string}[]>([{id: "root", name: "My Drive"}]);
+  const [moveBrowseFolders, setMoveBrowseFolders] = useState<FileItem[]>([]);
+  const [moveBrowseLoading, setMoveBrowseLoading] = useState(false);
   const [activeDownloads, setActiveDownloads] = useState<{
     id: string; name: string; progress: number; controller: AbortController;
   }[]>([]);
@@ -85,6 +88,44 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [selectedFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
   
+  // Fetch folders for move browser
+  const fetchMoveFolders = async (folderId: string) => {
+    setMoveBrowseLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files?folderId=${folderId}`, {
+        credentials: 'include',
+        headers: tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {}
+      });
+      const data = await res.json();
+      const folders = (data.files || []).filter((f: any) =>
+        (f.type === 'folder' || f.mimeType === 'application/vnd.google-apps.folder') &&
+        !selectedIds.has(f.id)
+      );
+      setMoveBrowseFolders(folders);
+    } catch { setMoveBrowseFolders([]); }
+    finally { setMoveBrowseLoading(false); }
+  };
+
+  // Reset browser when dialog opens
+  useEffect(() => {
+    if (isMoveDialogOpen) {
+      setMoveBrowsePath([{id: "root", name: "My Drive"}]);
+      fetchMoveFolders("root");
+    }
+  }, [isMoveDialogOpen]);
+
+  const navigateMoveInto = (folder: FileItem) => {
+    setMoveBrowsePath(prev => [...prev, {id: folder.id, name: folder.name}]);
+    fetchMoveFolders(folder.id);
+  };
+
+  const navigateMoveBack = () => {
+    if (moveBrowsePath.length <= 1) return;
+    const newPath = moveBrowsePath.slice(0, -1);
+    setMoveBrowsePath(newPath);
+    fetchMoveFolders(newPath[newPath.length - 1].id);
+  };
+
   // CLEAR MENU/SELECTION IF FILE DISAPPEARS (Deleted)
   useEffect(() => {
     if (actionMenuFile && !files.find(f => f.id === actionMenuFile.id)) {
@@ -571,40 +612,102 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         </div>
       )}
 
-      {/* Move Dialog */}
-      <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
-        <DialogContent className="bg-white dark:bg-slate-900 border-none rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold dark:text-white">Move to Folder</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto py-4">
-            <button 
-              onClick={() => handleBulkMove('root')}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+      {/* ── MOVE BROWSER (full-screen folder navigator) ── */}
+      {isMoveDialogOpen && (
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 flex flex-col">
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-4 flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsMoveDialogOpen(false)}
+              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300"
             >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <Folder size={20} />
-              </div>
-              <span className="font-medium dark:text-white">My Drive (Root)</span>
+              <X size={18} />
             </button>
-            {files.filter(f => f.type === 'folder' && !selectedIds.has(f.id)).map(folder => (
-              <button 
-                key={folder.id}
-                onClick={() => handleBulkMove(folder.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600">
-                  <Folder size={20} />
-                </div>
-                <span className="font-medium dark:text-white">{folder.name}</span>
-              </button>
-            ))}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Move to...</h2>
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                {moveBrowsePath.map((crumb, i) => (
+                  <React.Fragment key={crumb.id}>
+                    {i > 0 && <span className="text-slate-300 text-xs shrink-0">/</span>}
+                    <button
+                      onClick={() => {
+                        const newPath = moveBrowsePath.slice(0, i + 1);
+                        setMoveBrowsePath(newPath);
+                        fetchMoveFolders(crumb.id);
+                      }}
+                      className={`text-xs whitespace-nowrap font-medium ${
+                        i === moveBrowsePath.length - 1
+                          ? 'text-blue-600'
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {crumb.name}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)} className="rounded-xl w-full">Cancel</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+          {/* "Move Here" sticky button */}
+          <div className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <button
+              onClick={() => {
+                const target = moveBrowsePath[moveBrowsePath.length - 1];
+                handleBulkMove(target.id);
+                setIsMoveDialogOpen(false);
+              }}
+              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <Move size={18} />
+              Move Here — {moveBrowsePath[moveBrowsePath.length - 1].name}
+            </button>
+          </div>
+
+          {/* Folder list */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {/* Back button */}
+            {moveBrowsePath.length > 1 && (
+              <button
+                onClick={navigateMoveBack}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 active:scale-95 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                  <ChevronRight size={20} className="rotate-180" />
+                </div>
+                <span className="font-medium text-slate-500 dark:text-slate-400">.. Back</span>
+              </button>
+            )}
+
+            {moveBrowseLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : moveBrowseFolders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                <Folder size={40} className="opacity-30" />
+                <p className="text-sm font-medium">No folders here</p>
+                <p className="text-xs text-slate-300">Tap "Move Here" to move to this location</p>
+              </div>
+            ) : (
+              moveBrowseFolders.map(folder => (
+                <button
+                  key={folder.id}
+                  onClick={() => navigateMoveInto(folder)}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 active:scale-95 transition-all text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-500 shrink-0">
+                    <Folder size={20} />
+                  </div>
+                  <span className="flex-1 font-medium text-slate-800 dark:text-white truncate">{folder.name}</span>
+                  <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* New Folder Dialog */}
       <Dialog open={isNewFolderOpen} onOpenChange={setIsNewFolderOpen}>
