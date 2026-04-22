@@ -101,9 +101,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </button>
         </div>
 
-        <p className="text-[10px] text-slate-600 uppercase tracking-widest font-medium">
-          Authorized by Google Drive API
-        </p>
+        <div className="space-y-4 pt-2">
+          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-medium">
+            Authorized by Google Drive API
+          </p>
+          <p className="text-[11px] text-slate-500 px-4 leading-relaxed">
+            By signing in, you agree to our{' '}
+            <a href="/terms-of-service" target="_blank" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy-policy" target="_blank" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">Privacy Policy</a>.
+          </p>
+        </div>
       </motion.div>
 
       <div className="absolute bottom-12 text-slate-600 flex items-center gap-2 text-xs z-10">
