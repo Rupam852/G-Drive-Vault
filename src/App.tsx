@@ -21,8 +21,7 @@ import Login from './components/Login';
 import { FileItem } from './types';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-
-
+import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -36,6 +35,8 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [wakeStatus, setWakeStatus] = useState<WakeStatus | null>(null);
+  const retryCount = useRef(0);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
   const [trashedFiles, setTrashedFiles] = useState<FileItem[]>([]);
@@ -67,7 +68,7 @@ export default function App() {
     return false;
   });
 
-  const fetchUser = async (currentTokens?: any) => {
+  const fetchUser = async (currentTokens?: any, isRetry = false) => {
     const activeTokens = currentTokens || tokens;
     // Persist tokens to state immediately so polling/effects don't lose them
     if (currentTokens) {
@@ -82,6 +83,11 @@ export default function App() {
         headers['x-goog-tokens'] = JSON.stringify(activeTokens);
       }
       
+      // If we've retried multiple times, we know we are waking up the server
+      if (isRetry && retryCount.current > 1 && !wakeStatus) {
+        setWakeStatus('waking');
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, { 
         headers,
         credentials: 'include' 
@@ -92,27 +98,64 @@ export default function App() {
         const data = await res.json();
         console.log('[App] User data received:', data);
         setUser(data);
+        retryCount.current = 0;
+        
+        if (wakeStatus === 'waking' || isRetry) {
+          setWakeStatus('ready');
+          setTimeout(() => {
+            setWakeStatus(null);
+            setIsLoading(false);
+          }, 800);
+        } else {
+          setIsLoading(false);
+        }
+        
         fetchFiles('root', activeTokens);
         fetchRecentFiles(activeTokens);
         fetchStorage(activeTokens);
         fetchStorageBreakdown(activeTokens);
         fetchTrash(activeTokens);
         fetchHiddenFiles(activeTokens);
-      } else {
-        const errText = await res.statusText;
-        console.log('[App] User not authenticated:', errText);
-        // Only toast if we actually had tokens but it failed (not if just first load)
-        if (activeTokens) toast.error(`Failed to fetch profile: ${res.status} ${errText}`);
+      } else if (res.status === 401) {
+        // Explicitly unauthorized - server is awake, but tokens missing/invalid
+        console.log('[App] User not authenticated (401)');
+        retryCount.current = 0;
         setUser(null);
-        if (!activeTokens) setIsLoading(false);
+        
+        if (wakeStatus === 'waking' || isRetry) {
+          setWakeStatus('ready');
+          setTimeout(() => {
+            setWakeStatus(null);
+            setIsLoading(false);
+          }, 800);
+        } else {
+          setIsLoading(false);
+        }
+      } else {
+        // 5xx error - server waking up or crashing
+        throw new Error(`Server error: ${res.status}`);
       }
     } catch (err: any) {
-      console.error('[App] Fetch user error:', err);
-      toast.error(`Network error: ${err.message || 'Check your internet connection or backend URL'}`);
-      setUser(null);
-      setIsLoading(false);
-    } finally {
-      setIsLoading(false);
+      console.error('[App] Fetch user error (Render might be sleeping):', err);
+      
+      if (retryCount.current < 20) {
+        // Show wakeup UI immediately on first failure
+        if (retryCount.current === 0) {
+          setWakeStatus('waking');
+          setIsLoading(true);
+        }
+        retryCount.current += 1;
+        // Retry every 3 seconds
+        setTimeout(() => fetchUser(activeTokens, true), 3000);
+      } else {
+        setWakeStatus('error');
+        setTimeout(() => {
+          setWakeStatus(null);
+          toast.error(`Network error: ${err.message || 'Check your internet connection or backend URL'}`);
+          setUser(null);
+          setIsLoading(false);
+        }, 1500);
+      }
     }
   };
 
@@ -297,11 +340,13 @@ export default function App() {
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         const newTokens = event.data.tokens;
         if (newTokens) {
+          setIsLoading(true);
           setTokens(newTokens);
           localStorage.setItem('drive_vault_tokens', JSON.stringify(newTokens));
           toast.success('Successfully signed in with Google');
           fetchUser(newTokens);
         } else {
+          setIsLoading(true);
           toast.success('Successfully signed in with Google');
           setTimeout(() => fetchUser(), 800);
         }
@@ -799,11 +844,15 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-900">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
-        />
+        {wakeStatus ? (
+          <ServerWakeupPopup wakeStatus={wakeStatus} />
+        ) : (
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+            className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+          />
+        )}
       </div>
     );
   }
