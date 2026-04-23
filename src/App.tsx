@@ -96,10 +96,15 @@ export default function App() {
         setWakeStatus(prev => prev ? prev : 'waking');
       }, 1500);
 
+      const controller = new AbortController();
+      const fetchTimeout = setTimeout(() => controller.abort(), 12000);
+
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, { 
         headers,
-        credentials: 'include' 
+        credentials: 'include',
+        signal: controller.signal
       });
+      clearTimeout(fetchTimeout);
       
       clearTimeout(pendingTimer);
       
