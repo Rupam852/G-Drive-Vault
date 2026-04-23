@@ -473,12 +473,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 key={file.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
+                transition={{ delay: Math.min(idx, 15) * 0.05 }}
                 onClick={() => handleItemClick(file)}
                 onPointerDown={() => handlePressStart(file)}
                 onPointerUp={handlePressEnd}
                 onPointerLeave={handlePressEnd}
-                className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all touch-none select-none ${
+                onPointerCancel={handlePressEnd}
+                onContextMenu={(e) => e.preventDefault()}
+                className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all select-none ${
                   selectedIds.has(file.id) 
                     ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
                     : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -516,12 +518,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               key={file.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.03 }}
+              transition={{ delay: Math.min(idx, 15) * 0.03 }}
               onClick={() => handleItemClick(file)}
               onPointerDown={() => handlePressStart(file)}
               onPointerUp={handlePressEnd}
               onPointerLeave={handlePressEnd}
-              className={`flex items-center gap-4 p-3 rounded-2xl transition-colors cursor-pointer group relative touch-none select-none ${
+              onPointerCancel={handlePressEnd}
+              onContextMenu={(e) => e.preventDefault()}
+              className={`flex items-center gap-4 p-3 rounded-2xl transition-colors cursor-pointer group relative select-none ${
                 selectedIds.has(file.id) 
                   ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800'
