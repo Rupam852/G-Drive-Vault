@@ -297,7 +297,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   };
 
   return (
-    <div className="flex-1 p-4 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full">
+    <div className="flex-1 p-4 pb-36 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full">
       <header className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 md:hidden">

@@ -28,14 +28,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('drive_vault_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [storageInfo, setStorageInfo] = useState<any>(null);
   const [tokens, setTokens] = useState<any>(() => {
     const saved = localStorage.getItem('drive_vault_tokens');
     return saved ? JSON.parse(saved) : null;
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [wakeStatus, setWakeStatus] = useState<WakeStatus | null>(null);
+  const [wakeStatus, setWakeStatus] = useState<WakeStatus | null>('waking');
   const retryCount = useRef(0);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
@@ -88,16 +91,24 @@ export default function App() {
         setWakeStatus('waking');
       }
 
+      // Proactively show waking status if Render server takes > 1.5s to respond
+      const pendingTimer = setTimeout(() => {
+        setWakeStatus(prev => prev ? prev : 'waking');
+      }, 1500);
+
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, { 
         headers,
         credentials: 'include' 
       });
+      
+      clearTimeout(pendingTimer);
       
       console.log('[App] Fetch user response status:', res.status);
       if (res.ok) {
         const data = await res.json();
         console.log('[App] User data received:', data);
         setUser(data);
+        localStorage.setItem('drive_vault_user', JSON.stringify(data));
         retryCount.current = 0;
         
         if (wakeStatus === 'waking' || isRetry) {
@@ -121,6 +132,8 @@ export default function App() {
         console.log('[App] User not authenticated (401)');
         retryCount.current = 0;
         setUser(null);
+        localStorage.removeItem('drive_vault_user');
+        localStorage.removeItem('drive_vault_tokens');
         
         if (wakeStatus === 'waking' || isRetry) {
           setWakeStatus('ready');
@@ -151,8 +164,7 @@ export default function App() {
         setWakeStatus('error');
         setTimeout(() => {
           setWakeStatus(null);
-          toast.error(`Network error: ${err.message || 'Check your internet connection or backend URL'}`);
-          setUser(null);
+          toast.error(`Network error: Check your internet connection`);
           setIsLoading(false);
         }, 1500);
       }
@@ -837,6 +849,7 @@ export default function App() {
     setUser(null);
     setTokens(null);
     setFiles([]);
+    localStorage.removeItem('drive_vault_user');
     localStorage.removeItem('drive_vault_tokens');
     toast.info('Logged out');
   };
@@ -844,15 +857,7 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-900">
-        {wakeStatus ? (
-          <ServerWakeupPopup wakeStatus={wakeStatus} />
-        ) : (
-          <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-            className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
-          />
-        )}
+        <ServerWakeupPopup wakeStatus={wakeStatus || 'waking'} />
       </div>
     );
   }

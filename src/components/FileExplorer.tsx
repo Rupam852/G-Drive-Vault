@@ -375,7 +375,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   };
 
   return (
-    <div className="flex-1 p-4 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full transition-colors">
+    <div className="flex-1 p-4 pb-36 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full transition-colors">
       <header className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
