@@ -18,7 +18,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     if (Capacitor.isNativePlatform()) {
       try {
         await GoogleSignIn.initialize({
-          clientId: WEB_CLIENT_ID,
           scopes: [
             'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/userinfo.email',
