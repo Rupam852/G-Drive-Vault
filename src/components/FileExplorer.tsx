@@ -282,7 +282,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       }
       setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
 
-      const blob = new Blob(chunks as BlobPart[]);
+      const blob = new Blob(chunks as any);
 
       if (Capacitor.isNativePlatform()) {
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -925,154 +925,134 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       {/* Action Menu Dialog */}
       <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
-        <DialogContent className="w-[90vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-6 overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold dark:text-white truncate pr-8">
+        <DialogContent className="w-[92vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-6 overflow-hidden shadow-2xl">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white truncate pr-8">
               {actionMenuFile?.name}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-2 space-y-1">
-            <button
-              onClick={() => {
-                if (actionMenuFile) {
-                  setIsSelectionMode(true);
-                  setSelectedIds(new Set([actionMenuFile.id]));
-                }
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                <Check size={20} />
-              </div>
-              <div>
-                <span className="font-semibold text-blue-600 dark:text-blue-400 block">Select</span>
-                <span className="text-[10px] text-slate-400">Multi-select to delete or move</span>
-              </div>
-            </button>
-
-            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) handleItemClick(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <ExternalLink size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Open</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) openRenameDialog(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                <Edit2 size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Rename</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) onStar(actionMenuFile.id, !actionMenuFile.starred);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600">
-                <Star size={20} className={actionMenuFile?.starred ? 'fill-yellow-600' : ''} />
-              </div>
-              <span className="font-medium dark:text-white">{actionMenuFile?.starred ? 'Unstar' : 'Star'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) {
-                  handleCopyShareLink(actionMenuFile);
-                }
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
-                <Share2 size={20} />
-              </div>
-              <div>
-                <span className="font-medium dark:text-white block">Share</span>
-                <span className="text-[10px] text-slate-400">Copy viewer link</span>
-              </div>
-            </button>
-
-
-
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onHide) onHide(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                <EyeOff size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Hide</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) handleDownload(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <Download size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Download</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) {
-                  // Add this file to selectedIds, then open the move browser
-                  setSelectedIds(new Set([actionMenuFile.id]));
+          
+          <div className="pb-2">
+            {/* Top Quick Actions Grid */}
+            <div className="grid grid-cols-4 gap-2 mb-5">
+              <button
+                onClick={() => {
+                  if (actionMenuFile) handleItemClick(actionMenuFile);
                   setActionMenuFile(null);
-                  setIsMoveDialogOpen(true);
-                }
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
-                <Move size={20} />
-              </div>
-              <div>
-                <span className="font-medium dark:text-white block">Move</span>
-                <span className="text-[10px] text-slate-400">Choose destination folder</span>
-              </div>
-            </button>
+                }}
+                className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                  <ExternalLink size={24} />
+                </div>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Open</span>
+              </button>
 
-            <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+              <button
+                onClick={() => {
+                  if (actionMenuFile) handleCopyShareLink(actionMenuFile);
+                  setActionMenuFile(null);
+                }}
+                className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
+                  <Share2 size={24} />
+                </div>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Share</span>
+              </button>
 
-            <button
-              onClick={() => {
-                if (actionMenuFile) onDelete(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600 group-hover:bg-red-200 dark:group-hover:bg-red-900/60 transition-colors">
-                <Trash2 size={20} />
-              </div>
-              <span className="font-medium text-red-600 dark:text-red-400">Delete</span>
-            </button>
+              <button
+                onClick={() => {
+                  if (actionMenuFile) openRenameDialog(actionMenuFile);
+                  setActionMenuFile(null);
+                }}
+                className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
+                  <Edit2 size={24} />
+                </div>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Rename</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (actionMenuFile) handleDownload(actionMenuFile);
+                  setActionMenuFile(null);
+                }}
+                className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                  <Download size={24} />
+                </div>
+                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Download</span>
+              </button>
+            </div>
+
+            <div className="h-px bg-slate-100 dark:bg-slate-800/60 my-4 w-full rounded-full" />
+
+            {/* List Actions */}
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  if (actionMenuFile) {
+                    setIsSelectionMode(true);
+                    setSelectedIds(new Set([actionMenuFile.id]));
+                  }
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-left"
+              >
+                <div className="text-slate-400 dark:text-slate-500"><Check size={22} /></div>
+                <span className="flex-1 font-semibold text-slate-700 dark:text-slate-200">Select</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (actionMenuFile) onStar(actionMenuFile.id, !actionMenuFile.starred);
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-left"
+              >
+                <div className="text-yellow-500"><Star size={22} className={actionMenuFile?.starred ? 'fill-yellow-500' : ''} /></div>
+                <span className="flex-1 font-semibold text-slate-700 dark:text-slate-200">{actionMenuFile?.starred ? 'Unstar' : 'Star'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (actionMenuFile) {
+                    setSelectedIds(new Set([actionMenuFile.id]));
+                    setActionMenuFile(null);
+                    setIsMoveDialogOpen(true);
+                  }
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-left"
+              >
+                <div className="text-orange-500"><Move size={22} /></div>
+                <span className="flex-1 font-semibold text-slate-700 dark:text-slate-200">Move</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (actionMenuFile && onHide) onHide(actionMenuFile.id);
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-left"
+              >
+                <div className="text-slate-400 dark:text-slate-500"><EyeOff size={22} /></div>
+                <span className="flex-1 font-semibold text-slate-700 dark:text-slate-200">Hide</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (actionMenuFile) onDelete(actionMenuFile.id);
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left group"
+              >
+                <div className="text-red-500 dark:text-red-400"><Trash2 size={22} /></div>
+                <span className="flex-1 font-semibold text-red-600 dark:text-red-400">Delete</span>
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

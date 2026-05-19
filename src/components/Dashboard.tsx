@@ -242,7 +242,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         }
       }
       setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
-      const blob = new Blob(chunks);
+      const blob = new Blob(chunks as any);
 
       if (Capacitor.isNativePlatform()) {
         const base64 = await new Promise<string>((resolve, reject) => {

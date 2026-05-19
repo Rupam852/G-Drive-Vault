@@ -704,6 +704,7 @@ export default function App() {
           toast.success(`Uploaded ${file.name} to ${folderLabel}`);
           fetchFiles(uploadToFolder);
           fetchStorage();
+          fetchStorageBreakdown(); // ADDED THIS LINE to update categories
           fetchRecentFiles();
         } else {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
@@ -741,6 +742,8 @@ export default function App() {
         const mapped = mapDriveFiles([newFolder])[0];
         setFiles(prev => [mapped, ...prev]);
         toast.success(`Folder "${name}" created`);
+        fetchStorage();
+        fetchStorageBreakdown(); // ADDED THIS LINE to update categories
       }
     } catch (err) {
       console.error('Error creating folder:', err);
