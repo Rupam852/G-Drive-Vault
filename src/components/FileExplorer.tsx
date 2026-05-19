@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ const iconMap = {
   audio: Music,
   folder: Folder,
   archive: Archive,
-  other: File,
+  other: FileIcon,
 };
 
 export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled }: FileExplorerProps) {
@@ -465,7 +465,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'space-y-1'}>
         {filteredFiles.map((file, idx) => {
-          const Icon = iconMap[file.type] || File;
+          const Icon = iconMap[file.type] || FileIcon;
           
           if (view === 'grid') {
             return (
