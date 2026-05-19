@@ -114,6 +114,22 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             {' '}and{' '}
             <a href="/privacy-policy" target="_blank" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">Privacy Policy</a>.
           </p>
+
+          {!Capacitor.isNativePlatform() && (
+            <div className="pt-6 border-t border-slate-800/50">
+              <p className="text-[11px] text-slate-400">
+                Android App Available:{' '}
+                <a 
+                  href="https://drive.google.com/file/d/1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa/view?usp=sharing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 font-bold underline underline-offset-2 transition-colors inline-flex items-center gap-1"
+                >
+                  Download Now
+                </a>
+              </p>
+            </div>
+          )}
         </div>
       </motion.div>
 
