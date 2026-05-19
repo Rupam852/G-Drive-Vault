@@ -925,16 +925,16 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       {/* Action Menu Dialog */}
       <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
-        <DialogContent className="w-[92vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-6 overflow-hidden shadow-2xl">
+        <DialogContent className="w-[94vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-5 overflow-hidden shadow-2xl">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white truncate pr-8">
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white truncate pr-10">
               {actionMenuFile?.name}
             </DialogTitle>
           </DialogHeader>
           
           <div className="pb-2">
             {/* Top Quick Actions Grid */}
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <div className="grid grid-cols-4 gap-1.5 mb-5">
               <button
                 onClick={() => {
                   if (actionMenuFile) handleItemClick(actionMenuFile);
@@ -942,10 +942,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
-                  <ExternalLink size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                  <ExternalLink size={20} />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Open</span>
+                <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Open</span>
               </button>
 
               <button
@@ -955,10 +955,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
-                  <Share2 size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
+                  <Share2 size={20} />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Share</span>
+                <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Share</span>
               </button>
 
               <button
@@ -968,10 +968,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
-                  <Edit2 size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
+                  <Edit2 size={20} />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Rename</span>
+                <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Rename</span>
               </button>
 
               <button
@@ -981,10 +981,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
-                  <Download size={24} />
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                  <Download size={20} />
                 </div>
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Download</span>
+                <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Download</span>
               </button>
             </div>
 
