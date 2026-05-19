@@ -102,13 +102,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
             Sign in with Google
           </Button>
-
-          <button
-            onClick={() => onLoginSuccess()}
-            className="text-slate-500 text-[10px] uppercase tracking-widest font-bold hover:text-blue-400 transition-colors"
-          >
-            Already signed in? Tap to refresh
-          </button>
         </div>
 
         <div className="space-y-4 pt-2">
