@@ -8,6 +8,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { Shield } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import FileExplorer from './components/FileExplorer';
 import Settings from './components/Settings';
@@ -70,6 +72,54 @@ export default function App() {
     }
     return false;
   });
+
+  const [isUnlocked, setIsUnlocked] = useState(true);
+
+  const checkBiometric = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) {
+      setIsUnlocked(true);
+      return;
+    }
+    const isEnabled = localStorage.getItem('drive_vault_biometric_enabled') === 'true';
+    if (!isEnabled) {
+      setIsUnlocked(true);
+      return;
+    }
+
+    setIsUnlocked(false);
+    try {
+      const result = await NativeBiometric.isAvailable();
+      if (!result.isAvailable) {
+        setIsUnlocked(true);
+        return;
+      }
+
+      await NativeBiometric.verifyIdentity({
+        reason: "Unlock Drive Vault",
+        title: "Authentication Required",
+        subtitle: "Please authenticate to access your files",
+        description: "Use your biometric or device password",
+        useFallback: true
+      });
+      setIsUnlocked(true);
+    } catch (e) {
+      console.log('Biometric failed or cancelled', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkBiometric();
+    
+    const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        checkBiometric();
+      }
+    });
+
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, [checkBiometric]);
 
   const fetchUser = async (currentTokens?: any, isRetry = false) => {
     const activeTokens = currentTokens || tokens;
@@ -866,6 +916,24 @@ export default function App() {
     localStorage.removeItem('drive_vault_tokens');
     toast.info('Logged out');
   };
+
+  if (!isUnlocked) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
+        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 mb-6 shadow-lg shadow-blue-500/20">
+          <Shield size={40} />
+        </div>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">App Locked</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-center mb-10 text-sm font-medium">Please authenticate to access your Drive Vault</p>
+        <button 
+          onClick={checkBiometric} 
+          className="rounded-2xl px-10 h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xl shadow-blue-500/30 transition-all active:scale-95"
+        >
+          Unlock App
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

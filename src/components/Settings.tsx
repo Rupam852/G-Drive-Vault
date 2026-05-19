@@ -81,10 +81,10 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   const [notifSecurity, setNotifSecurity] = useState(true);
 
   // Security & Privacy state
-  const [secTwoFactor, setSecTwoFactor] = useState(false);
-  const [secBiometric, setSecBiometric] = useState(true);
-  const [privHideSearches, setPrivHideSearches] = useState(false);
-  const [privAnalytics, setPrivAnalytics] = useState(true);
+  const [secBiometric, setSecBiometric] = useState(() => {
+    const saved = localStorage.getItem('drive_vault_biometric_enabled');
+    return saved !== null ? saved === 'true' : false;
+  });
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => 
@@ -499,41 +499,17 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                   <h3>Account Security</h3>
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label>Two-Factor Authentication</Label>
-                  <Switch checked={secTwoFactor} onCheckedChange={setSecTwoFactor} className="data-[state=checked]:bg-blue-600" />
-                </div>
-                <div className="flex items-center justify-between">
                   <Label>Biometric Login</Label>
-                  <Switch checked={secBiometric} onCheckedChange={setSecBiometric} className="data-[state=checked]:bg-blue-600" />
+                  <Switch 
+                    checked={secBiometric} 
+                    onCheckedChange={(val) => {
+                      setSecBiometric(val);
+                      localStorage.setItem('drive_vault_biometric_enabled', String(val));
+                    }} 
+                    className="data-[state=checked]:bg-blue-600" 
+                  />
                 </div>
               </div>
-              <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
-                <div className="flex items-center gap-3 text-indigo-600 font-semibold mb-2">
-                  <Info size={20} />
-                  <h3>Privacy Options</h3>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>Hide from Shared Searches</Label>
-                  <Switch checked={privHideSearches} onCheckedChange={setPrivHideSearches} className="data-[state=checked]:bg-blue-600" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>Usage Analytics</Label>
-                  <Switch checked={privAnalytics} onCheckedChange={setPrivAnalytics} className="data-[state=checked]:bg-blue-600" />
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full rounded-2xl border-red-200 text-red-600 hover:bg-red-50 h-12"
-                onClick={() => {
-                  setSecTwoFactor(false);
-                  setSecBiometric(true);
-                  setPrivHideSearches(false);
-                  setPrivAnalytics(true);
-                  toast.success('Security settings reset');
-                }}
-              >
-                Reset Security Settings
-              </Button>
             </div>
           </div>
         </div>

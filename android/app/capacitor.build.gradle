@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-app')
     implementation project(':capacitor-filesystem')
     implementation project(':capawesome-capacitor-google-sign-in')
+    implementation project(':capgo-capacitor-native-biometric')
 
 }
 
