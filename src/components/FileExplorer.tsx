@@ -927,7 +927,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
         <DialogContent className="w-[94vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-5 overflow-hidden shadow-2xl">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-base font-bold text-slate-800 dark:text-white break-words whitespace-normal pr-16 max-h-16 overflow-y-auto no-scrollbar leading-tight">
+            <DialogTitle className="text-base font-bold text-slate-800 dark:text-white break-all whitespace-normal pr-16 max-h-16 overflow-y-auto no-scrollbar leading-tight">
               {actionMenuFile?.name}
             </DialogTitle>
           </DialogHeader>

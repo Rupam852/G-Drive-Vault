@@ -308,7 +308,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                     <Icon size={22} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
+                    <h2 className="text-base sm:text-lg font-bold break-all whitespace-normal leading-tight">{file.name}</h2>
                     <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
                   </div>
                 </div>
@@ -408,7 +408,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
                 <div className="p-2 bg-white/10 rounded-xl text-white">
                   <Icon size={20} />
                 </div>
-                <h2 className="text-white font-bold truncate max-w-[200px]">{file.name}</h2>
+                <h2 className="text-white font-bold break-all whitespace-normal leading-tight max-w-[200px] sm:max-w-[400px] text-sm sm:text-base">{file.name}</h2>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -469,7 +469,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </div>
             <AlertDialogTitle className="text-xl font-black text-white">Delete File?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400 text-sm leading-relaxed">
-              Are you sure you want to move <span className="text-white font-bold">"{file.name}"</span> to trash?
+              Are you sure you want to move <span className="text-white font-bold break-all">"{file.name}"</span> to trash?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col gap-3 mt-8 sm:flex-col sm:space-x-0">
