@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, CheckCircle2, AlertCircle, X, ChevronUp, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface TransferState {
   id: string;
@@ -21,6 +21,15 @@ export default function TransferManager({ transfers, onDismiss, onCloseAll }: Tr
   const activeTransfers = transfers.filter(t => t.status === 'uploading' || t.status === 'pending');
   const completedTransfers = transfers.filter(t => t.status === 'completed');
   
+  useEffect(() => {
+    if (transfers.length > 0 && activeTransfers.length === 0) {
+      const timer = setTimeout(() => {
+        onCloseAll();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [transfers.length, activeTransfers.length, onCloseAll]);
+
   if (transfers.length === 0) return null;
 
   return (

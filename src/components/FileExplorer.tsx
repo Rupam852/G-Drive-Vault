@@ -378,8 +378,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     <div className="flex-1 p-4 pb-6 md:pb-8 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full transition-colors">
       <header className="space-y-4">
         <div className="flex justify-between items-center">
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Files</h1>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white leading-none">Files</h1>
             {activeSubTab === 'all' && (
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-md">
                 {breadcrumb.map((b, i) => (
