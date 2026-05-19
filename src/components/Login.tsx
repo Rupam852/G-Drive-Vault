@@ -49,11 +49,21 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
     // ── WEB (Browser popup) ──────────────────────────────────────────────
     try {
+      // Open popup immediately to bypass popup blockers
+      const popup = window.open('', 'google_oauth', 'width=600,height=700');
+      if (!popup) {
+        toast.error('Popup was blocked. Please allow popups for this site.');
+        return;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/api/auth/url`);
-      if (!response.ok) throw new Error('Could not get auth URL from server');
+      if (!response.ok) {
+        popup.close();
+        throw new Error('Could not get auth URL from server');
+      }
       const { url } = await response.json();
-      const popup = window.open(url, 'google_oauth', 'width=600,height=700');
-      if (!popup) toast.error('Popup was blocked. Please allow popups for this site.');
+      
+      popup.location.href = url;
     } catch (error) {
       console.error('[Web Login] Error:', error);
       toast.error('Failed to initiate login');
