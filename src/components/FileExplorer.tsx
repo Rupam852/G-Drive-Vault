@@ -927,7 +927,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
         <DialogContent className="w-[94vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-5 overflow-hidden shadow-2xl">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white truncate pr-10">
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white truncate pr-14">
               {actionMenuFile?.name}
             </DialogTitle>
           </DialogHeader>
@@ -942,7 +942,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
                   <ExternalLink size={20} />
                 </div>
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Open</span>
@@ -955,7 +955,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
                   <Share2 size={20} />
                 </div>
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Share</span>
@@ -968,7 +968,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
                   <Edit2 size={20} />
                 </div>
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Rename</span>
@@ -981,7 +981,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 }}
                 className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
               >
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
                   <Download size={20} />
                 </div>
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Download</span>
