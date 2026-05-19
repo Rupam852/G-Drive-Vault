@@ -63,8 +63,9 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }: Sid
       <div className="mt-auto p-6 border-t border-slate-50 dark:border-slate-800">
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 mb-4">
           <img 
-            src={user?.photo || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} 
+            src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} 
             alt="Profile" 
+            referrerPolicy="no-referrer"
             className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-700 shadow-sm"
           />
           <div className="flex-1 min-w-0">
