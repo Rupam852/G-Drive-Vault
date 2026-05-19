@@ -114,8 +114,11 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             if (active) setIsLoading(false);
           }
         })();
+      } else if (file.type === 'document') {
+        setIsLoading(false);
+        setPreviewUrl(`https://drive.google.com/file/d/${file.id}/preview`);
       } else {
-        // Documents & others: no preview, show "Open with Google Drive"
+        // Others: no preview, show "Open with Google Drive"
         setIsLoading(false);
       }
     } else {
@@ -243,7 +246,18 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       );
     }
 
-    // Documents & other types → show "Open with Google Drive" box
+    if (file.type === 'document' && previewUrl) {
+      return (
+        <iframe
+          src={previewUrl}
+          className="w-full h-full min-h-[400px] border-0 rounded-2xl bg-white"
+          title={file.name}
+          allow="autoplay"
+        />
+      );
+    }
+
+    // Other types → show "Open with Google Drive" box
     return (
       <div className="flex flex-col items-center gap-5 p-8 w-full">
         {/* File icon with glow */}
@@ -311,7 +325,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               {/* Preview area */}
               <div
                 className={`
-                  ${file.type === 'video' ? 'aspect-video' : (file.type === 'document' || file.type === 'other') ? 'py-8' : file.type === 'audio' ? 'h-auto' : 'aspect-square max-h-[280px]'}
+                  ${file.type === 'video' ? 'aspect-video' : file.type === 'document' ? 'aspect-[4/5] min-h-[400px] max-h-[65vh]' : file.type === 'other' ? 'py-8' : file.type === 'audio' ? 'h-auto' : 'aspect-square max-h-[280px]'}
                   w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group cursor-pointer
                 `}
                 onClick={() => !previewError && setIsExpanded(true)}
