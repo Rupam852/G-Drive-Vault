@@ -398,13 +398,25 @@ app.get('/api/drive/files', async (req, res) => {
       q += " and 'root' in parents";
     }
 
-    const response = await drive.files.list({
-      pageSize: 100,
-      fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
-      q: q,
-      orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined
-    });
-    res.json(response.data.files);
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+
+    do {
+      const response = await drive.files.list({
+        pageSize: 100, // Fetch in batches of 100
+        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
+        q: q,
+        orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined,
+        pageToken: pageToken
+      });
+      
+      if (response.data.files) {
+        allFiles = allFiles.concat(response.data.files);
+      }
+      pageToken = response.data.nextPageToken || undefined;
+    } while (pageToken);
+
+    res.json(allFiles);
   } catch (error) {
     console.error('Error fetching drive files:', error);
     res.status(500).json({ error: 'Failed to fetch files' });
@@ -495,11 +507,24 @@ app.get('/api/drive/trash', async (req, res) => {
     const client = getOAuth2Client(req);
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
-    const response = await drive.files.list({
-      q: "trashed = true",
-      fields: 'files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink)',
-    });
-    res.json(response.data.files);
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+
+    do {
+      const response = await drive.files.list({
+        pageSize: 100,
+        q: "trashed = true",
+        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink)',
+        pageToken: pageToken
+      });
+      
+      if (response.data.files) {
+        allFiles = allFiles.concat(response.data.files);
+      }
+      pageToken = response.data.nextPageToken || undefined;
+    } while (pageToken);
+
+    res.json(allFiles);
   } catch (error) {
     console.error('Error fetching trash:', error);
     res.status(500).json({ error: 'Failed to fetch trash' });
@@ -807,12 +832,24 @@ app.get('/api/drive/hidden', async (req, res) => {
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
     
-    const response = await drive.files.list({
-      pageSize: 100,
-      fields: 'files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
-      q: "properties has { key='isHidden' and value='true' } and trashed = false",
-    });
-    res.json(response.data.files);
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+
+    do {
+      const response = await drive.files.list({
+        pageSize: 100,
+        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
+        q: "properties has { key='isHidden' and value='true' } and trashed = false",
+        pageToken: pageToken
+      });
+      
+      if (response.data.files) {
+        allFiles = allFiles.concat(response.data.files);
+      }
+      pageToken = response.data.nextPageToken || undefined;
+    } while (pageToken);
+
+    res.json(allFiles);
   } catch (error: any) {
     console.error('Error fetching hidden files:', error);
     res.status(500).json({ error: 'Failed to fetch hidden files: ' + (error.message || String(error)) });
