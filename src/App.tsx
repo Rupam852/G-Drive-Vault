@@ -119,17 +119,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Only check biometrics once when the app is freshly launched (cold start)
     checkBiometric();
-    
-    const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        checkBiometric();
-      }
-    });
-
-    return () => {
-      listener.then(l => l.remove());
-    };
   }, [checkBiometric]);
 
   const fetchUser = async (currentTokens?: any, isRetry = false) => {
