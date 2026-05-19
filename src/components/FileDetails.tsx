@@ -283,19 +283,27 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   return (
     <>
       <Dialog open={isOpen && !isExpanded} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90dvh] flex flex-col bg-[#0F172A] border-slate-800 text-white rounded-[2rem] overflow-hidden p-0 gap-0 shadow-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-xl max-h-[90dvh] flex flex-col bg-[#0F172A] border-slate-800 text-white rounded-[2rem] overflow-hidden p-0 gap-0 shadow-2xl [&>button]:hidden">
           
           {/* Scrollable Content Area */}
-          <div className="overflow-y-auto flex-1 custom-scrollbar">
+          <div className="overflow-y-auto flex-1 no-scrollbar custom-scrollbar">
             <div className="p-6 pb-0">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
-                  <Icon size={22} />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+                    <Icon size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
-                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
-                </div>
+                <button 
+                  onClick={onClose} 
+                  className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
 
