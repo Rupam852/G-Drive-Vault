@@ -29,7 +29,7 @@ interface DashboardProps {
   setActiveTab: (tab: string) => void;
   onRefreshStorage?: () => void;
   onCategoryClick?: (type: string) => void;
-  onCreateFolder?: (name: string) => void;
+  onCreateFolder?: (name: string, targetFolderId?: string) => void;
   onRename?: (id: string, name: string) => void;
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
@@ -104,7 +104,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
   const handleCreateFolder = () => {
     if (newFolderName.trim() && onCreateFolder) {
-      onCreateFolder(newFolderName.trim());
+      onCreateFolder(newFolderName.trim(), 'root');
       setNewFolderName('');
       setIsNewFolderOpen(false);
     }

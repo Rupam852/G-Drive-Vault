@@ -702,9 +702,11 @@ export default function App() {
             localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
           } catch {}
           toast.success(`Uploaded ${file.name} to ${folderLabel}`);
-          fetchFiles(uploadToFolder);
+          if (uploadToFolder === currentFolderIdRef.current) {
+            fetchFiles(uploadToFolder);
+          }
           fetchStorage();
-          fetchStorageBreakdown(); // ADDED THIS LINE to update categories
+          fetchStorageBreakdown(); 
           fetchRecentFiles();
         } else {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
@@ -725,22 +727,25 @@ export default function App() {
     }
   };
 
-  const handleCreateFolder = async (name: string) => {
+  const handleCreateFolder = async (name: string, targetFolderId?: string) => {
     try {
+      const parentId = targetFolderId || currentFolderId;
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
       
       const res = await fetch(`${API_BASE_URL}/api/drive/folders`, { 
         method: 'POST',
         headers,
-        body: JSON.stringify({ name, parentId: currentFolderId }),
+        body: JSON.stringify({ name, parentId }),
         credentials: 'include' 
       });
       
       if (res.ok) {
         const newFolder = await res.json();
         const mapped = mapDriveFiles([newFolder])[0];
-        setFiles(prev => [mapped, ...prev]);
+        if (parentId === currentFolderIdRef.current) {
+          setFiles(prev => [mapped, ...prev]);
+        }
         toast.success(`Folder "${name}" created`);
         fetchStorage();
         fetchStorageBreakdown(); // ADDED THIS LINE to update categories
