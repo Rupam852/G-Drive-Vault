@@ -283,63 +283,68 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
   return (
     <>
       <Dialog open={isOpen && !isExpanded} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] sm:max-w-lg bg-[#0F172A] border-slate-800 text-white rounded-[2rem] overflow-hidden p-0 gap-0 shadow-2xl">
-          <div className="p-6 pb-0">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
-                <Icon size={22} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {/* Preview area */}
-            <div
-              className={`
-                ${file.type === 'video' ? 'aspect-video' : file.type === 'document' ? 'aspect-[3/4] max-h-[400px]' : file.type === 'audio' ? 'h-auto' : 'aspect-square max-h-[280px]'}
-                w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group cursor-pointer
-              `}
-              onClick={() => !previewError && setIsExpanded(true)}
-            >
-              {renderPreviewContent(false)}
-
-              {!previewError && !isLoading && previewUrl && (
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                  <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-white flex items-center gap-2">
-                    <Maximize2 size={18} />
-                    <span className="text-xs font-bold">Tap to Fullscreen</span>
-                  </div>
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90dvh] flex flex-col bg-[#0F172A] border-slate-800 text-white rounded-[2rem] overflow-hidden p-0 gap-0 shadow-2xl">
+          
+          {/* Scrollable Content Area */}
+          <div className="overflow-y-auto flex-1 custom-scrollbar">
+            <div className="p-6 pb-0">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+                  <Icon size={22} />
                 </div>
-              )}
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold truncate max-w-[200px] sm:max-w-[300px]">{file.name}</h2>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-y-6 px-1">
-              <div className="space-y-1">
-                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
-                  <HardDrive size={12} /> Size
-                </p>
-                <p className="text-xl font-black text-white">{file.size}</p>
+            <div className="p-6 space-y-6">
+              {/* Preview area */}
+              <div
+                className={`
+                  ${file.type === 'video' ? 'aspect-video' : (file.type === 'document' || file.type === 'other') ? 'py-8' : file.type === 'audio' ? 'h-auto' : 'aspect-square max-h-[280px]'}
+                  w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group cursor-pointer
+                `}
+                onClick={() => !previewError && setIsExpanded(true)}
+              >
+                {renderPreviewContent(false)}
+
+                {!previewError && !isLoading && previewUrl && (
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-white flex items-center gap-2">
+                      <Maximize2 size={18} />
+                      <span className="text-xs font-bold">Tap to Fullscreen</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
-                  <Calendar size={12} /> Date
-                </p>
-                <p className="text-xl font-black text-white">{file.date}</p>
-              </div>
-              <div className="col-span-2 space-y-1">
-                <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
-                  <Info size={12} /> Type
-                </p>
-                <p className="text-xl font-black text-white capitalize">{file.type}</p>
+
+              <div className="grid grid-cols-2 gap-y-6 px-1">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                    <HardDrive size={12} /> Size
+                  </p>
+                  <p className="text-xl font-black text-white">{file.size}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                    <Calendar size={12} /> Date
+                  </p>
+                  <p className="text-xl font-black text-white">{file.date}</p>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-500 font-extrabold flex items-center gap-1.5">
+                    <Info size={12} /> Type
+                  </p>
+                  <p className="text-xl font-black text-white capitalize">{file.type}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="p-6 pt-2 space-y-3 bg-white/5 border-t border-slate-800/50">
+          {/* Fixed Footer */}
+          <div className="p-6 pt-4 space-y-3 bg-[#0F172A] border-t border-slate-800/50 shrink-0">
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
