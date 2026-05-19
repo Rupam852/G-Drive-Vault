@@ -140,7 +140,6 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   };
 
   const menuItems = [
-    { icon: User, label: 'Profile Settings', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', onClick: () => setIsProfileOpen(true) },
     { icon: History, label: 'Upload History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
     { icon: Trash2, label: 'Trash Bin', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', onClick: () => setIsTrashOpen(true) },
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
