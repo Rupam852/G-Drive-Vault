@@ -1043,7 +1043,7 @@ export default function App() {
                 {renderContent()}
               </motion.div>
             </AnimatePresence>
-            <div className="h-20 md:hidden" /> {/* Spacer for bottom nav */}
+            <div className="h-24 md:hidden shrink-0" /> {/* Spacer for bottom nav */}
           </div>
         </main>
 

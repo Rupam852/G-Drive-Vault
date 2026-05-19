@@ -166,7 +166,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   }, [isTrashOpen, isHiddenOpen, isTransfersOpen, isProfileOpen, isNotificationsOpen, isSecurityOpen]);
 
   return (
-    <div className="p-6 pb-24 space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors">
+    <div className="p-6 pb-6 md:pb-8 space-y-8 bg-slate-50 dark:bg-slate-950 transition-colors">
       <header className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
         
