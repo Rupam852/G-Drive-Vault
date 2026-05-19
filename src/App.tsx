@@ -74,6 +74,7 @@ export default function App() {
   });
 
   const [isUnlocked, setIsUnlocked] = useState(true);
+  const isAuthenticatingRef = useRef(false);
 
   const checkBiometric = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) {
@@ -86,11 +87,16 @@ export default function App() {
       return;
     }
 
+    if (isAuthenticatingRef.current) return;
+
     setIsUnlocked(false);
+    isAuthenticatingRef.current = true;
+    
     try {
       const result = await NativeBiometric.isAvailable();
       if (!result.isAvailable) {
         setIsUnlocked(true);
+        isAuthenticatingRef.current = false;
         return;
       }
 
@@ -104,6 +110,11 @@ export default function App() {
       setIsUnlocked(true);
     } catch (e) {
       console.log('Biometric failed or cancelled', e);
+    } finally {
+      // Use a timeout before releasing the lock to prevent immediate re-trigger by appStateChange event
+      setTimeout(() => {
+        isAuthenticatingRef.current = false;
+      }, 1000);
     }
   }, []);
 
