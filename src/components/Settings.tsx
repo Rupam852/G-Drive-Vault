@@ -15,6 +15,7 @@ import { Capacitor } from '@capacitor/core';
 
 interface SettingsProps {
   user: any;
+  setUser?: (user: any) => void;
   isDarkMode: boolean;
   setIsDarkMode: (val: boolean) => void;
   onLogout: () => void;
@@ -29,7 +30,7 @@ interface SettingsProps {
   setIsDownloadEnabled: (val: boolean) => void;
 }
 
-export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -46,6 +47,9 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedHiddenIds, setSelectedHiddenIds] = useState<string[]>([]);
+  
+  // Profile state
+  const [displayName, setDisplayName] = useState(user?.name || '');
   const [uploadHistory, setUploadHistory] = useState<any[]>([]);
 
   // Load upload history from localStorage
@@ -236,7 +240,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-3">
               {(trashedFiles || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
@@ -292,7 +296,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-3">
               {(hiddenFiles || []).length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
@@ -348,7 +352,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
               {uploadHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
@@ -407,7 +411,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50 dark:bg-slate-950">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8 bg-slate-50 dark:bg-slate-950">
               {/* Cover & Avatar Section */}
               <div className="relative rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden pb-8">
                 <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600 w-full"></div>
@@ -419,7 +423,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                     </Avatar>
                   </div>
                   <div className="pt-16 text-center">
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{user?.name || 'User'}</h3>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{displayName || 'User'}</h3>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">{user?.email || 'No email'}</p>
                   </div>
                 </div>
@@ -429,7 +433,11 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 space-y-5">
                 <div className="space-y-2">
                   <Label className="text-slate-700 dark:text-slate-300 font-semibold ml-1">Display Name</Label>
-                  <Input defaultValue={user?.name} className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-5 h-14 w-full focus-visible:ring-blue-500" />
+                  <Input 
+                    value={displayName} 
+                    onChange={(e) => setDisplayName(e.target.value)} 
+                    className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 px-5 h-14 w-full focus-visible:ring-blue-500" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-700 dark:text-slate-300 font-semibold ml-1">Email Address</Label>
@@ -439,7 +447,18 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
               </div>
 
               <div className="pt-2">
-                <Button onClick={() => {toast.success('Profile updated'); setIsProfileOpen(false)}} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25 font-bold text-lg transition-all active:scale-[0.98]">
+                <Button 
+                  onClick={() => {
+                    if (setUser) {
+                      const updatedUser = { ...user, name: displayName };
+                      setUser(updatedUser);
+                      localStorage.setItem('drive_vault_user', JSON.stringify(updatedUser));
+                    }
+                    toast.success('Profile updated'); 
+                    setIsProfileOpen(false);
+                  }} 
+                  className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/25 font-bold text-lg transition-all active:scale-[0.98]"
+                >
                   Save Changes
                 </Button>
               </div>
@@ -457,7 +476,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                 <h2 className="text-xl font-bold">Notifications</h2>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
               {([
                 { label: 'Push Notifications', desc: 'Receive alerts on your device', checked: notifPush, onChange: setNotifPush },
                 { label: 'Email Alerts', desc: 'Get updates in your inbox', checked: notifEmail, onChange: setNotifEmail },
@@ -486,7 +505,7 @@ export default function Settings({ user, isDarkMode, setIsDarkMode, onLogout, tr
                 <h2 className="text-xl font-bold">Security & Privacy</h2>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
               <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
                 <div className="flex items-center gap-3 text-blue-600 font-semibold mb-2">
                   <Shield size={20} />

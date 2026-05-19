@@ -966,6 +966,7 @@ export default function App() {
         return (
           <Settings 
             user={user}
+            setUser={setUser}
             isDarkMode={isDarkMode} 
             setIsDarkMode={setIsDarkMode} 
             onLogout={handleLogout}
