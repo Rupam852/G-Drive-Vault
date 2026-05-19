@@ -220,13 +220,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:p-6 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-3xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 flex items-center justify-between border-b dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => setIsTrashOpen(false)} className="rounded-full">
-                  <X size={20} />
-                </Button>
-                <h2 className="text-xl font-bold">Trash Bin</h2>
-              </div>
-              <div className="flex gap-2">
+              <h2 className="text-xl font-bold">Trash Bin</h2>
+              <div className="flex items-center gap-2">
                 {(trashedFiles || []).length > 0 && (
                   <>
                     <Button variant="outline" size="sm" onClick={handleBulkRestore} className="rounded-xl gap-2 text-blue-600 border-blue-200">
@@ -237,6 +232,9 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                     </Button>
                   </>
                 )}
+                <Button variant="ghost" size="icon" onClick={() => setIsTrashOpen(false)} className="rounded-full ml-2">
+                  <X size={20} />
+                </Button>
               </div>
             </div>
 
@@ -280,20 +278,17 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:p-6 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-3xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 flex items-center justify-between border-b dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => setIsHiddenOpen(false)} className="rounded-full">
-                  <X size={20} />
-                </Button>
-                <h2 className="text-xl font-bold">Hidden Files</h2>
-              </div>
-              
-              {(hiddenFiles || []).length > 0 && (
-                <div className="flex gap-2">
+              <h2 className="text-xl font-bold">Hidden Files</h2>
+              <div className="flex items-center gap-2">
+                {(hiddenFiles || []).length > 0 && (
                   <Button variant="outline" size="sm" onClick={handleBulkUnhide} className="rounded-xl gap-2 text-indigo-600 border-indigo-200">
                     <Eye size={16} /> {selectedHiddenIds.length > 0 ? 'Unhide Selected' : 'Unhide All'}
                   </Button>
-                </div>
-              )}
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setIsHiddenOpen(false)} className="rounded-full ml-2">
+                  <X size={20} />
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-3">
@@ -336,20 +331,20 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:p-6 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-3xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setIsTransfersOpen(false)} className="rounded-full">
+              <div>
+                <h2 className="text-xl font-bold">Upload History</h2>
+                <p className="text-xs text-slate-400">{uploadHistory.length} uploads recorded</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {uploadHistory.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearUploadHistory} className="rounded-xl text-slate-500 border-slate-200">
+                    Clear All
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setIsTransfersOpen(false)} className="rounded-full ml-2">
                   <X size={20} />
                 </Button>
-                <div>
-                  <h2 className="text-xl font-bold">Upload History</h2>
-                  <p className="text-xs text-slate-400">{uploadHistory.length} uploads recorded</p>
-                </div>
               </div>
-              {uploadHistory.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearUploadHistory} className="rounded-xl text-slate-500 border-slate-200">
-                  Clear All
-                </Button>
-              )}
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
@@ -403,12 +398,10 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:py-10 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-2xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setIsProfileOpen(false)} className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <X size={20} />
-                </Button>
-                <h2 className="text-xl font-bold">Profile Settings</h2>
-              </div>
+              <h2 className="text-xl font-bold">Profile Settings</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsProfileOpen(false)} className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X size={20} />
+              </Button>
             </div>
             
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8 bg-slate-50 dark:bg-slate-950">
@@ -471,10 +464,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:py-10 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-2xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setIsNotificationsOpen(false)} className="rounded-full"><X size={20} /></Button>
-                <h2 className="text-xl font-bold">Notifications</h2>
-              </div>
+              <h2 className="text-xl font-bold">Notifications</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsNotificationsOpen(false)} className="rounded-full"><X size={20} /></Button>
             </div>
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
               {([
@@ -500,10 +491,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
         <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:py-10 transition-all">
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-2xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setIsSecurityOpen(false)} className="rounded-full"><X size={20} /></Button>
-                <h2 className="text-xl font-bold">Security & Privacy</h2>
-              </div>
+              <h2 className="text-xl font-bold">Security & Privacy</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsSecurityOpen(false)} className="rounded-full"><X size={20} /></Button>
             </div>
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
               <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
