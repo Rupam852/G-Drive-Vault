@@ -153,6 +153,11 @@ async function getOrCreateFolderPath(drive: any, pathParts: string[], parentId: 
   return currentParentId;
 }
 
+// Health Check Route for Cron Jobs
+app.get('/api/auth/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Auth Routes
 app.get('/api/auth/url', (req, res) => {
   const client = getOAuth2Client(req);
