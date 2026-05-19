@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
-import { Shield } from 'lucide-react';
+import { Shield, Cloud } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import FileExplorer from './components/FileExplorer';
 import Settings from './components/Settings';
