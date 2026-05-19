@@ -64,6 +64,10 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
 
+  // Global Drag & Drop state
+  const [isGlobalDragging, setIsGlobalDragging] = useState(false);
+  const dragCounter = useRef(0);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('darkMode');
@@ -779,6 +783,73 @@ export default function App() {
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Capacitor.isNativePlatform()) return;
+    dragCounter.current++;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsGlobalDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Capacitor.isNativePlatform()) return;
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsGlobalDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Capacitor.isNativePlatform()) return;
+    
+    setIsGlobalDragging(false);
+    dragCounter.current = 0;
+
+    if (!e.dataTransfer) return;
+
+    const items = e.dataTransfer.items;
+    if (!items || items.length === 0) return;
+
+    const traverseFileTree = async (item: any, path: string = '') => {
+      if (item.isFile) {
+        item.file((file: File) => {
+          handleUploadFile(file, path + file.name);
+        });
+      } else if (item.isDirectory) {
+        const dirReader = item.createReader();
+        const readEntries = () => {
+          dirReader.readEntries(async (entries: any[]) => {
+            if (entries.length > 0) {
+              for (const entry of entries) {
+                await traverseFileTree(entry, path + item.name + '/');
+              }
+              readEntries(); // Read more entries if directory is large
+            }
+          });
+        };
+        readEntries();
+      }
+    };
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry();
+      if (item) {
+        traverseFileTree(item);
+      }
+    }
+  };
+
   const handleCreateFolder = async (name: string, targetFolderId?: string) => {
     try {
       const parentId = targetFolderId || currentFolderId;
@@ -1095,7 +1166,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-100 transition-colors duration-300">
+    <div 
+      className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-100 transition-colors duration-300"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <Sidebar 
@@ -1166,6 +1243,19 @@ export default function App() {
         />
       </div>
       <Toaster position="top-center" />
+
+      {/* Global Drag & Drop Overlay */}
+      {isGlobalDragging && (
+        <div className="fixed inset-0 z-[9999] bg-blue-500/20 backdrop-blur-md flex items-center justify-center pointer-events-none transition-all">
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl flex flex-col items-center border-4 border-blue-500 border-dashed">
+            <div className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 animate-bounce mb-6">
+              <Cloud size={48} />
+            </div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Drop to Upload</h2>
+            <p className="text-slate-500 font-medium">Release your files to upload them instantly</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
