@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -930,7 +930,12 @@ export default function App() {
             tokens={tokens}
             breadcrumb={breadcrumb}
             filterType={fileFilter}
-            onFilterChange={setFileFilter}
+            onFilterChange={(newType) => {
+              setFileFilter(newType);
+              if (currentFolderId === 'root') {
+                fetchFiles('root', undefined, newType === 'all' ? undefined : newType);
+              }
+            }}
             onNavigate={navigateToFolder}
             onDelete={handleDeleteFile}
             onUpload={handleUploadFile}
