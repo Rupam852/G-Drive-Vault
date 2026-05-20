@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -247,6 +247,9 @@ export default function App() {
           setIsLoading(false);
         }, 1500);
       }
+    }
+  };
+
   const fetchStorage = async (currentTokens?: any) => {
     const activeTokens = currentTokens || tokens;
     try {
