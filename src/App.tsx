@@ -655,6 +655,7 @@ export default function App() {
         fetchStorage();
         fetchRecentFiles();
         fetchTrash();
+        fetchStorageBreakdown();
         toast.success('Moved to trash');
       }
     } catch (err) {
@@ -677,6 +678,7 @@ export default function App() {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchFiles(currentFolderId);
         fetchRecentFiles();
+        fetchStorageBreakdown();
         toast.success('File restored');
       }
     } catch (err) {
@@ -697,6 +699,7 @@ export default function App() {
       
       if (res.ok) {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
+        fetchStorageBreakdown();
         toast.success('Permanently deleted');
       }
     } catch (err) {
@@ -1049,6 +1052,7 @@ export default function App() {
         setFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
         setRecentFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
         fetchStorage();
+        fetchStorageBreakdown();
         if (moveCount > 1) {
           toast.success(`Moved ${successCount} items successfully`, { id: 'move-toast' });
         } else {
