@@ -519,7 +519,7 @@ export default function App() {
       if (document.hidden) return; // Skip if app is in background
       fetchStorage();
       fetchRecentFiles();
-      fetchFiles(currentFolderId);
+      fetchFiles(currentFolderIdRef.current, undefined, fileFilterRef.current);
       // NOTE: fetchStorageBreakdown intentionally excluded from polling —
       // it scans every file in Drive and is too expensive for background use.
     };
