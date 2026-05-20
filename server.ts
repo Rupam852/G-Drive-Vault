@@ -12,6 +12,7 @@ import stream from 'stream';
 import archiver from 'archiver';
 import os from 'os';
 import fs from 'fs';
+import { Pool } from 'pg';
 
 dotenv.config();
 
@@ -86,6 +87,87 @@ const folderCreationLocks = new Map<string, Promise<string>>();
 
 // Stateless Download Tickets (signed payloads) for serverless compatibility
 const TICKET_SECRET = process.env.SESSION_SECRET || 'drive-vault-preview-secret';
+
+// ════════════════════════════════════════════════════════════════════════════
+// PostgreSQL Token Store
+// One row per Google account (keyed by email). Automatically:
+//   • Upserts refresh_token on first login/consent
+//   • Merges stored refresh_token on re-login (no re-consent needed ever)
+//   • Updates access_token + expiry whenever Google auto-refreshes it
+// ════════════════════════════════════════════════════════════════════════════
+
+const pgPool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    })
+  : null;
+
+const memRefreshTokenStore = new Map<string, string>(); // fallback if no DB
+
+async function initDb() {
+  if (!pgPool) {
+    console.warn('[DB] DATABASE_URL not set — using in-memory fallback (tokens lost on restart)');
+    return;
+  }
+  try {
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS user_tokens (
+        email           TEXT PRIMARY KEY,
+        refresh_token   TEXT NOT NULL,
+        access_token    TEXT,
+        token_expiry    BIGINT,
+        updated_at      TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    console.log('[DB] user_tokens table ready');
+  } catch (e) {
+    console.error('[DB] Failed to init table:', e);
+  }
+}
+
+async function upsertTokens(
+  email: string,
+  refreshToken: string | null,
+  accessToken?: string | null,
+  tokenExpiry?: number | null
+) {
+  if (pgPool) {
+    if (refreshToken) {
+      await pgPool.query(
+        `INSERT INTO user_tokens (email, refresh_token, access_token, token_expiry, updated_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (email) DO UPDATE
+           SET refresh_token = EXCLUDED.refresh_token,
+               access_token  = COALESCE(EXCLUDED.access_token, user_tokens.access_token),
+               token_expiry  = COALESCE(EXCLUDED.token_expiry, user_tokens.token_expiry),
+               updated_at    = NOW()`,
+        [email, refreshToken, accessToken ?? null, tokenExpiry ?? null]
+      );
+    } else {
+      await pgPool.query(
+        `UPDATE user_tokens
+            SET access_token = COALESCE($2, access_token),
+                token_expiry = COALESCE($3, token_expiry),
+                updated_at   = NOW()
+          WHERE email = $1`,
+        [email, accessToken ?? null, tokenExpiry ?? null]
+      );
+    }
+  } else {
+    if (refreshToken) memRefreshTokenStore.set(email, refreshToken);
+  }
+}
+
+async function getStoredRefreshToken(email: string): Promise<string | null> {
+  if (pgPool) {
+    const r = await pgPool.query('SELECT refresh_token FROM user_tokens WHERE email=$1', [email]);
+    return r.rows[0]?.refresh_token ?? null;
+  }
+  return memRefreshTokenStore.get(email) ?? null;
+}
+
+initDb().catch(console.error);
 
 function signTicket(payload: any) {
   const data = Buffer.from(JSON.stringify({
@@ -171,7 +253,9 @@ app.get('/api/auth/url', (req, res) => {
       'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/drive.file',
     ],
-    prompt: 'consent'
+    // select_account: let user pick account without forcing consent every time.
+    // Google automatically shows consent only on the very first login.
+    prompt: 'select_account'
   });
   res.json({ url });
 });
@@ -184,47 +268,70 @@ app.post('/api/auth/native', async (req, res) => {
   try {
     const client = getOAuth2Client(req);
     const { tokens } = await client.getToken(code);
-    
-    // If no refresh token is provided, we cannot keep the user logged in beyond 1 hour.
-    // This happens if the user previously granted consent and we lost local storage.
-    // We must revoke the current access token so the next sign-in forces the Google consent screen.
-    if (!tokens.refresh_token) {
-      console.log('[Native Auth] No refresh token received. Revoking access token to force consent on next login.');
-      try {
-        client.setCredentials(tokens);
-        if (tokens.access_token) {
-          await client.revokeToken(tokens.access_token);
-        }
-      } catch (e) {
-        console.error('Failed to revoke token:', e);
-      }
-      return res.status(400).json({ 
-        error: 'missing_refresh_token',
-        message: 'Security sync required. Please click Sign in with Google again.'
-      });
+
+    // ── PostgreSQL Token Persistence ──────────────────────────────────────
+    // Google only sends refresh_token on the very first consent.
+    // On re-login (after signout / app reinstall), only access_token comes.
+    // We store refresh_token in Postgres so it survives server restarts.
+    if (tokens.refresh_token) {
+      // Get email first to upsert properly
+      client.setCredentials(tokens);
+      const oauth2 = google.oauth2({ version: 'v2', auth: client });
+      const userinfo = await oauth2.userinfo.get();
+      const email = userinfo.data.email!;
+
+      await upsertTokens(email, tokens.refresh_token, tokens.access_token, tokens.expiry_date as number);
+      console.log('[Auth] Upserted full tokens in DB for', email);
+
+      const authData = {
+        user: {
+          id: userinfo.data.id,
+          email,
+          name: userinfo.data.name,
+          picture: userinfo.data.picture,
+        },
+        tokens,
+      };
+      (req as any).session.user = authData.user;
+      (req as any).session.tokens = authData.tokens;
+      return res.json(authData);
     }
 
+    // No refresh_token — re-login after signout / reinstall
+    // We MUST get the email before we can look up the stored refresh_token.
     client.setCredentials(tokens);
-
-    // Get user info to establish session
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const userinfo = await oauth2.userinfo.get();
+    const email = userinfo.data.email!;
 
-    // Store tokens and user in session
-    const authData = {
-      user: {
-        id: userinfo.data.id,
-        email: userinfo.data.email,
-        name: userinfo.data.name,
-        picture: userinfo.data.picture,
-      },
-      tokens,
-    };
+    const storedRefresh = await getStoredRefreshToken(email);
+    if (storedRefresh) {
+      tokens.refresh_token = storedRefresh;
+      client.setCredentials(tokens);
+      await upsertTokens(email, null, tokens.access_token, tokens.expiry_date as number);
+      console.log('[Auth] Re-login: merged DB refresh_token for', email);
 
-    (req as any).session.user = authData.user;
-    (req as any).session.tokens = authData.tokens;
+      const authData = {
+        user: {
+          id: userinfo.data.id,
+          email,
+          name: userinfo.data.name,
+          picture: userinfo.data.picture,
+        },
+        tokens,
+      };
+      (req as any).session.user = authData.user;
+      (req as any).session.tokens = authData.tokens;
+      return res.json(authData);
+    }
 
-    res.json(authData);
+    // No stored token anywhere — user must do one-time fresh consent
+    console.warn('[Auth] No refresh_token for', email, '— requesting fresh consent');
+    return res.status(400).json({
+      error: 'missing_refresh_token',
+      message: 'Please sign in once more to grant Drive access. This only happens once.',
+    });
+    // ─────────────────────────────────────────────────────────────────────
   } catch (err) {
     console.error('Native Auth Error:', err);
     res.status(500).send('Authentication failed');
@@ -237,13 +344,33 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
   try {
     const { tokens } = await client.getToken(code as string);
     console.log('[Server] Received tokens from Google');
-    
-    // Still try to save to session as a fallback
+
+    // ── Postgres Token Persistence for Web logins ─────────────────────────
+    if (tokens.refresh_token) {
+      try {
+        client.setCredentials(tokens);
+        const oauth2 = google.oauth2({ version: 'v2', auth: client });
+        const userinfo = await oauth2.userinfo.get();
+        if (userinfo.data.email) {
+          await upsertTokens(
+            userinfo.data.email,
+            tokens.refresh_token,
+            tokens.access_token,
+            tokens.expiry_date as number
+          );
+          console.log('[Auth/Web] Upserted tokens in DB for', userinfo.data.email);
+        }
+      } catch (e) {
+        console.warn('[Auth/Web] Could not store tokens in DB:', e);
+      }
+    }
+    // ───────────────────────────────────────────────────────────
+
+    // Still save to session as fallback
     (req as any).session.tokens = tokens;
-    
+
     req.session.save((err) => {
       if (err) console.error('[Server] Session save error:', err);
-      
       console.log('[Server] Sending tokens back to app via postMessage');
       res.send(`
         <html>
@@ -251,8 +378,7 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
           <body>
             <script>
               if (window.opener) {
-                // Send tokens directly to bypass cookie issues in iframes
-                window.opener.postMessage({ 
+                window.opener.postMessage({
                   type: 'OAUTH_AUTH_SUCCESS',
                   tokens: ${JSON.stringify(tokens)}
                 }, '*');
