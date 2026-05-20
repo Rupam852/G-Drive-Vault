@@ -332,64 +332,35 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// Multer config for disk storage (prevents RAM crash on large files)
-// 10GB limit - Render disk space supports this
-const upload = multer({ 
-  storage: multer.diskStorage({
-    destination: os.tmpdir(),
-    filename: (req, file, cb) => {
-      // Use a clean filename to avoid parsing issues
-      cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
-    }
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 * 1024 } // 10GB
-});
-
-app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
+app.post('/api/drive/upload-init', async (req, res) => {
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
     const client = getOAuth2Client(req);
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
     
-    const { parentId, relativePath } = req.body;
+    const { parentId, relativePath, filename } = req.body;
     
     let targetParentId = parentId || 'root';
     if (relativePath) {
-      const parts = relativePath.split('/').filter(p => p && p !== req.file?.originalname);
+      const parts = relativePath.split('/').filter((p: string) => p && p !== filename);
       if (parts.length > 0) {
         targetParentId = await getOrCreateFolderPath(drive, parts, targetParentId);
       }
     }
 
-    const response = await drive.files.create({
-      requestBody: {
-        name: req.file.originalname,
-        parents: [targetParentId],
-      },
-      media: {
-        mimeType: req.file.mimetype,
-        body: fs.createReadStream(req.file.path),
-      },
-      fields: 'id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared',
-    });
+    // getAccessToken will automatically use the refresh token if the current access token is expired
+    const accessTokenResponse = await client.getAccessToken();
 
-    // Clean up temporary file from disk
-    fs.unlink(req.file.path, (err) => {
-      if (err) console.error('Failed to delete temp file:', err);
+    res.json({
+      targetFolderId: targetParentId,
+      accessToken: accessTokenResponse.token
     });
-
-    res.json(response.data);
   } catch (error) {
-    // Clean up temporary file from disk on error
-    if (req.file && req.file.path) {
-      fs.unlink(req.file.path, () => {});
-    }
-    console.error('Error uploading file:', error);
-    res.status(500).json({ error: 'Failed to upload file' });
+    console.error('Error in upload-init:', error);
+    res.status(500).json({ error: 'Failed to initialize upload' });
   }
 });
 

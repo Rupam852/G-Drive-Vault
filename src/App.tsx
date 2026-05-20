@@ -731,19 +731,51 @@ export default function App() {
     }]);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('parentId', uploadToFolder);
-      if (relativePath) formData.append('relativePath', relativePath);
-      
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${API_BASE_URL}/api/drive/upload`, true);
-      xhr.withCredentials = true;
-      if (tokens) {
-        xhr.setRequestHeader('x-goog-tokens', JSON.stringify(tokens));
-      }
-
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
+
+      // 1. Initialize upload: Get target folder and fresh token from backend
+      const initRes = await fetch(`${API_BASE_URL}/api/drive/upload-init`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {})
+        },
+        body: JSON.stringify({
+          parentId: uploadToFolder,
+          relativePath: relativePath,
+          filename: file.name
+        }),
+        credentials: 'include'
+      });
+
+      if (!initRes.ok) throw new Error('Failed to initialize upload');
+      const { targetFolderId, accessToken } = await initRes.json();
+
+      // 2. Start Resumable Upload Session with Google Drive API directly
+      const sessionRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': file.type || 'application/octet-stream',
+          'X-Upload-Content-Length': file.size.toString()
+        },
+        body: JSON.stringify({
+          name: file.name,
+          parents: [targetFolderId]
+        })
+      });
+
+      if (!sessionRes.ok) throw new Error('Failed to start Google Drive upload session');
+      const uploadUrl = sessionRes.headers.get('Location');
+      if (!uploadUrl) throw new Error('No upload URL returned from Google');
+
+      // 3. Upload the file data directly to Google via XMLHttpRequest (to track progress)
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      // No Authorization header needed for the PUT request to the resumable URL
+      // But we DO need to send the correct content type matching what we promised
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -753,7 +785,7 @@ export default function App() {
       };
 
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
+        if (xhr.status === 200 || xhr.status === 201 || xhr.status === 308) {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
           // Save to upload history in localStorage
           const folderLabel = uploadToFolder === 'root' ? 'My Drive' : (breadcrumb[breadcrumb.length - 1]?.name || 'Folder');
@@ -781,7 +813,7 @@ export default function App() {
         toast.error(`Error uploading ${file.name}`);
       };
 
-      xhr.send(formData);
+      xhr.send(file);
     } catch (err) {
       console.error('Error initiating upload:', err);
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
