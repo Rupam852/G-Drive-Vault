@@ -30,7 +30,10 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('drive_vault_active_tab');
+    return saved || 'home';
+  });
   const [user, setUser] = useState<any>(() => {
     const saved = localStorage.getItem('drive_vault_user');
     return saved ? JSON.parse(saved) : null;
@@ -47,12 +50,43 @@ export default function App() {
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
   const [trashedFiles, setTrashedFiles] = useState<FileItem[]>([]);
   const [hiddenFiles, setHiddenFiles] = useState<FileItem[]>([]);
-  const [fileFilter, setFileFilter] = useState<string>('all');
-  const fileFilterRef = useRef<string>('all');
+  
+  const initialFileFilter = (() => {
+    const saved = localStorage.getItem('drive_vault_file_filter');
+    return saved || 'all';
+  })();
+  const [fileFilter, setFileFilter] = useState<string>(initialFileFilter);
+  const fileFilterRef = useRef<string>(initialFileFilter);
   const [currentFilter, setCurrentFilter] = useState('all');
-  const [currentFolderId, setCurrentFolderId] = useState<string>('root');
-  const currentFolderIdRef = useRef<string>('root'); // always latest, no stale closure
-  const [breadcrumb, setBreadcrumb] = useState<{id: string, name: string}[]>([{id: 'root', name: 'My Drive'}]);
+  
+  const initialFolderId = (() => {
+    const saved = localStorage.getItem('drive_vault_current_folder_id');
+    return saved || 'root';
+  })();
+  const [currentFolderId, setCurrentFolderId] = useState<string>(initialFolderId);
+  const currentFolderIdRef = useRef<string>(initialFolderId); // always latest, no stale closure
+  const [breadcrumb, setBreadcrumb] = useState<{id: string, name: string}[]>(() => {
+    const saved = localStorage.getItem('drive_vault_breadcrumb');
+    return saved ? JSON.parse(saved) : [{id: 'root', name: 'My Drive'}];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('drive_vault_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('drive_vault_current_folder_id', currentFolderId);
+    currentFolderIdRef.current = currentFolderId;
+  }, [currentFolderId]);
+
+  useEffect(() => {
+    localStorage.setItem('drive_vault_breadcrumb', JSON.stringify(breadcrumb));
+  }, [breadcrumb]);
+
+  useEffect(() => {
+    localStorage.setItem('drive_vault_file_filter', fileFilter);
+    fileFilterRef.current = fileFilter;
+  }, [fileFilter]);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
   
@@ -223,7 +257,7 @@ export default function App() {
           setIsLoading(false);
         }
         
-        fetchFiles('root', activeTokens);
+        fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current);
         fetchRecentFiles(activeTokens);
         fetchStorage(activeTokens);
         fetchStorageBreakdown(activeTokens);
@@ -1318,6 +1352,16 @@ export default function App() {
     setFiles([]);
     localStorage.removeItem('drive_vault_user');
     localStorage.removeItem('drive_vault_tokens');
+    localStorage.removeItem('drive_vault_active_tab');
+    localStorage.removeItem('drive_vault_current_folder_id');
+    localStorage.removeItem('drive_vault_breadcrumb');
+    localStorage.removeItem('drive_vault_file_filter');
+    
+    // Reset React state variables back to defaults on logout
+    setActiveTab('home');
+    setCurrentFolderId('root');
+    setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+    setFileFilter('all');
     
     if (Capacitor.isNativePlatform()) {
       import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
