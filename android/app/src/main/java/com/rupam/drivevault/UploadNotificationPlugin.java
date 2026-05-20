@@ -91,7 +91,7 @@ public class UploadNotificationPlugin extends Plugin {
         filter.addAction(ACTION_CANCEL);
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getContext().registerReceiver(actionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            getContext().registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED);
         } else {
             getContext().registerReceiver(actionReceiver, filter);
         }
