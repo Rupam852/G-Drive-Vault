@@ -1227,7 +1227,11 @@ export default function App() {
         }
         toast.success(`Folder "${name}" created`);
         fetchStorage();
-        fetchStorageBreakdown(); // ADDED THIS LINE to update categories
+        fetchStorageBreakdown();
+        // Delay fetch slightly to allow Google Drive indexing to update the category counts reliably
+        setTimeout(() => {
+          fetchStorageBreakdown();
+        }, 1500);
       }
     } catch (err) {
       console.error('Error creating folder:', err);

@@ -518,6 +518,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
       document: { size: 0, count: 0 },
       apk: { size: 0, count: 0 },
       archive: { size: 0, count: 0 },
+      folder: { size: 0, count: 0 },
       other: { size: 0, count: 0 }
     };
 
@@ -533,7 +534,10 @@ app.get('/api/drive/breakdown', async (req, res) => {
 
       const files = response.data.files || [];
       files.forEach((f: any) => {
-        if (f.mimeType === 'application/vnd.google-apps.folder') return;
+        if (f.mimeType === 'application/vnd.google-apps.folder') {
+          breakdown.folder.count += 1;
+          return;
+        }
         
         let type = 'other';
         const mime = f.mimeType;

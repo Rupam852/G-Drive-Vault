@@ -167,7 +167,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         name: 'Folders', 
         size: '--', 
         color: 'bg-yellow-500', 
-        count: files.filter(f => f.type === 'folder').length, 
+        count: storageBreakdown ? storageBreakdown.folder.count : files.filter(f => f.type === 'folder').length, 
         type: 'folder' 
       },
       { 
