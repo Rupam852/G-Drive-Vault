@@ -10,6 +10,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import stream from 'stream';
 import archiver from 'archiver';
+import os from 'os';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -330,11 +332,17 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// Multer config for memory storage
-// 500MB limit — Render supports large uploads unlike Vercel (4.5MB cap)
+// Multer config for disk storage (prevents RAM crash on large files)
+// 10GB limit - Render disk space supports this
 const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 500 * 1024 * 1024 } // 500MB
+  storage: multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (req, file, cb) => {
+      // Use a clean filename to avoid parsing issues
+      cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 * 1024 } // 10GB
 });
 
 app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
@@ -357,9 +365,6 @@ app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(req.file.buffer);
-
     const response = await drive.files.create({
       requestBody: {
         name: req.file.originalname,
@@ -367,13 +372,22 @@ app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
       },
       media: {
         mimeType: req.file.mimetype,
-        body: bufferStream,
+        body: fs.createReadStream(req.file.path),
       },
       fields: 'id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared',
     });
 
+    // Clean up temporary file from disk
+    fs.unlink(req.file.path, (err) => {
+      if (err) console.error('Failed to delete temp file:', err);
+    });
+
     res.json(response.data);
   } catch (error) {
+    // Clean up temporary file from disk on error
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, () => {});
+    }
     console.error('Error uploading file:', error);
     res.status(500).json({ error: 'Failed to upload file' });
   }
