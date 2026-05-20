@@ -1304,7 +1304,15 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    const headers: any = {};
+    if (tokens) {
+      headers['x-goog-tokens'] = JSON.stringify(tokens);
+    }
+    await fetch(`${API_BASE_URL}/api/auth/logout`, { 
+      method: 'POST', 
+      headers,
+      credentials: 'include' 
+    });
     setUser(null);
     setTokens(null);
     setFiles([]);
