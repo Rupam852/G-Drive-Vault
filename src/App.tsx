@@ -66,6 +66,16 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
 
+  const mainScrollRef = useRef<HTMLElement>(null);
+
+  // Reset scroll position when switching tabs
+  useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   // Global Drag & Drop state
   const [isGlobalDragging, setIsGlobalDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -1268,7 +1278,10 @@ export default function App() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 relative flex flex-col min-h-screen md:max-h-screen overflow-y-auto w-full md:bg-white dark:md:bg-slate-900 md:shadow-2xl md:shadow-slate-200/50 dark:md:shadow-none">
+        <main 
+          ref={mainScrollRef}
+          className="flex-1 relative flex flex-col min-h-screen md:max-h-screen overflow-y-auto w-full md:bg-white dark:md:bg-slate-900 md:shadow-2xl md:shadow-slate-200/50 dark:md:shadow-none"
+        >
           {/* Mobile centered container look for mobile widths, full width for desktop widths */}
           <div className="w-full max-w-md mx-auto md:max-w-none md:mx-0 flex-1 flex flex-col">
             <AnimatePresence mode="wait">
