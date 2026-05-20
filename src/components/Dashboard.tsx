@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X } from 'lucide-react';
+import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File } from 'lucide-react';
 
 import { StorageStats, FileItem } from '@/src/types';
 import { motion } from 'motion/react';
@@ -236,6 +236,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
           }).then(() => {
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
             if (progressListener) progressListener.remove();
+            toast.success(`🎉 Download Completed: ${finalFilename}`);
           }).catch((e: any) => {
             console.error('Native download failed asynchronously:', e);
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
@@ -481,10 +482,10 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     video: Video,
     document: FileText,
     audio: Music,
-    apk: Package,
+    apk: Smartphone,
     folder: Folder,
-    archive: Archive,
-    other: MoreHorizontal,
+    archive: FileArchive,
+    other: FileQuestion,
   };
 
   return (
@@ -668,43 +669,90 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
       {/* ── DASHBOARD UPLOAD BOTTOM SHEET ── */}
       {showDashUploadSheet && (
-        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm" onClick={() => setShowDashUploadSheet(false)}>
+        <div
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowDashUploadSheet(false)}
+        >
           <motion.div
-            initial={{ y: "100%" }} animate={{ y: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 38 }}
             onClick={e => e.stopPropagation()}
-            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl p-6 pb-10 shadow-2xl"
+            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl"
           >
-            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5" />
-            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">Upload to My Drive</h3>
-            <p className="text-xs text-slate-400 mb-5">All files go to My Drive root</p>
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <button onClick={() => { const i = document.createElement("input"); i.type="file"; i.accept="image/*"; (i as any).capture="environment"; i.onchange=(e:any)=>handleFileChange(e); i.click(); }}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 active:scale-95 transition-all">
-                <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white"><Camera size={20} /></div>
-                <span className="text-xs font-bold text-red-700 dark:text-red-300">Camera</span>
-              </button>
-              <button onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 active:scale-95 transition-all">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white"><Plus size={20} /></div>
-                <span className="text-xs font-bold text-blue-700 dark:text-blue-300">Files</span>
-              </button>
-              <button onClick={() => dashFolderInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 active:scale-95 transition-all">
-                <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center text-white"><Folder size={20} /></div>
-                <span className="text-xs font-bold text-yellow-700 dark:text-yellow-300">Folder</span>
+            {/* Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-2" />
+
+            {/* Title */}
+            <div className="px-5 pb-2 pt-2 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-800 dark:text-white leading-none">Upload to My Drive</h3>
+              <button
+                onClick={() => setShowDashUploadSheet(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500"
+              >
+                <X size={16} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => { const i = document.createElement("input"); i.type="file"; i.accept="image/*,video/*"; i.multiple=true; i.onchange=(e:any)=>handleFileChange(e); i.click(); }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 active:scale-95 transition-all">
-                <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center text-white shrink-0"><Image size={18} /></div>
-                <div><p className="text-xs font-bold text-orange-700 dark:text-orange-300">Images & Videos</p><p className="text-[9px] text-slate-400">Photos, clips</p></div>
+
+            {/* Options grid — Google Drive style */}
+            <div className="px-4 pb-6 grid grid-cols-4 gap-2">
+              {/* New Folder */}
+              <button
+                onClick={() => { setShowDashUploadSheet(false); setIsNewFolderOpen(true); }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600 shadow-sm">
+                  <Folder size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">New<br/>Folder</span>
               </button>
-              <button onClick={() => { const i = document.createElement("input"); i.type="file"; i.accept=".zip,.rar,.7z,.tar,.gz"; i.multiple=true; i.onchange=(e:any)=>handleFileChange(e); i.click(); }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/20 active:scale-95 transition-all">
-                <div className="w-9 h-9 bg-purple-500 rounded-xl flex items-center justify-center text-white shrink-0"><Archive size={18} /></div>
-                <div><p className="text-xs font-bold text-purple-700 dark:text-purple-300">Archives</p><p className="text-[9px] text-slate-400">ZIP, RAR, 7Z</p></div>
+
+              {/* Upload Photos & Files */}
+              <button
+                onClick={() => { fileInputRef.current?.click(); setShowDashUploadSheet(false); }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">
+                  <Plus size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Files, Photos,<br/>Videos, Zip</span>
+              </button>
+
+              {/* Upload Folder */}
+              <button
+                onClick={() => {
+                  if (Capacitor.isNativePlatform()) {
+                    toast.info("ℹ️ Android limitation: Folder selection is not natively supported by WebViews. Please use 'Files, Photos, Videos, Zip' to select and upload multiple files!", { duration: 6000 });
+                  } else {
+                    dashFolderInputRef.current?.click();
+                  }
+                  setShowDashUploadSheet(false);
+                }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 shadow-sm">
+                  <Archive size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Upload<br/>Folder</span>
+              </button>
+
+              {/* Camera */}
+              <button
+                onClick={() => {
+                  const i = document.createElement('input');
+                  i.type = 'file'; i.accept = 'image/*';
+                  (i as any).capture = 'environment';
+                  i.onchange = (e: any) => handleFileChange(e);
+                  i.click();
+                  setShowDashUploadSheet(false);
+                }}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 shadow-sm">
+                  <Camera size={28} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Camera</span>
               </button>
             </div>
           </motion.div>
@@ -940,6 +988,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         onClose={() => setSelectedFile(null)}
         onDelete={onDelete || (() => {})}
         onShare={onShare}
+        onDownload={handleDownload}
       />
 
       {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}

@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { FileItem } from '../types';
-import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, Maximize2, Minimize2, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, Maximize2, Minimize2, X, ExternalLink, RefreshCw, Download, Smartphone, FileArchive, FileQuestion } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -16,6 +16,7 @@ interface FileDetailsProps {
   onClose: () => void;
   onDelete: (id: string) => void;
   onShare?: (id: string) => void;
+  onDownload: (file: FileItem) => void;
 }
 
 const iconMap = {
@@ -23,7 +24,9 @@ const iconMap = {
   video: Video,
   document: FileText,
   audio: Music,
-  other: File,
+  apk: Smartphone,
+  archive: FileArchive,
+  other: FileQuestion,
 };
 
 /** For images: instant direct URL. For video/audio: proxy ticket URL (range-request support). */
@@ -37,7 +40,7 @@ function getImageUrl(file: FileItem, tokens: any): string | null {
 }
 
 
-export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, onShare }: FileDetailsProps) {
+export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, onShare, onDownload }: FileDetailsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -372,17 +375,22 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                className="rounded-2xl h-14 border-slate-800 bg-transparent text-white hover:bg-slate-800 font-bold"
-                onClick={handleShare}
-              >
-                <Share2 size={20} className="mr-2" /> Share
-              </Button>
-              <Button
-                variant="outline"
                 className="rounded-2xl h-14 border-blue-500/20 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 font-bold"
                 onClick={() => setIsExpanded(true)}
               >
                 <Maximize2 size={20} className="mr-2" /> View
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-2xl h-14 border-slate-800 bg-transparent text-white hover:bg-slate-800 font-bold"
+                onClick={() => {
+                  if (file) {
+                    onDownload(file);
+                    onClose();
+                  }
+                }}
+              >
+                <Download size={20} className="mr-2" /> Download
               </Button>
             </div>
             <Button
@@ -439,11 +447,20 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </div>
 
             <div className="p-6 flex justify-center gap-4 z-10">
-              <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
+              <button 
+                onClick={() => {
+                  if (file) {
+                    onDownload(file);
+                    setIsExpanded(false);
+                    onClose();
+                  }
+                }} 
+                className="flex flex-col items-center gap-1 group"
+              >
                 <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-blue-500/20 transition-colors text-white group-hover:text-blue-400">
-                  <Share2 size={24} />
+                  <Download size={24} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 group-hover:text-white uppercase tracking-widest">Share</span>
+                <span className="text-[10px] font-bold text-slate-500 group-hover:text-white uppercase tracking-widest">Download</span>
               </button>
               <button onClick={handleOpenInDrive} className="flex flex-col items-center gap-1 group">
                 <div className="p-4 bg-white/5 rounded-2xl group-hover:bg-green-500/20 transition-colors text-white group-hover:text-green-400">

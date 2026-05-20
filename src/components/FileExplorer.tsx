@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,9 +43,10 @@ const iconMap = {
   video: Video,
   document: FileText,
   audio: Music,
+  apk: Smartphone,
   folder: Folder,
-  archive: Archive,
-  other: FileIcon,
+  archive: FileArchive,
+  other: FileQuestion,
 };
 
 export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo }: FileExplorerProps) {
@@ -271,6 +272,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           }).then(() => {
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
             if (progressListener) progressListener.remove();
+            toast.success(`🎉 Download Completed: ${finalFilename}`);
           }).catch((e: any) => {
             console.error('Native download failed asynchronously:', e);
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
@@ -575,15 +577,15 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           onPointerLeave={handlePressEnd}
           onPointerCancel={handlePressEnd}
           onContextMenu={(e) => e.preventDefault()}
-          className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all select-none ${
+          className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all duration-200 select-none border-2 ${
             selectedIds.has(file.id) 
-              ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
-              : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
+              ? 'bg-blue-50/70 dark:bg-blue-500/10 border-blue-500 shadow-md shadow-blue-500/10 scale-[0.98]' 
+              : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-transparent'
           }`}
         >
           {selectedIds.has(file.id) && (
-            <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
-              <Check size={14} />
+            <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white z-10 shadow-lg shadow-blue-500/30 scale-110">
+              <Check size={14} strokeWidth={3} />
             </div>
           )}
           {file.starred && (
@@ -620,15 +622,21 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
         onContextMenu={(e) => e.preventDefault()}
-        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-colors cursor-pointer group relative select-none ${
+        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-all duration-200 cursor-pointer group relative select-none border-l-4 ${
           selectedIds.has(file.id) 
-            ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
-            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+            ? 'bg-blue-50/70 dark:bg-blue-500/10 border-l-blue-500 pl-2 shadow-sm' 
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-transparent'
         }`}
       >
-        {selectedIds.has(file.id) && (
-          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
-            <Check size={12} />
+        {isSelectionMode && (
+          <div className="shrink-0 transition-all duration-200">
+            {selectedIds.has(file.id) ? (
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/30 scale-110">
+                <Check size={12} strokeWidth={3} />
+              </div>
+            ) : (
+              <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-700 bg-transparent" />
+            )}
           </div>
         )}
         <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">
@@ -756,6 +764,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onClose={() => setSelectedFile(null)}
         onDelete={onDelete}
         onShare={onShare}
+        onDownload={handleDownload}
       />
 
       {/* ── BULK SELECT ACTION BAR ── */}
@@ -836,7 +845,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             </div>
 
             {/* Options grid — Google Drive style */}
-            <div className="px-4 pb-4 grid grid-cols-4 gap-2">
+            <div className="px-4 pb-8 grid grid-cols-4 gap-2">
               {/* New Folder */}
               <button
                 onClick={() => { setShowUploadSheet(false); setIsNewFolderOpen(true); }}
@@ -848,7 +857,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">New<br/>Folder</span>
               </button>
 
-              {/* Upload Files */}
+              {/* Upload Photos & Files */}
               <button
                 onClick={() => { fileInputRef.current?.click(); setShowUploadSheet(false); }}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
@@ -856,12 +865,19 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">
                   <Plus size={28} />
                 </div>
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Upload<br/>Files</span>
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Files, Photos,<br/>Videos, Zip</span>
               </button>
 
               {/* Upload Folder */}
               <button
-                onClick={() => { folderInputRef.current?.click(); setShowUploadSheet(false); }}
+                onClick={() => {
+                  if (Capacitor.isNativePlatform()) {
+                    toast.info("ℹ️ Android limitation: Folder selection is not natively supported by WebViews. Please use 'Photos & Files' to select and upload multiple files!", { duration: 6000 });
+                  } else {
+                    folderInputRef.current?.click();
+                  }
+                  setShowUploadSheet(false);
+                }}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
               >
                 <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 shadow-sm">
@@ -887,12 +903,6 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 </div>
                 <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Camera</span>
               </button>
-            </div>
-
-            {/* Divider + storage info */}
-            <div className="border-t border-slate-100 dark:border-slate-800 mx-4" />
-            <div className="px-6 py-4 pb-8">
-              <p className="text-xs text-slate-400 text-center">Files will be uploaded to the current folder</p>
             </div>
           </motion.div>
         </div>
