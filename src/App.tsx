@@ -1226,6 +1226,11 @@ export default function App() {
               setIsDownloadEnabled(val);
               localStorage.setItem('drive_vault_download_permission', val.toString());
             }}
+            onCancelTransfer={(id) => {
+              if (activeUploadsRef.current[id]) {
+                activeUploadsRef.current[id].abort();
+              }
+            }}
           />
         );
       default:

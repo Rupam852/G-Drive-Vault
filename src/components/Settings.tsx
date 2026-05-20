@@ -28,9 +28,10 @@ interface SettingsProps {
   onClearTransfers: () => void;
   isDownloadEnabled: boolean;
   setIsDownloadEnabled: (val: boolean) => void;
+  onCancelTransfer?: (id: string) => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, onCancelTransfer }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -373,6 +374,17 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                             <span>{t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`}</span>
                             <span>{t.progress}%</span>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {onCancelTransfer && (
+                            <button
+                              onClick={() => onCancelTransfer(t.id)}
+                              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                              title="Cancel Upload"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
