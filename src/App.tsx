@@ -47,6 +47,7 @@ export default function App() {
   const [trashedFiles, setTrashedFiles] = useState<FileItem[]>([]);
   const [hiddenFiles, setHiddenFiles] = useState<FileItem[]>([]);
   const [fileFilter, setFileFilter] = useState<string>('all');
+  const fileFilterRef = useRef<string>('all');
   const [currentFilter, setCurrentFilter] = useState('all');
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
   const currentFolderIdRef = useRef<string>('root'); // always latest, no stale closure
@@ -391,6 +392,7 @@ export default function App() {
     setCurrentFolderId(folderId);
     currentFolderIdRef.current = folderId; // keep ref in sync
     setFileFilter('all');
+    fileFilterRef.current = 'all';
     setBreadcrumb(prev => {
       const index = prev.findIndex(b => b.id === folderId);
       let newBreadcrumb = prev;
@@ -797,7 +799,7 @@ export default function App() {
           } catch {}
           toast.success(`Uploaded ${file.name} to ${folderLabel}`);
           if (uploadToFolder === currentFolderIdRef.current) {
-            fetchFiles(uploadToFolder);
+            fetchFiles(uploadToFolder, undefined, fileFilterRef.current);
           }
           fetchStorage();
           fetchStorageBreakdown(); 
@@ -1126,6 +1128,7 @@ export default function App() {
             filterType={fileFilter}
             onFilterChange={(newType) => {
               setFileFilter(newType);
+              fileFilterRef.current = newType;
               if (currentFolderId === 'root') {
                 fetchFiles('root', undefined, newType === 'all' ? undefined : newType);
               }
