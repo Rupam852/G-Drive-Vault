@@ -182,6 +182,26 @@ app.post('/api/auth/native', async (req, res) => {
   try {
     const client = getOAuth2Client(req);
     const { tokens } = await client.getToken(code);
+    
+    // If no refresh token is provided, we cannot keep the user logged in beyond 1 hour.
+    // This happens if the user previously granted consent and we lost local storage.
+    // We must revoke the current access token so the next sign-in forces the Google consent screen.
+    if (!tokens.refresh_token) {
+      console.log('[Native Auth] No refresh token received. Revoking access token to force consent on next login.');
+      try {
+        client.setCredentials(tokens);
+        if (tokens.access_token) {
+          await client.revokeToken(tokens.access_token);
+        }
+      } catch (e) {
+        console.error('Failed to revoke token:', e);
+      }
+      return res.status(400).json({ 
+        error: 'missing_refresh_token',
+        message: 'Security sync required. Please click Sign in with Google again.'
+      });
+    }
+
     client.setCredentials(tokens);
 
     // Get user info to establish session

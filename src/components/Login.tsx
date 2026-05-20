@@ -35,7 +35,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           body: JSON.stringify({ code: result.serverAuthCode }),
         });
 
-        if (!response.ok) throw new Error('Token exchange failed on server');
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          if (errData.error === 'missing_refresh_token') {
+            await GoogleSignIn.signOut().catch(() => {});
+            throw new Error(errData.message);
+          }
+          throw new Error('Token exchange failed on server');
+        }
+        
         const authData = await response.json();
         localStorage.setItem('drive_vault_tokens', JSON.stringify(authData.tokens));
         onLoginSuccess(authData.tokens);

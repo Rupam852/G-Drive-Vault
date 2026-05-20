@@ -196,6 +196,12 @@ export default function App() {
         localStorage.removeItem('drive_vault_user');
         localStorage.removeItem('drive_vault_tokens');
         
+        if (Capacitor.isNativePlatform()) {
+          import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
+            GoogleSignIn.signOut().catch(console.error);
+          });
+        }
+        
         if (wakeStatus === 'waking' || isRetry) {
           setWakeStatus('ready');
           setTimeout(() => {
@@ -987,6 +993,13 @@ export default function App() {
     setFiles([]);
     localStorage.removeItem('drive_vault_user');
     localStorage.removeItem('drive_vault_tokens');
+    
+    if (Capacitor.isNativePlatform()) {
+      import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
+        GoogleSignIn.signOut().catch(console.error);
+      });
+    }
+    
     toast.info('Logged out');
   };
 
