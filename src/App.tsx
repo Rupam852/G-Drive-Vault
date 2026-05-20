@@ -437,9 +437,9 @@ export default function App() {
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.folderId) {
         navigateToFolder(event.state.folderId, event.state.folderName, true);
-      } else {
-        navigateToFolder('root', 'My Drive', true);
       }
+      // Ignore null states. If the file picker or OS triggers a spurious popstate,
+      // we don't want to forcefully throw the user out to 'root'.
     };
 
     window.addEventListener('message', handleMessage);
