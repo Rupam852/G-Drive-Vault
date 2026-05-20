@@ -59,6 +59,7 @@ export default function App() {
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null);
   
   const [transfers, setTransfers] = useState<TransferState[]>([]);
+  const activeUploadsRef = useRef<{ [key: string]: XMLHttpRequest }>({});
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
   const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
     const saved = localStorage.getItem('drive_vault_download_permission');
@@ -774,6 +775,8 @@ export default function App() {
 
       // 3. Upload the file data directly to Google via XMLHttpRequest (to track progress)
       const xhr = new XMLHttpRequest();
+      activeUploadsRef.current[transferId] = xhr;
+
       xhr.open('PUT', uploadUrl, true);
       // No Authorization header needed for the PUT request to the resumable URL
       // But we DO need to send the correct content type matching what we promised
@@ -787,6 +790,7 @@ export default function App() {
       };
 
       xhr.onload = () => {
+        delete activeUploadsRef.current[transferId];
         if (xhr.status === 200 || xhr.status === 201 || xhr.status === 308) {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
           // Save to upload history in localStorage
@@ -811,8 +815,15 @@ export default function App() {
       };
 
       xhr.onerror = () => {
+        delete activeUploadsRef.current[transferId];
         setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
         toast.error(`Error uploading ${file.name}`);
+      };
+
+      xhr.onabort = () => {
+        delete activeUploadsRef.current[transferId];
+        setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error', name: `${t.name} (Cancelled)` } : t));
+        toast.error(`Cancelled upload: ${file.name}`);
       };
 
       xhr.send(file);
@@ -1266,6 +1277,11 @@ export default function App() {
           transfers={transfers} 
           onDismiss={(id) => setTransfers(prev => prev.filter(t => t.id !== id))}
           onCloseAll={() => setTransfers([])} 
+          onCancel={(id) => {
+            if (activeUploadsRef.current[id]) {
+              activeUploadsRef.current[id].abort();
+            }
+          }}
         />
         
         <MoveDialog 

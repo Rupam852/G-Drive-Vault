@@ -14,9 +14,10 @@ interface TransferManagerProps {
   transfers: TransferState[];
   onDismiss: (id: string) => void;
   onCloseAll: () => void;
+  onCancel?: (id: string) => void;
 }
 
-export default function TransferManager({ transfers, onDismiss, onCloseAll }: TransferManagerProps) {
+export default function TransferManager({ transfers, onDismiss, onCloseAll, onCancel }: TransferManagerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const activeTransfers = transfers.filter(t => t.status === 'uploading' || t.status === 'pending');
   const completedTransfers = transfers.filter(t => t.status === 'completed');
@@ -79,6 +80,15 @@ export default function TransferManager({ transfers, onDismiss, onCloseAll }: Tr
                       <button 
                         onClick={() => onDismiss(transfer.id)}
                         className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                    {transfer.status === 'uploading' && onCancel && (
+                      <button 
+                        onClick={() => onCancel(transfer.id)}
+                        className="text-slate-400 hover:text-red-500 transition"
+                        title="Cancel Upload"
                       >
                         <X size={14} />
                       </button>
