@@ -325,11 +325,19 @@ app.post('/api/auth/native', async (req, res) => {
       return res.json(authData);
     }
 
-    // No stored token anywhere — user must do one-time fresh consent
-    console.warn('[Auth] No refresh_token for', email, '— requesting fresh consent');
+    // No stored token anywhere — we must revoke the current access token to force Google's OAuth to show the consent prompt next time.
+    console.log('[Auth] No refresh token in payload or DB. Revoking current access token to force consent on next login.');
+    try {
+      if (tokens.access_token) {
+        await client.revokeToken(tokens.access_token);
+      }
+    } catch (revokeErr) {
+      console.error('[Auth] Failed to revoke token:', revokeErr);
+    }
+
     return res.status(400).json({
       error: 'missing_refresh_token',
-      message: 'Please sign in once more to grant Drive access. This only happens once.',
+      message: 'Please click "Sign in with Google" once more to grant Drive access. This is a one-time setup.',
     });
     // ─────────────────────────────────────────────────────────────────────
   } catch (err) {
