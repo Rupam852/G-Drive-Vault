@@ -569,6 +569,25 @@ app.delete('/api/drive/files/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/drive/files/:id/permanent', async (req, res) => {
+  const tokens = getTokensFromRequest(req);
+  if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const client = getOAuth2Client(req);
+    client.setCredentials(tokens);
+    const drive = google.drive({ version: 'v3', auth: client });
+    
+    // Actually delete the file permanently from Google Drive
+    await drive.files.delete({ 
+      fileId: req.params.id 
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error permanently deleting file:', error);
+    res.status(500).json({ error: 'Failed to permanently delete file' });
+  }
+});
+
 app.get('/api/drive/trash', async (req, res) => {
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
