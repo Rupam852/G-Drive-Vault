@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ interface FileExplorerProps {
   onHide: (id: string) => void;
   isDownloadEnabled?: boolean;
   activeSubTab: string;
+  onShowInfo: (file: FileItem) => void;
 }
 
 const iconMap = {
@@ -47,7 +48,7 @@ const iconMap = {
   other: FileIcon,
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
@@ -87,7 +88,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
-  }, [selectedFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
+  }, [selectedFile, actionMenuFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
 
   // Set webkitdirectory via setAttribute — React JSX does NOT pass unknown attrs to DOM
   // This makes the folder picker show a FOLDER chooser (not individual files) on Android
@@ -247,6 +248,43 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       const { ticketId } = await ticketRes.json();
 
       const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
+
+      const isNative = Capacitor.isNativePlatform();
+      const isAndroid = isNative && Capacitor.getPlatform() === 'android';
+
+      if (isAndroid) {
+        try {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          
+          let progressListener: any;
+          UploadNotification.addListener('onDownloadProgress', (data: any) => {
+            if (data.id === dlId) {
+              setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: data.progress } : d));
+            }
+          }).then(l => progressListener = l);
+
+          UploadNotification.downloadFileNatively({
+            url: downloadUrl,
+            filename: finalFilename,
+            id: dlId,
+            size: file.sizeBytes || 0
+          }).then(() => {
+            setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
+            if (progressListener) progressListener.remove();
+          }).catch((e: any) => {
+            console.error('Native download failed asynchronously:', e);
+            setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
+            if (progressListener) progressListener.remove();
+            toast.error(`❌ Download Failed: ${e.message || e}`);
+          });
+
+          toast.success(`⬇️ Download Started: ${finalFilename}\nCheck notifications for progress!`);
+          return;
+        } catch (e: any) {
+          console.warn('Native download failed, falling back to chunked downloader...', e);
+        }
+      }
+
       const res = await fetch(downloadUrl, { signal: controller.signal });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -254,46 +292,183 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       }
 
       if (!res.body) throw new Error('Download stream is unavailable');
+      
+      // Default native Android to Directory.External (App's private storage on SD card, 100% permission-free and EACCES-free)
+      let directoryUsed = Directory.ExternalStorage;
+      let finalPath = 'Download/' + finalFilename;
+      let isFallbackUsed = false;
 
-      // Request permissions on native platform
-      if (Capacitor.isNativePlatform()) {
-        const status = await Filesystem.requestPermissions();
-        if (status.publicStorage !== 'granted') {
-          throw new Error('Permission to write to Downloads was denied.');
+      if (isNative) {
+        try {
+          await Filesystem.requestPermissions();
+        } catch (e) {
+          console.warn('requestPermissions ignored/failed:', e);
+        }
+
+        // Pre-flight check: test if Directory.ExternalStorage/Download is writable
+        try {
+          const testPath = 'Download/.vault_test_temp';
+          await Filesystem.writeFile({
+            path: testPath,
+            data: 'a',
+            directory: Directory.ExternalStorage,
+            recursive: true
+          });
+          await Filesystem.deleteFile({
+            path: testPath,
+            directory: Directory.ExternalStorage
+          });
+        } catch (e) {
+          console.warn('Direct Download directory restricted. Switching to app-private External directory:', e);
+          directoryUsed = Directory.External;
+          finalPath = finalFilename; // write to root of Directory.External
+          isFallbackUsed = true;
+        }
+
+        // Delete old file if exists to prevent corrupt appending
+        try {
+          await Filesystem.deleteFile({
+            path: finalPath,
+            directory: directoryUsed
+          });
+        } catch (e) {
+          // File did not exist, which is fine
         }
       }
 
       // Stream with progress tracking
       const contentLength = res.headers.get('Content-Length');
-      const total = contentLength ? parseInt(contentLength) : 0;
+      let total = contentLength ? parseInt(contentLength) : 0;
+      if (total <= 0 && file.sizeBytes > 0) {
+        total = file.sizeBytes;
+      }
+      
       const reader = res.body!.getReader();
-      const chunks: Uint8Array[] = [];
+      
       let received = 0;
+      let accumulatedChunks: Uint8Array[] = [];
+      let accumulatedSize = 0;
+      let isFirstWrite = true;
+      const CHUNK_SIZE_THRESHOLD = 8 * 1024 * 1024; // 8MB optimal threshold to prevent OOM and bridge latency
+
+      const startTime = Date.now();
+      let lastNotificationTime = 0;
+
+      const formatBytes = (bytes: number, decimals = 1) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+      };
+
+      const writeAccumulatedToNative = async () => {
+        if (accumulatedChunks.length === 0) return;
+        const blob = new Blob(accumulatedChunks);
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onloadend = () => {
+            const resStr = fr.result as string;
+            resolve(resStr.split(',')[1]);
+          };
+          fr.onerror = reject;
+          fr.readAsDataURL(blob);
+        });
+
+        if (isFirstWrite) {
+          await Filesystem.writeFile({
+            path: finalPath,
+            data: base64,
+            directory: directoryUsed,
+            recursive: true
+          });
+          isFirstWrite = false;
+        } else {
+          await Filesystem.appendFile({
+            path: finalPath,
+            data: base64,
+            directory: directoryUsed
+          });
+        }
+        accumulatedChunks = [];
+        accumulatedSize = 0;
+      };
+
+      const webChunks: Uint8Array[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         if (value) {
-          chunks.push(value);
           received += value.length;
           const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
           setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: pct } : d));
+
+          if (isNative) {
+            // Update custom notification with app logo, progress speed, growing size/total size, and bacha hua time
+            const now = Date.now();
+            if (now - lastNotificationTime > 800) {
+              const elapsedSeconds = (now - startTime) / 1000;
+              const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
+              const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
+              const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
+              
+              const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
+              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
+              const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
+              const speedDetails = total > 0 ? `${progressSizeText} • ${speedText} • ${etaText}` : `${progressSizeText} • ${speedText}`;
+
+              try {
+                const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+                await UploadNotification.showProgressNotification({
+                  id: dlId,
+                  title: `Downloading ${finalFilename}`,
+                  progress: pct,
+                  speedText: speedDetails,
+                  isPaused: false
+                });
+              } catch (e) {
+                console.warn('Failed to update native download notification:', e);
+              }
+              lastNotificationTime = now;
+            }
+
+            accumulatedChunks.push(value);
+            accumulatedSize += value.length;
+            if (accumulatedSize >= CHUNK_SIZE_THRESHOLD) {
+              await writeAccumulatedToNative();
+            }
+          } else {
+            webChunks.push(value);
+          }
         }
       }
-      setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
 
-      const blob = new Blob(chunks as any);
+      if (isNative) {
+        await writeAccumulatedToNative();
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        
+        // Custom success notification
+        try {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          await UploadNotification.showSuccessNotification({
+            id: dlId,
+            notificationTitle: 'Download Successful',
+            title: `Downloaded ${finalFilename}`
+          });
+        } catch (e) {
+          console.warn('Failed to show native download success notification:', e);
+        }
 
-      if (Capacitor.isNativePlatform()) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onloadend = () => resolve((fr.result as string).split(',')[1]);
-          fr.onerror = reject;
-          fr.readAsDataURL(blob);
-        });
-        await Filesystem.writeFile({ path: 'Download/' + finalFilename, data: base64, directory: Directory.ExternalStorage, recursive: true });
-        toast.success(`✅ Saved to Downloads: ${finalFilename}`);
+        if (isFallbackUsed) {
+          toast.success(`✅ Saved to App Private folder:\nAndroid/data/com.rupam.drivevault/files/${finalFilename}`, { duration: 6000 });
+        } else {
+          toast.success(`✅ Saved to Downloads: ${finalFilename}`);
+        }
       } else {
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        const blob = new Blob(webChunks);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl; a.download = finalFilename; a.click();
@@ -306,6 +481,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       } else {
         console.error('Download error:', err);
         toast.error(`Error: ${err.message || 'Failed to download file'}`);
+      }
+      
+      // Cancel notification if failed/cancelled
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          await UploadNotification.cancelNotification({ id: dlId });
+        } catch (e) {}
       }
     } finally {
       setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
@@ -372,6 +555,103 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     setSelectedIds(new Set());
     setIsSelectionMode(false);
     setIsMoveDialogOpen(false);
+  };
+
+
+
+  const renderItem = (file: FileItem, idx: number) => {
+    const Icon = iconMap[file.type] || FileIcon;
+    
+    if (view === 'grid') {
+      return (
+        <motion.div
+          key={file.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: Math.min(idx, 15) * 0.05 }}
+          onClick={() => handleItemClick(file)}
+          onPointerDown={() => handlePressStart(file)}
+          onPointerUp={handlePressEnd}
+          onPointerLeave={handlePressEnd}
+          onPointerCancel={handlePressEnd}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all select-none ${
+            selectedIds.has(file.id) 
+              ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
+              : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
+          }`}
+        >
+          {selectedIds.has(file.id) && (
+            <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
+              <Check size={14} />
+            </div>
+          )}
+          {file.starred && (
+            <div className="absolute top-2 left-2 text-yellow-500 z-10">
+              <Star size={14} fill="currentColor" />
+            </div>
+          )}
+          <div className="aspect-square bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors overflow-hidden">
+            {file.thumbnail && file.type !== 'folder' ? (
+              <img src={file.thumbnail} className="w-full h-full object-cover" alt={file.name} referrerPolicy="no-referrer" />
+            ) : (
+              <Icon size={file.type === 'folder' ? 48 : 32} className={file.type === 'folder' ? 'text-blue-500' : ''} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{file.name}</h4>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">{file.type === 'folder' ? 'Folder' : file.size}</p>
+          </div>
+        </motion.div>
+      );
+    }
+
+    return (
+      <motion.div
+        key={file.id}
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: Math.min(idx, 15) * 0.03 }}
+        onClick={() => handleItemClick(file)}
+        onPointerDown={() => handlePressStart(file)}
+        onPointerUp={handlePressEnd}
+        onPointerLeave={handlePressEnd}
+        onPointerCancel={handlePressEnd}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-colors cursor-pointer group relative select-none ${
+          selectedIds.has(file.id) 
+            ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+        }`}
+      >
+        {selectedIds.has(file.id) && (
+          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
+            <Check size={12} />
+          </div>
+        )}
+        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">
+          <Icon size={20} className={file.type === 'folder' ? 'text-blue-500' : ''} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">{file.name}</h4>
+            {file.starred && <Star size={14} className="text-yellow-500 fill-yellow-500 shrink-0" />}
+          </div>
+        </div>
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setActionMenuFile(file);
+          }}
+          className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-2 -mr-2"
+        >
+          <MoreVertical size={18} />
+        </button>
+      </motion.div>
+    );
   };
 
   return (
@@ -463,102 +743,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         </TabsList>
       </Tabs>
 
-      <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'space-y-1'}>
-        {filteredFiles.map((file, idx) => {
-          const Icon = iconMap[file.type] || FileIcon;
-          
-          if (view === 'grid') {
-            return (
-              <motion.div
-                key={file.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(idx, 15) * 0.05 }}
-                onClick={() => handleItemClick(file)}
-                onPointerDown={() => handlePressStart(file)}
-                onPointerUp={handlePressEnd}
-                onPointerLeave={handlePressEnd}
-                onPointerCancel={handlePressEnd}
-                onContextMenu={(e) => e.preventDefault()}
-                className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all select-none ${
-                  selectedIds.has(file.id) 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
-                    : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                {selectedIds.has(file.id) && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
-                    <Check size={14} />
-                  </div>
-                )}
-                {file.starred && (
-                  <div className="absolute top-2 left-2 text-yellow-500 z-10">
-                    <Star size={14} fill="currentColor" />
-                  </div>
-                )}
-                <div className="aspect-square bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors overflow-hidden">
-                  {file.thumbnail && file.type !== 'folder' ? (
-                    <img src={file.thumbnail} className="w-full h-full object-cover" alt={file.name} referrerPolicy="no-referrer" />
-                  ) : (
-                    <Icon size={file.type === 'folder' ? 48 : 32} className={file.type === 'folder' ? 'text-blue-500' : ''} />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{file.name}</h4>
-                  </div>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500">{file.type === 'folder' ? 'Folder' : file.size}</p>
-                </div>
-              </motion.div>
-            );
-          }
 
-          return (
-            <motion.div
-              key={file.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(idx, 15) * 0.03 }}
-              onClick={() => handleItemClick(file)}
-              onPointerDown={() => handlePressStart(file)}
-              onPointerUp={handlePressEnd}
-              onPointerLeave={handlePressEnd}
-              onPointerCancel={handlePressEnd}
-              onContextMenu={(e) => e.preventDefault()}
-              className={`flex items-center gap-4 p-3 rounded-2xl transition-colors cursor-pointer group relative select-none ${
-                selectedIds.has(file.id) 
-                  ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              {selectedIds.has(file.id) && (
-                <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white z-10">
-                  <Check size={12} />
-                </div>
-              )}
-              <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">
-                <Icon size={20} className={file.type === 'folder' ? 'text-blue-500' : ''} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">{file.name}</h4>
-                  {file.starred && <Star size={14} className="text-yellow-500 fill-yellow-500 shrink-0" />}
-                </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{file.type === 'folder' ? 'Folder' : file.size} • {file.date}</p>
-              </div>
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setActionMenuFile(file);
-                }}
-                className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-2 -mr-2"
-              >
-                <MoreVertical size={18} />
-              </button>
-            </motion.div>
-          );
-        })}
+
+      <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'space-y-1'}>
+        {filteredFiles.map((file, idx) => renderItem(file, idx))}
       </div>
 
       <FileDetails 
@@ -876,7 +1064,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                   )}
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-blue-400 shrink-0 w-8 text-right">
+              <span className="text-[11px] font-bold text-blue-400 shrink-0 min-w-[42px] text-right">
                 {dl.progress >= 0 ? `${dl.progress}%` : ''}
               </span>
               <button
@@ -992,6 +1180,19 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
             {/* List Actions */}
             <div className="space-y-1">
+              <button
+                onClick={() => {
+                  if (actionMenuFile) {
+                    onShowInfo(actionMenuFile);
+                  }
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors text-left"
+              >
+                <div className="text-amber-500"><Info size={22} /></div>
+                <span className="flex-1 font-semibold text-slate-700 dark:text-slate-200">Information</span>
+              </button>
+
               <button
                 onClick={() => {
                   if (actionMenuFile) {

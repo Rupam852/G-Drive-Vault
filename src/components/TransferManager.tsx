@@ -107,7 +107,7 @@ export default function TransferManager({ transfers, onDismiss, onCloseAll, onCa
                   )}
 
                   {/* Middle: Name and status text */}
-                  <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex-1 min-w-0 flex flex-col pr-3">
                     <span className="text-sm font-medium truncate" title={transfer.name}>
                       {transfer.name}
                     </span>

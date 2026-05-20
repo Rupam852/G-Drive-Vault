@@ -18,6 +18,7 @@ import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import MoveDialog from './components/MoveDialog';
 import ManageAccessDialog from './components/ManageAccessDialog';
+import InfoDialog from './components/InfoDialog';
 import { formatBytes } from './utils';
 import TransferManager, { TransferState } from './components/TransferManager';
 import Login from './components/Login';
@@ -44,7 +45,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [wakeStatus, setWakeStatus] = useState<WakeStatus | null>('waking');
+  const [wakeStatus, setWakeStatus] = useState<WakeStatus | null>(null);
   const retryCount = useRef(0);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
@@ -92,10 +93,19 @@ export default function App() {
   
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null);
+
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [fileForInfo, setFileForInfo] = useState<FileItem | null>(null);
+
+  const handleShowInfo = (file: FileItem) => {
+    setFileForInfo(file);
+    setIsInfoOpen(true);
+  };
   
   const [transfers, setTransfers] = useState<TransferState[]>([]);
   const activeUploadsRef = useRef<{ [key: string]: XMLHttpRequest }>({});
   const uploadSessionsRef = useRef<Record<string, { uploadUrl: string, file: File, currentFolderId: string }>>({});
+  const uploadSpeedsRef = useRef<Record<string, number>>({});
   const [defaultOpenTransfers, setDefaultOpenTransfers] = useState(false);
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
   const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
@@ -202,7 +212,7 @@ export default function App() {
     checkBiometric();
   }, [checkBiometric]);
 
-  const fetchUser = async (currentTokens?: any, isRetry = false) => {
+  const fetchUser = async (currentTokens?: any) => {
     const activeTokens = currentTokens || tokens;
     // Persist tokens to state immediately so polling/effects don't lose them
     if (currentTokens) {
@@ -217,16 +227,6 @@ export default function App() {
         headers['x-goog-tokens'] = JSON.stringify(activeTokens);
       }
       
-      // If we've retried multiple times, we know we are waking up the server
-      if (isRetry && retryCount.current > 1 && !wakeStatus) {
-        setWakeStatus('waking');
-      }
-
-      // Proactively show waking status if Render server takes > 1.5s to respond
-      const pendingTimer = setTimeout(() => {
-        setWakeStatus(prev => prev ? prev : 'waking');
-      }, 1500);
-
       const controller = new AbortController();
       const fetchTimeout = setTimeout(() => controller.abort(), 12000);
 
@@ -237,25 +237,13 @@ export default function App() {
       });
       clearTimeout(fetchTimeout);
       
-      clearTimeout(pendingTimer);
-      
       console.log('[App] Fetch user response status:', res.status);
       if (res.ok) {
         const data = await res.json();
         console.log('[App] User data received:', data);
         setUser(data);
         localStorage.setItem('drive_vault_user', JSON.stringify(data));
-        retryCount.current = 0;
-        
-        if (wakeStatus === 'waking' || isRetry) {
-          setWakeStatus('ready');
-          setTimeout(() => {
-            setWakeStatus(null);
-            setIsLoading(false);
-          }, 800);
-        } else {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
         
         fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current);
         fetchRecentFiles(activeTokens);
@@ -266,7 +254,6 @@ export default function App() {
       } else if (res.status === 401) {
         // Explicitly unauthorized - server is awake, but tokens missing/invalid
         console.log('[App] User not authenticated (401)');
-        retryCount.current = 0;
         setUser(null);
         localStorage.removeItem('drive_vault_user');
         localStorage.removeItem('drive_vault_tokens');
@@ -276,40 +263,14 @@ export default function App() {
             GoogleSignIn.signOut().catch(console.error);
           });
         }
-        
-        if (wakeStatus === 'waking' || isRetry) {
-          setWakeStatus('ready');
-          setTimeout(() => {
-            setWakeStatus(null);
-            setIsLoading(false);
-          }, 800);
-        } else {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       } else {
-        // 5xx error - server waking up or crashing
         throw new Error(`Server error: ${res.status}`);
       }
     } catch (err: any) {
-      console.error('[App] Fetch user error (Render might be sleeping):', err);
-      
-      if (retryCount.current < 20) {
-        // Show wakeup UI immediately on first failure
-        if (retryCount.current === 0) {
-          setWakeStatus('waking');
-          setIsLoading(true);
-        }
-        retryCount.current += 1;
-        // Retry every 3 seconds
-        setTimeout(() => fetchUser(activeTokens, true), 3000);
-      } else {
-        setWakeStatus('error');
-        setTimeout(() => {
-          setWakeStatus(null);
-          toast.error(`Network error: Check your internet connection`);
-          setIsLoading(false);
-        }, 1500);
-      }
+      console.error('[App] Fetch user error:', err);
+      setUser(null);
+      setIsLoading(false);
     }
   };
 
@@ -428,7 +389,10 @@ export default function App() {
         webViewLink: f.webViewLink,
         starred: f.starred,
         shared: f.shared,
-        isHidden: f.properties?.isHidden === 'true'
+        isHidden: f.properties?.isHidden === 'true',
+        createdTime: f.createdTime,
+        modifiedTime: f.modifiedTime,
+        parents: f.parents
       };
     });
   };
@@ -550,6 +514,7 @@ export default function App() {
         // --- Fallback Global Priorities ---
         
         // 1. Close global dialogs managed in App.tsx
+        if (isInfoOpen) { setIsInfoOpen(false); return; }
         if (isMoveOpen) { setIsMoveOpen(false); return; }
         if (isShareOpen) { setIsShareOpen(false); return; }
 
@@ -576,7 +541,7 @@ export default function App() {
     return () => {
       listenerPromise.then(l => l.remove());
     };
-  }, [breadcrumb, activeTab, isMoveOpen, isShareOpen]);
+  }, [breadcrumb, activeTab, isMoveOpen, isShareOpen, isInfoOpen]);
 
   // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
   // Polls every 5 minutes (not 30s) to avoid battery drain and heating.
@@ -878,13 +843,19 @@ export default function App() {
   const performResumableUpload = (transferId: string, uploadUrl: string, file: File, nextByte: number, uploadToFolder: string) => {
     uploadSessionsRef.current[transferId] = { uploadUrl, file, currentFolderId: uploadToFolder };
 
+    // 8MB chunk size to completely prevent bridge bottlenecks and excessive memory usage
+    const CHUNK_SIZE = 8 * 1024 * 1024;
+    const chunkStart = nextByte;
+    const chunkEnd = Math.min(chunkStart + CHUNK_SIZE, file.size);
+    const chunkLength = chunkEnd - chunkStart;
+    const fileSlice = file.slice(chunkStart, chunkEnd);
+
     const xhr = new XMLHttpRequest();
     activeUploadsRef.current[transferId] = xhr;
 
     xhr.open('PUT', uploadUrl, true);
-    if (nextByte > 0) {
-      xhr.setRequestHeader('Content-Range', `bytes ${nextByte}-${file.size - 1}/${file.size}`);
-    }
+    xhr.setRequestHeader('Content-Range', `bytes ${chunkStart}-${chunkEnd - 1}/${file.size}`);
+    xhr.setRequestHeader('Content-Length', chunkLength.toString());
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
     let startTime = Date.now();
@@ -896,16 +867,22 @@ export default function App() {
         const now = Date.now();
         const timeDiff = (now - lastTime) / 1000;
         
-        if (timeDiff > 0.5 || event.loaded === event.total) {
-          const absoluteLoaded = event.loaded + nextByte;
+        if (timeDiff > 0.3 || event.loaded === event.total) {
+          const absoluteLoaded = chunkStart + event.loaded;
           const absoluteTotal = file.size;
-          const bytesDiff = absoluteLoaded - (lastLoaded + nextByte);
-          const speed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
+          const bytesDiff = absoluteLoaded - (lastLoaded + chunkStart);
+          const instantSpeed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
+          
+          // Smoothen the speed using Exponential Moving Average (EMA) with alpha = 0.15
+          const prevSpeed = uploadSpeedsRef.current[transferId] || 0;
+          const speed = prevSpeed === 0 ? instantSpeed : (0.15 * instantSpeed) + (0.85 * prevSpeed);
+          uploadSpeedsRef.current[transferId] = speed;
+
           const remainingBytes = absoluteTotal - absoluteLoaded;
           const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
           const progress = Math.round((absoluteLoaded / absoluteTotal) * 100);
           
-          lastLoaded = absoluteLoaded - nextByte;
+          lastLoaded = event.loaded;
           lastTime = now;
 
           setTransfers(prev => prev.map(t => t.id === transferId ? { 
@@ -939,9 +916,10 @@ export default function App() {
     xhr.onload = () => {
       delete activeUploadsRef.current[transferId];
       if (xhr.status === 200 || xhr.status === 201 || xhr.status === 308) {
-        if (xhr.status === 200 || xhr.status === 201) {
+        if (xhr.status === 200 || xhr.status === 201 || chunkEnd >= file.size) {
           setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
           delete uploadSessionsRef.current[transferId];
+          delete uploadSpeedsRef.current[transferId];
 
           try {
             if (Capacitor.isNativePlatform() && isNotificationEnabled) {
@@ -966,8 +944,21 @@ export default function App() {
           fetchStorage();
           fetchStorageBreakdown(); 
           fetchRecentFiles();
+        } else {
+          // Google resumable redirect response indicates next chunk index range
+          let rangeHeader = xhr.getResponseHeader('Range');
+          let nextStart = chunkEnd;
+          if (rangeHeader) {
+            const parts = rangeHeader.split('-');
+            if (parts.length > 1) {
+              nextStart = parseInt(parts[1], 10) + 1;
+            }
+          }
+          // Recursively push subsequent chunk
+          performResumableUpload(transferId, uploadUrl, file, nextStart, uploadToFolder);
         }
       } else {
+        delete uploadSpeedsRef.current[transferId];
         setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
         toast.error(`Failed to upload ${file.name}`);
       }
@@ -975,15 +966,16 @@ export default function App() {
 
     xhr.onerror = () => {
       delete activeUploadsRef.current[transferId];
+      delete uploadSpeedsRef.current[transferId];
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
       toast.error(`Error uploading ${file.name}`);
     };
 
     xhr.onabort = () => {
       delete activeUploadsRef.current[transferId];
+      delete uploadSpeedsRef.current[transferId];
     };
 
-    const fileSlice = nextByte > 0 ? file.slice(nextByte) : file;
     xhr.send(fileSlice);
   };
 
@@ -1396,8 +1388,9 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-900">
-        <ServerWakeupPopup wakeStatus={wakeStatus || 'waking'} />
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-905 bg-slate-900 text-white font-sans">
+        <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-sm font-semibold text-slate-400">Loading Drive Vault...</p>
       </div>
     );
   }
@@ -1456,6 +1449,7 @@ export default function App() {
             }}
             onNavigateToFiles={() => setActiveTab('files')}
             isDownloadEnabled={isDownloadEnabled}
+            onShowInfo={handleShowInfo}
           />
         );
       case 'files':
@@ -1495,6 +1489,7 @@ export default function App() {
             onHide={handleHideFile}
             activeSubTab={currentFilter}
             isDownloadEnabled={isDownloadEnabled}
+            onShowInfo={handleShowInfo}
           />
         );
 
@@ -1555,6 +1550,7 @@ export default function App() {
               }
             }
           }}
+          onShowInfo={handleShowInfo}
         />;
     }
   };
@@ -1640,6 +1636,16 @@ export default function App() {
           }}
           file={fileToShare}
           tokens={tokens}
+        />
+
+        <InfoDialog
+          isOpen={isInfoOpen}
+          onClose={() => {
+            setIsInfoOpen(false);
+            setTimeout(() => setFileForInfo(null), 200);
+          }}
+          file={fileForInfo}
+          breadcrumb={breadcrumb}
         />
       </div>
       <Toaster position="top-center" />

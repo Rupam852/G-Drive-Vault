@@ -417,7 +417,7 @@ app.post('/api/drive/upload', upload.single('file'), async (req, res) => {
         mimeType: req.file.mimetype,
         body: fs.createReadStream(req.file.path),
       },
-      fields: 'id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared',
+      fields: 'id, name, mimeType, size, createdTime, modifiedTime, thumbnailLink, webViewLink, parents, starred, shared',
     });
 
     // Clean up temporary file from disk
@@ -469,6 +469,8 @@ app.get('/api/drive/files', async (req, res) => {
       q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk')";
     } else if (filter === 'archive') {
       q += " and (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z')";
+    } else if (filter === 'other') {
+      q += " and not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (folderId) {
       q += ` and '${folderId}' in parents`;
     } else {
@@ -483,7 +485,7 @@ app.get('/api/drive/files', async (req, res) => {
     do {
       const response = await drive.files.list({
         pageSize: 1000,
-        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
+        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
         q: q,
         orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined,
         pageToken: pageToken
@@ -760,7 +762,7 @@ app.post('/api/drive/folders', async (req, res) => {
         mimeType: 'application/vnd.google-apps.folder',
         parents: parentId ? [parentId] : ['root'],
       },
-      fields: 'id, name, mimeType, parents, createdTime',
+      fields: 'id, name, mimeType, parents, createdTime, modifiedTime',
     });
     
     res.json(response.data);
@@ -783,7 +785,7 @@ app.patch('/api/drive/files/:id', async (req, res) => {
     const response = await drive.files.update({
       fileId: id,
       requestBody: { name },
-      fields: 'id, name, mimeType, size, createdTime',
+      fields: 'id, name, mimeType, size, createdTime, modifiedTime',
     });
     
     res.json(response.data);
@@ -1075,6 +1077,10 @@ app.get('/api/drive/download/:id', async (req, res) => {
         res.status(206);
         res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize || '*'}`);
         res.setHeader('Content-Length', (end - start + 1).toString());
+      } else {
+        if (fileSize > 0) {
+          res.setHeader('Content-Length', fileSize.toString());
+        }
       }
       
       const mediaRes = await drive.files.get(requestOptions, fetchOptions);

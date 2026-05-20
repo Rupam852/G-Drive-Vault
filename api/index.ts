@@ -372,10 +372,11 @@ app.get('/api/drive/files', async (req, res) => {
         image:    "mimeType contains 'image/'",
         video:    "mimeType contains 'video/'",
         audio:    "mimeType contains 'audio/'",
-        document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation')",
+        document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')",
         folder:   "mimeType = 'application/vnd.google-apps.folder'",
         apk:      "(mimeType = 'application/vnd.android.package-archive' or name contains '.apk')",
         archive:  "(mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z')",
+        other:    "not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z') and mimeType != 'application/vnd.google-apps.folder'"
       };
 
       if (filter && mimeFilters[filter]) {
@@ -947,6 +948,10 @@ app.get('/api/drive/download/:id', async (req, res) => {
         res.status(206);
         res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
         res.setHeader('Content-Length', MAX_CHUNK.toString());
+      } else {
+        if (fileSize > 0) {
+          res.setHeader('Content-Length', fileSize.toString());
+        }
       }
       
       const mediaRes = await drive.files.get(requestOptions, fetchOptions);

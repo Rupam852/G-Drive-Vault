@@ -11,6 +11,9 @@ export interface FileItem {
   starred?: boolean;
   shared?: boolean;
   isHidden?: boolean;
+  createdTime?: string;
+  modifiedTime?: string;
+  parents?: string[];
 }
 
 export interface StorageStats {

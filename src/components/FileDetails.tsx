@@ -230,16 +230,16 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
 
     if (file.type === 'audio') {
       return (
-        <div className="flex flex-col items-center gap-6 p-8 w-full">
-          <div className="w-24 h-24 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-400">
+        <div className="flex flex-col items-center gap-6 p-8 w-full min-w-0">
+          <div className="w-24 h-24 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
             <Music size={48} />
           </div>
-          <p className="text-white font-bold text-center truncate max-w-full">{file.name}</p>
+          <p className="text-white font-bold text-center break-words break-all max-w-full px-4">{file.name}</p>
           <audio
             src={previewUrl}
             controls
             autoPlay={fullscreen}
-            className="w-full max-w-sm"
+            className="w-full max-w-sm shrink-0"
             onError={() => setPreviewError(true)}
           />
         </div>
@@ -259,35 +259,35 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
 
     // Other types → show "Open with Google Drive" box
     return (
-      <div className="flex flex-col items-center gap-5 p-8 w-full">
+      <div className="flex flex-col items-center gap-5 p-8 w-full min-w-0">
         {/* File icon with glow */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-xl" />
           <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 flex items-center justify-center text-blue-400">
             <Icon size={48} />
           </div>
         </div>
 
-        <div className="text-center space-y-1 max-w-[240px]">
-          <p className="text-white font-bold text-sm truncate">{file.name}</p>
+        <div className="text-center space-y-1 w-full max-w-full px-4 min-w-0">
+          <p className="text-white font-bold text-sm break-words break-all">{file.name}</p>
           <p className="text-slate-500 text-xs uppercase tracking-widest font-bold">{file.type}</p>
         </div>
 
         <button
           onClick={(e) => { e.stopPropagation(); handleOpenInDrive(); }}
-          className="flex items-center gap-3 bg-white text-slate-800 font-bold px-6 py-3.5 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all text-sm"
+          className="flex items-center gap-3 bg-white text-slate-800 font-bold px-6 py-3.5 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all text-sm shrink-0"
         >
           <img
             src="https://www.google.com/favicon.ico"
             alt="Google"
-            className="w-5 h-5"
+            className="w-5 h-5 shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           Open with Google Drive
-          <ExternalLink size={14} className="text-slate-500" />
+          <ExternalLink size={14} className="text-slate-500 shrink-0" />
         </button>
 
-        <p className="text-slate-600 text-[10px] text-center max-w-[200px]">
+        <p className="text-slate-600 text-[10px] text-center max-w-full px-4">
           Preview not available for this file type. Open in Google Drive to view.
         </p>
       </div>
@@ -302,19 +302,21 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
           {/* Scrollable Content Area */}
           <div className="overflow-y-auto flex-1 no-scrollbar custom-scrollbar">
             <div className="p-6 pb-0">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500 shrink-0">
                     <Icon size={22} />
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-base sm:text-lg font-bold break-all whitespace-normal leading-tight">{file.name}</h2>
-                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">File Details</p>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-bold break-words break-all leading-tight text-white line-clamp-2" title={file.name}>
+                      {file.name}
+                    </h2>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-0.5">File Details</p>
                   </div>
                 </div>
                 <button 
                   onClick={onClose} 
-                  className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors shrink-0"
                 >
                   <X size={16} />
                 </button>
