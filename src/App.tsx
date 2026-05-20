@@ -520,7 +520,9 @@ export default function App() {
       if (document.hidden) return; // Skip if app is in background
       fetchStorage();
       fetchRecentFiles();
-      fetchFiles(currentFolderIdRef.current, undefined, fileFilterRef.current);
+      // Only send filter if we are in root. In subfolders, we want the whole folder content so local filter works.
+      const filterToSend = currentFolderIdRef.current === 'root' ? fileFilterRef.current : undefined;
+      fetchFiles(currentFolderIdRef.current, undefined, filterToSend);
       // NOTE: fetchStorageBreakdown intentionally excluded from polling —
       // it scans every file in Drive and is too expensive for background use.
     };
