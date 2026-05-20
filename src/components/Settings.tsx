@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -58,7 +58,9 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
       const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
       setUploadHistory(hist);
     } catch {}
-  }, []);
+  }, [transfers]);
+
+  const activeUploads = (transfers || []).filter(t => t.type === 'upload' && (t.status === 'uploading' || t.status === 'pending'));
 
   const clearUploadHistory = () => {
     localStorage.removeItem('drive_vault_upload_history');
@@ -346,7 +348,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
-              {uploadHistory.length === 0 ? (
+              {activeUploads.length === 0 && uploadHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
                   <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                     <History size={40} />
@@ -355,7 +357,36 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                   <p className="text-xs text-center text-slate-400">Your upload history will appear here</p>
                 </div>
               ) : (
-                uploadHistory.map((item, idx) => {
+                <>
+                {activeUploads.map(t => {
+                  const speedStr = t.speed ? (t.speed > 1048576 ? `${(t.speed/1048576).toFixed(1)} MB/s` : `${(t.speed/1024).toFixed(0)} KB/s`) : 'Calculating...';
+                  const timeStr = t.remainingSeconds ? (t.remainingSeconds > 60 ? `${Math.floor(t.remainingSeconds/60)}m ${Math.round(t.remainingSeconds%60)}s left` : `${Math.round(t.remainingSeconds)}s left`) : '';
+                  return (
+                    <div key={t.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                          <Loader2 size={20} className="text-blue-500 animate-spin" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{t.name}</p>
+                          <div className="flex items-center justify-between mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                            <span>{t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`}</span>
+                            <span>{t.progress}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
+                        <motion.div 
+                          className="bg-blue-500 h-full rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${t.progress}%` }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {uploadHistory.map((item, idx) => {
                   const date = new Date(item.date);
                   const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                   const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -386,6 +417,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                     </div>
                   );
                 })
+                }
+                </>
               )}
             </div>
           </div>

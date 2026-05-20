@@ -8,6 +8,10 @@ export interface TransferState {
   progress: number;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   type: 'upload' | 'download';
+  speed?: number;
+  remainingSeconds?: number;
+  loaded?: number;
+  total?: number;
 }
 
 interface TransferManagerProps {

@@ -784,10 +784,34 @@ export default function App() {
       // But we DO need to send the correct content type matching what we promised
       xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
 
+      let startTime = Date.now();
+      let lastLoaded = 0;
+      let lastTime = startTime;
+
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, progress } : t));
+          const now = Date.now();
+          const timeDiff = (now - lastTime) / 1000; // seconds
+          
+          if (timeDiff > 0.5 || event.loaded === event.total) {
+            const bytesDiff = event.loaded - lastLoaded;
+            const speed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
+            const remainingBytes = event.total - event.loaded;
+            const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
+            const progress = Math.round((event.loaded / event.total) * 100);
+            
+            lastLoaded = event.loaded;
+            lastTime = now;
+
+            setTransfers(prev => prev.map(t => t.id === transferId ? { 
+              ...t, 
+              progress,
+              speed,
+              remainingSeconds,
+              loaded: event.loaded,
+              total: event.total
+            } : t));
+          }
         }
       };
 
