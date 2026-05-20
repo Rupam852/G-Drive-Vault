@@ -464,15 +464,28 @@ app.get('/api/drive/files', async (req, res) => {
       q += " and 'root' in parents";
     }
 
-    // Fetch up to 1000 files in a single request to prevent OOM and slow responses
-    const response = await drive.files.list({
-      pageSize: 1000,
-      fields: 'files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
-      q: q,
-      orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined
-    });
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+    let pagesFetched = 0;
+    const MAX_PAGES = 10; // Maximum 10,000 files to prevent OOM
+
+    do {
+      const response = await drive.files.list({
+        pageSize: 1000,
+        fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
+        q: q,
+        orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined,
+        pageToken: pageToken
+      });
+      
+      if (response.data.files) {
+        allFiles = allFiles.concat(response.data.files);
+      }
+      pageToken = response.data.nextPageToken || undefined;
+      pagesFetched++;
+    } while (pageToken && pagesFetched < MAX_PAGES);
     
-    res.json(response.data.files || []);
+    res.json(allFiles);
   } catch (error) {
     console.error('Error fetching drive files:', error);
     res.status(500).json({ error: 'Failed to fetch files' });
