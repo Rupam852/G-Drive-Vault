@@ -456,17 +456,7 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 app.post('/api/auth/logout', async (req, res) => {
-  const tokens = getTokensFromRequest(req);
-  if (tokens && tokens.access_token) {
-    try {
-      const client = getOAuth2Client(req);
-      await client.revokeToken(tokens.access_token);
-      console.log('[Server] Successfully revoked Google token on logout');
-    } catch (e) {
-      console.error('[Server] Failed to revoke Google token on logout:', e);
-    }
-  }
-
+  console.log('[Server] Logging out user, destroying session (retaining Google Drive permissions in DB)');
   req.session.destroy((err) => {
     if (err) {
       console.error('Error destroying session:', err);
