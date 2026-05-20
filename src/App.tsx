@@ -250,6 +250,35 @@ export default function App() {
     }
   };
 
+  const updateLocalBreakdown = (file: any, action: 'add' | 'remove') => {
+    if (!file || !storageBreakdown) return;
+    
+    let type = 'other';
+    const mime = file.mimeType || '';
+    const name = (file.name || '').toLowerCase();
+
+    if (mime.includes('image')) type = 'image';
+    else if (mime.includes('video')) type = 'video';
+    else if (mime.includes('audio')) type = 'audio';
+    else if (mime.includes('pdf') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('presentation') || mime.includes('text/')) type = 'document';
+    else if (mime === 'application/vnd.android.package-archive' || name.endsWith('.apk')) type = 'apk';
+    else if (mime.includes('zip') || mime.includes('rar') || mime.includes('tar') || mime.includes('7z')) type = 'archive';
+
+    const size = parseInt(file.size || '0');
+
+    setStorageBreakdown((prev: any) => {
+      if (!prev || !prev[type]) return prev;
+      const factor = action === 'add' ? 1 : -1;
+      return {
+        ...prev,
+        [type]: {
+          size: Math.max(0, prev[type].size + (size * factor)),
+          count: Math.max(0, prev[type].count + (1 * factor))
+        }
+      };
+    });
+  };
+
   const fetchStorage = async (currentTokens?: any) => {
     const activeTokens = currentTokens || tokens;
     try {
@@ -641,6 +670,7 @@ export default function App() {
 
   const handleDeleteFile = async (id: string) => {
     try {
+      const file = files.find(f => f.id === id) || recentFiles.find(f => f.id === id);
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
       
@@ -655,6 +685,7 @@ export default function App() {
         fetchStorage();
         fetchRecentFiles();
         fetchTrash();
+        if (file) updateLocalBreakdown(file, 'remove');
         fetchStorageBreakdown();
         toast.success('Moved to trash');
       }
@@ -665,6 +696,7 @@ export default function App() {
 
   const handleRestoreFile = async (id: string) => {
     try {
+      const file = trashedFiles.find(f => f.id === id);
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
       
@@ -678,6 +710,7 @@ export default function App() {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchFiles(currentFolderId);
         fetchRecentFiles();
+        if (file) updateLocalBreakdown(file, 'add');
         fetchStorageBreakdown();
         toast.success('File restored');
       }
