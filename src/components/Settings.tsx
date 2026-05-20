@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2 } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -28,14 +28,20 @@ interface SettingsProps {
   onClearTransfers: () => void;
   isDownloadEnabled: boolean;
   setIsDownloadEnabled: (val: boolean) => void;
+  isNotificationEnabled: boolean;
+  setIsNotificationEnabled: (val: boolean) => void;
   onCancelTransfer?: (id: string) => void;
+  onPauseTransfer?: (id: string) => void;
+  onResumeTransfer?: (id: string) => void;
+  defaultOpenTransfers?: boolean;
+  onCloseTransfers?: () => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, onCancelTransfer }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -61,7 +67,14 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
     } catch {}
   }, [transfers]);
 
-  const activeUploads = (transfers || []).filter(t => t.type === 'upload' && (t.status === 'uploading' || t.status === 'pending'));
+  // Sync isTransfersOpen from external props
+  React.useEffect(() => {
+    if (defaultOpenTransfers) {
+      setIsTransfersOpen(true);
+    }
+  }, [defaultOpenTransfers]);
+
+  const activeUploads = (transfers || []).filter(t => t.type === 'upload' && (t.status === 'uploading' || t.status === 'pending' || t.status === 'paused'));
 
   const clearUploadHistory = () => {
     localStorage.removeItem('drive_vault_upload_history');
@@ -148,6 +161,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true), hideOnWeb: true },
     { icon: Database, label: 'File Permission', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', toggle: true, checked: isDownloadEnabled, onChange: setIsDownloadEnabled },
+    { icon: Bell, label: 'Upload Notifications', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', toggle: true, checked: isNotificationEnabled, onChange: setIsNotificationEnabled, hideOnWeb: true },
     { icon: isDarkMode ? Sun : Moon, label: 'Dark Mode', color: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', toggle: true },
   ];
 
@@ -342,7 +356,10 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                     Clear All
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => setIsTransfersOpen(false)} className="rounded-full ml-2">
+                <Button variant="ghost" size="icon" onClick={() => {
+                   setIsTransfersOpen(false);
+                   if (onCloseTransfers) onCloseTransfers();
+                 }} className="rounded-full ml-2">
                   <X size={20} />
                 </Button>
               </div>
@@ -365,13 +382,32 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                   return (
                     <div key={t.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                          <Loader2 size={20} className="text-blue-500 animate-spin" />
-                        </div>
+                        {/* Left Side: Play/Pause Button */}
+                        {(t.status === 'uploading' || t.status === 'paused') && (
+                          <button
+                            onClick={() => {
+                              if (t.status === 'uploading' && onPauseTransfer) onPauseTransfer(t.id);
+                              else if (t.status === 'paused' && onResumeTransfer) onResumeTransfer(t.id);
+                            }}
+                            className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 transition active:scale-95 cursor-pointer"
+                            title={t.status === 'uploading' ? 'Pause Upload' : 'Resume Upload'}
+                          >
+                            {t.status === 'uploading' ? (
+                              <Pause size={18} fill="currentColor" />
+                            ) : (
+                              <Play size={18} className="ml-0.5" fill="currentColor" />
+                            )}
+                          </button>
+                        )}
+                        {t.status === 'pending' && (
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                            <Loader2 size={20} className="text-blue-500 animate-spin" />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{t.name}</p>
                           <div className="flex items-center justify-between mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                            <span>{t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`}</span>
+                            <span>{t.status === 'paused' ? 'Paused' : (t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`)}</span>
                             <span>{t.progress}%</span>
                           </div>
                         </div>
@@ -389,7 +425,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                       </div>
                       <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
                         <motion.div 
-                          className="bg-blue-500 h-full rounded-full"
+                          className={`h-full rounded-full ${t.status === 'paused' ? 'bg-amber-500' : 'bg-blue-500'}`}
                           initial={{ width: 0 }}
                           animate={{ width: `${t.progress}%` }}
                           transition={{ duration: 0.2 }}
