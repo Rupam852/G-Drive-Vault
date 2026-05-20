@@ -31,7 +31,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
-    const saved = localStorage.getItem('drive_vault_active_tab');
+    const saved = sessionStorage.getItem('drive_vault_active_tab');
     return saved || 'home';
   });
   const [user, setUser] = useState<any>(() => {
@@ -52,7 +52,7 @@ export default function App() {
   const [hiddenFiles, setHiddenFiles] = useState<FileItem[]>([]);
   
   const initialFileFilter = (() => {
-    const saved = localStorage.getItem('drive_vault_file_filter');
+    const saved = sessionStorage.getItem('drive_vault_file_filter');
     return saved || 'all';
   })();
   const [fileFilter, setFileFilter] = useState<string>(initialFileFilter);
@@ -60,31 +60,31 @@ export default function App() {
   const [currentFilter, setCurrentFilter] = useState('all');
   
   const initialFolderId = (() => {
-    const saved = localStorage.getItem('drive_vault_current_folder_id');
+    const saved = sessionStorage.getItem('drive_vault_current_folder_id');
     return saved || 'root';
   })();
   const [currentFolderId, setCurrentFolderId] = useState<string>(initialFolderId);
   const currentFolderIdRef = useRef<string>(initialFolderId); // always latest, no stale closure
   const [breadcrumb, setBreadcrumb] = useState<{id: string, name: string}[]>(() => {
-    const saved = localStorage.getItem('drive_vault_breadcrumb');
+    const saved = sessionStorage.getItem('drive_vault_breadcrumb');
     return saved ? JSON.parse(saved) : [{id: 'root', name: 'My Drive'}];
   });
 
   useEffect(() => {
-    localStorage.setItem('drive_vault_active_tab', activeTab);
+    sessionStorage.setItem('drive_vault_active_tab', activeTab);
   }, [activeTab]);
 
   useEffect(() => {
-    localStorage.setItem('drive_vault_current_folder_id', currentFolderId);
+    sessionStorage.setItem('drive_vault_current_folder_id', currentFolderId);
     currentFolderIdRef.current = currentFolderId;
   }, [currentFolderId]);
 
   useEffect(() => {
-    localStorage.setItem('drive_vault_breadcrumb', JSON.stringify(breadcrumb));
+    sessionStorage.setItem('drive_vault_breadcrumb', JSON.stringify(breadcrumb));
   }, [breadcrumb]);
 
   useEffect(() => {
-    localStorage.setItem('drive_vault_file_filter', fileFilter);
+    sessionStorage.setItem('drive_vault_file_filter', fileFilter);
     fileFilterRef.current = fileFilter;
   }, [fileFilter]);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
@@ -1352,10 +1352,10 @@ export default function App() {
     setFiles([]);
     localStorage.removeItem('drive_vault_user');
     localStorage.removeItem('drive_vault_tokens');
-    localStorage.removeItem('drive_vault_active_tab');
-    localStorage.removeItem('drive_vault_current_folder_id');
-    localStorage.removeItem('drive_vault_breadcrumb');
-    localStorage.removeItem('drive_vault_file_filter');
+    sessionStorage.removeItem('drive_vault_active_tab');
+    sessionStorage.removeItem('drive_vault_current_folder_id');
+    sessionStorage.removeItem('drive_vault_breadcrumb');
+    sessionStorage.removeItem('drive_vault_file_filter');
     
     // Reset React state variables back to defaults on logout
     setActiveTab('home');
