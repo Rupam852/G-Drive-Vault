@@ -161,7 +161,6 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true), hideOnWeb: true },
     { icon: Database, label: 'File Permission', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', toggle: true, checked: isDownloadEnabled, onChange: setIsDownloadEnabled },
-    { icon: Bell, label: 'Upload Notifications', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20', toggle: true, checked: isNotificationEnabled, onChange: setIsNotificationEnabled, hideOnWeb: true },
     { icon: isDarkMode ? Sun : Moon, label: 'Dark Mode', color: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', toggle: true },
   ];
 

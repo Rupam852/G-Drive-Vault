@@ -112,10 +112,7 @@ export default function App() {
     const saved = localStorage.getItem('drive_vault_download_permission');
     return saved !== null ? saved === 'true' : true;
   });
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(() => {
-    const saved = localStorage.getItem('drive_vault_notification_enabled');
-    return saved !== null ? saved === 'true' : true;
-  });
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
 
   const handleToggleNotification = async (val: boolean) => {
     setIsNotificationEnabled(val);
@@ -689,7 +686,7 @@ export default function App() {
           fetchStorageBreakdown();
         }, 1500);
 
-        toast.success('Moved to trash');
+        toast.success('🗑️ Moved to Trash successfully!');
       }
     } catch (err) {
       console.error('Error deleting file:', err);
@@ -718,7 +715,7 @@ export default function App() {
           fetchStorageBreakdown();
         }, 1500);
 
-        toast.success('File restored');
+        toast.success('🔄 File restored successfully!');
       }
     } catch (err) {
       console.error('Error restoring file:', err);
@@ -739,7 +736,7 @@ export default function App() {
       if (res.ok) {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchStorageBreakdown();
-        toast.success('Permanently deleted');
+        toast.success('💥 File permanently deleted!');
       }
     } catch (err) {
       console.error('Error permanent delete:', err);
@@ -751,12 +748,10 @@ export default function App() {
   useEffect(() => {
     fetchUser();
 
-    // Request notification permission if native platform and notification toggle is enabled
+    // Request notification permission if native platform
     const requestNotificationPermission = async () => {
       try {
-        const saved = localStorage.getItem('drive_vault_notification_enabled');
-        const isEnabled = saved !== null ? saved === 'true' : true;
-        if (isEnabled && Capacitor.isNativePlatform()) {
+        if (Capacitor.isNativePlatform()) {
           const state = await UploadNotification.checkPermissions();
           if (state.notifications !== 'granted') {
             await UploadNotification.requestPermissions({ permissions: ['notifications'] });
@@ -1217,7 +1212,7 @@ export default function App() {
         if (parentId === currentFolderIdRef.current) {
           setFiles(prev => [mapped, ...prev]);
         }
-        toast.success(`Folder "${name}" created`);
+        toast.success(`📁 Folder "${name}" created successfully!`);
         fetchStorage();
         fetchStorageBreakdown();
         // Delay fetch slightly to allow Google Drive indexing to update the category counts reliably
@@ -1227,7 +1222,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error creating folder:', err);
-      toast.error('Failed to create folder');
+      toast.error('❌ Failed to create folder');
     }
   };
 
@@ -1248,11 +1243,11 @@ export default function App() {
         const mapped = mapDriveFiles([updatedFile])[0];
         setFiles(prev => prev.map(f => f.id === id ? { ...f, name: mapped.name } : f));
         setRecentFiles(prev => prev.map(f => f.id === id ? { ...f, name: mapped.name } : f));
-        toast.success(`Renamed to "${newName}"`);
+        toast.success(`✏️ Renamed to "${newName}" successfully!`);
       }
     } catch (err) {
       console.error('Error renaming file:', err);
-      toast.error('Failed to rename');
+      toast.error('❌ Failed to rename');
     }
   };
 
@@ -1271,11 +1266,11 @@ export default function App() {
       if (res.ok) {
         setFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
         setRecentFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
-        toast.success(starred ? 'Added to Starred' : 'Removed from Starred');
+        toast.success(starred ? '⭐ Added to Starred!' : '🌟 Removed from Starred!');
       }
     } catch (err) {
       console.error('Error starring file:', err);
-      toast.error('Failed to update star');
+      toast.error('❌ Failed to update star');
     }
   };
 
@@ -1303,7 +1298,7 @@ export default function App() {
     };
 
     try {
-      if (moveCount > 1) toast.loading(`Moving ${moveCount} items...`, { id: 'move-toast' });
+      if (moveCount > 1) toast.loading(`📦 Moving ${moveCount} items...`, { id: 'move-toast' });
       
       for (const id of targetIds) {
         const success = await performMove(id);
@@ -1316,13 +1311,13 @@ export default function App() {
         fetchStorage();
         fetchStorageBreakdown();
         if (moveCount > 1) {
-          toast.success(`Moved ${successCount} items successfully`, { id: 'move-toast' });
+          toast.success(`📦 Moved ${successCount} items successfully!`, { id: 'move-toast' });
         } else {
-          toast.success('File moved successfully');
+          toast.success('📦 File moved successfully!');
         }
       } else {
-        if (moveCount > 1) toast.error('Failed to move items', { id: 'move-toast' });
-        else toast.error('Failed to move file');
+        if (moveCount > 1) toast.error('❌ Failed to move items', { id: 'move-toast' });
+        else toast.error('❌ Failed to move file');
       }
     } catch (err) {
       console.error('Error moving files:', err);
@@ -1399,7 +1394,25 @@ export default function App() {
     return (
       <>
         <Login onLoginSuccess={fetchUser} />
-        <Toaster position="top-center" />
+        <Toaster 
+          theme="dark" 
+          position="top-center" 
+          richColors 
+          closeButton
+          toastOptions={{
+            style: {
+              background: 'rgba(15, 23, 42, 0.9)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              fontSize: '14px',
+              fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              padding: '12px 16px'
+            }
+          }}
+        />
       </>
     );
   }
@@ -1648,7 +1661,25 @@ export default function App() {
           breadcrumb={breadcrumb}
         />
       </div>
-      <Toaster position="top-center" />
+      <Toaster 
+        theme="dark" 
+        position="top-center" 
+        richColors 
+        closeButton
+        toastOptions={{
+          style: {
+            background: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            color: '#fff',
+            borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            fontSize: '14px',
+            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            padding: '12px 16px'
+          }
+        }}
+      />
 
       {/* Global Drag & Drop Overlay */}
       {isGlobalDragging && (
