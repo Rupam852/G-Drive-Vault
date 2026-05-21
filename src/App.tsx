@@ -1733,66 +1733,16 @@ export default function App() {
               </p>
             </div>
             
-            {!isUpdating ? (
-              <button
-                onClick={async () => {
-                  if (!updateInfo || !updateInfo.apkUrl) return;
-                  setIsUpdating(true);
-                  setUpdateProgress(0);
-                  try {
-                    let progressListener: any;
-                    progressListener = await UploadNotification.addListener('onDownloadProgress', (data: any) => {
-                      if (data.id === 'app-update') {
-                        setUpdateProgress(data.progress);
-                      }
-                    });
-                    
-                    const filename = `drive-vault-v${updateInfo.latestVersion}.apk`;
-                    const result = await UploadNotification.downloadFileNatively({
-                      url: updateInfo.apkUrl,
-                      filename: filename,
-                      id: 'app-update',
-                      size: -1
-                    });
-                    
-                    if (progressListener) progressListener.remove();
-                    
-                    if (result && result.path) {
-                      toast.success('📦 Update downloaded. Opening Package Installer...');
-                      await UploadNotification.installApkNatively({ path: result.path });
-                    } else {
-                      throw new Error('No path returned from download');
-                    }
-                  } catch (err: any) {
-                    console.error('Native download failed:', err);
-                    toast.error('Native download failed. Opening browser...');
-                    window.open(updateInfo.apkUrl, '_blank');
-                    setIsUpdating(false);
-                  }
-                }}
-                className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
-              >
-                Update Now
-              </button>
-            ) : (
-              <div className="w-full space-y-3 p-2 bg-slate-50 dark:bg-slate-800/35 rounded-2xl border border-slate-100 dark:border-slate-800/40 text-left">
-                <div className="flex justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <span>Downloading update...</span>
-                  <span className="text-blue-500">{updateProgress}%</span>
-                </div>
-                <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${updateProgress}%` }}
-                    transition={{ duration: 0.1 }}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 leading-normal text-center">
-                  Android will prompt you to install the update once completed.
-                </p>
-              </div>
-            )}
+            <button
+              onClick={() => {
+                if (updateInfo && updateInfo.apkUrl) {
+                  window.open(updateInfo.apkUrl, '_blank');
+                }
+              }}
+              className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
+            >
+              Update Now
+            </button>
 
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               v{CURRENT_VERSION} ➔ v{updateInfo.latestVersion}
