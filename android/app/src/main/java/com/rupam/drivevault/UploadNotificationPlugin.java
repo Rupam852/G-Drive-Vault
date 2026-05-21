@@ -381,7 +381,6 @@ public class UploadNotificationPlugin extends Plugin {
 
                     // Click intent
                     Intent contentIntent = new Intent(context, MainActivity.class);
-                    contentIntent.putExtra("open_tab", "settings_history");
                     contentIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     PendingIntent contentPendingIntent = PendingIntent.getActivity(
                             context,
@@ -520,5 +519,43 @@ public class UploadNotificationPlugin extends Plugin {
                 }
             }
         }).start();
+    }
+
+    @PluginMethod
+    public void installApkNatively(PluginCall call) {
+        String filePath = call.getString("path");
+        if (filePath == null) {
+            call.reject("Missing parameter: path");
+            return;
+        }
+
+        Context context = getContext();
+        File file = new File(filePath);
+        if (!file.exists()) {
+            call.reject("File does not exist: " + filePath);
+            return;
+        }
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Uri fileUri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                fileUri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        context.getPackageName() + ".fileprovider",
+                        file
+                );
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } else {
+                fileUri = Uri.fromFile(file);
+            }
+
+            intent.setDataAndType(fileUri, "application/vnd.android.package-archive");
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to trigger install: " + e.getMessage());
+        }
     }
 }
