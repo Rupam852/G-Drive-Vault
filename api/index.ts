@@ -941,6 +941,31 @@ app.post('/api/drive/files/:id/permissions', async (req, res) => {
   }
 });
 
+app.put('/api/drive/files/:id/permissions/:permissionId', async (req, res) => {
+  const tokens = getTokensFromRequest(req);
+  if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const { role } = req.body;
+    const client = getOAuth2Client(req);
+    client.setCredentials(tokens);
+    const drive = google.drive({ version: 'v3', auth: client });
+    
+    const response = await drive.permissions.update({
+      fileId: req.params.id,
+      permissionId: req.params.permissionId,
+      requestBody: {
+        role
+      },
+      fields: 'id, emailAddress, role, type, displayName, photoLink'
+    });
+    
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error updating permission:', error);
+    res.status(500).json({ error: 'Failed to update permission' });
+  }
+});
+
 app.delete('/api/drive/files/:id/permissions/:permissionId', async (req, res) => {
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
@@ -958,6 +983,60 @@ app.delete('/api/drive/files/:id/permissions/:permissionId', async (req, res) =>
   } catch (error: any) {
     console.error('Error removing permission:', error);
     res.status(500).json({ error: 'Failed to remove permission' });
+  }
+});
+
+app.post('/api/drive/files/:id/permissions-anyone', async (req, res) => {
+  const tokens = getTokensFromRequest(req);
+  if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const { role } = req.body; // 'reader', 'writer', or null (restricted)
+    const client = getOAuth2Client(req);
+    client.setCredentials(tokens);
+    const drive = google.drive({ version: 'v3', auth: client });
+    
+    // First, let's find if an 'anyone' permission already exists on the file
+    const listResponse = await drive.permissions.list({
+      fileId: req.params.id,
+      fields: 'permissions(id, type)'
+    });
+    
+    const anyonePermission = listResponse.data.permissions?.find(p => p.type === 'anyone');
+    
+    if (!role) {
+      // Restricted: delete the 'anyone' permission if it exists
+      if (anyonePermission?.id) {
+        await drive.permissions.delete({
+          fileId: req.params.id,
+          permissionId: anyonePermission.id
+        });
+      }
+      return res.json({ success: true, restricted: true });
+    } else {
+      // Anyone with the link: create or update
+      if (anyonePermission?.id) {
+        const updateRes = await drive.permissions.update({
+          fileId: req.params.id,
+          permissionId: anyonePermission.id,
+          requestBody: { role },
+          fields: 'id, role, type'
+        });
+        return res.json(updateRes.data);
+      } else {
+        const createRes = await drive.permissions.create({
+          fileId: req.params.id,
+          requestBody: {
+            type: 'anyone',
+            role: role
+          },
+          fields: 'id, role, type'
+        });
+        return res.json(createRes.data);
+      }
+    }
+  } catch (error: any) {
+    console.error('Error modifying anyone permission:', error);
+    res.status(500).json({ error: 'Failed to modify general access permission' });
   }
 });
 

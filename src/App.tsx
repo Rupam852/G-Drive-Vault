@@ -18,6 +18,7 @@ import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import MoveDialog from './components/MoveDialog';
 import ManageAccessDialog from './components/ManageAccessDialog';
+import ShareDialog from './components/ShareDialog';
 import InfoDialog from './components/InfoDialog';
 import { formatBytes } from './utils';
 import TransferManager, { TransferState } from './components/TransferManager';
@@ -106,7 +107,7 @@ export default function App() {
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
   
-  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [sharingState, setSharingState] = useState<'idle' | 'share' | 'manage'>('idle');
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null);
 
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -529,7 +530,8 @@ export default function App() {
         // 1. Close global dialogs managed in App.tsx
         if (isInfoOpen) { setIsInfoOpen(false); return; }
         if (isMoveOpen) { setIsMoveOpen(false); return; }
-        if (isShareOpen) { setIsShareOpen(false); return; }
+        if (sharingState === 'manage') { setSharingState('share'); return; }
+        if (sharingState === 'share') { setSharingState('idle'); return; }
 
         // 2. Navigate up in folders (Stay in Files tab context)
         if (breadcrumb.length > 1) {
@@ -554,7 +556,7 @@ export default function App() {
     return () => {
       listenerPromise.then(l => l.remove());
     };
-  }, [breadcrumb, activeTab, isMoveOpen, isShareOpen, isInfoOpen]);
+  }, [breadcrumb, activeTab, isMoveOpen, sharingState, isInfoOpen]);
 
   // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
   // Polls every 5 minutes (not 30s) to avoid battery drain and heating.
@@ -851,7 +853,7 @@ export default function App() {
     const file = files.find(f => f.id === id) || recentFiles.find(f => f.id === id);
     if (file) {
       setFileToShare(file);
-      setIsShareOpen(true);
+      setSharingState('share');
     }
   };
 
@@ -1679,14 +1681,25 @@ export default function App() {
           currentFolderId={currentFolderId}
         />
 
-        <ManageAccessDialog 
-          isOpen={isShareOpen}
+        <ShareDialog
+          isOpen={sharingState === 'share'}
           onClose={() => {
-            setIsShareOpen(false);
+            setSharingState('idle');
             setTimeout(() => setFileToShare(null), 200);
+          }}
+          onManageAccess={() => setSharingState('manage')}
+          file={fileToShare}
+          tokens={tokens}
+        />
+
+        <ManageAccessDialog 
+          isOpen={sharingState === 'manage'}
+          onClose={() => {
+            setSharingState('share');
           }}
           file={fileToShare}
           tokens={tokens}
+          user={user}
         />
 
         <InfoDialog
