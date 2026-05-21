@@ -1148,7 +1148,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
               <button
                 onClick={() => {
-                  if (actionMenuFile) handleCopyShareLink(actionMenuFile);
+                  if (actionMenuFile) onShare(actionMenuFile.id);
                   setActionMenuFile(null);
                 }}
                 className="flex-none flex flex-col items-center gap-2 group active:scale-95 transition-all w-[68px] sm:w-[76px] snap-start"

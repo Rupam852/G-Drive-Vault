@@ -909,7 +909,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
             <button
               onClick={() => {
-                if (actionMenuFile) handleCopyShareLink(actionMenuFile);
+                if (actionMenuFile && onShare) onShare(actionMenuFile.id);
                 setActionMenuFile(null);
               }}
               className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
