@@ -1717,14 +1717,6 @@ export default function App() {
                 A new version of DriveVault is available. Please update to continue.
               </p>
             </div>
-            {updateInfo.releaseNotes && (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">What's New in v{updateInfo.latestVersion}</span>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                  {updateInfo.releaseNotes}
-                </p>
-              </div>
-            )}
             <button
               onClick={() => {
                 window.open(updateInfo.apkUrl, '_blank');
