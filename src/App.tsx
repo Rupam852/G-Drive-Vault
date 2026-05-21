@@ -122,6 +122,7 @@ export default function App() {
   const uploadSessionsRef = useRef<Record<string, { uploadUrl: string, file: File, currentFolderId: string }>>({});
   const uploadSpeedsRef = useRef<Record<string, number>>({});
   const [defaultOpenTransfers, setDefaultOpenTransfers] = useState(false);
+  const [showTransferOverlay, setShowTransferOverlay] = useState(false);
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
   const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
     const saved = localStorage.getItem('drive_vault_download_permission');
@@ -770,7 +771,7 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           setUpdateInfo(data);
-          if (isVersionOlder(CURRENT_VERSION, data.latestVersion)) {
+          if (Capacitor.isNativePlatform() && isVersionOlder(CURRENT_VERSION, data.latestVersion)) {
             setShowUpdatePopup(true);
           }
         }
@@ -1017,6 +1018,7 @@ export default function App() {
       status: 'pending',
       type: 'upload'
     }]);
+    setShowTransferOverlay(true);
 
     try {
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
@@ -1654,14 +1656,16 @@ export default function App() {
         }} />
 
         
-        <TransferManager 
-          transfers={transfers} 
-          onDismiss={(id) => setTransfers(prev => prev.filter(t => t.id !== id))}
-          onCloseAll={() => setTransfers([])} 
-          onCancel={handleCancelTransfer}
-          onPause={handlePauseTransfer}
-          onResume={handleResumeTransfer}
-        />
+        {showTransferOverlay && (
+          <TransferManager 
+            transfers={transfers} 
+            onDismiss={(id) => setTransfers(prev => prev.filter(t => t.id !== id))}
+            onCloseAll={() => setShowTransferOverlay(false)} 
+            onCancel={handleCancelTransfer}
+            onPause={handlePauseTransfer}
+            onResume={handleResumeTransfer}
+          />
+        )}
         
         <MoveDialog 
           isOpen={isMoveOpen}
@@ -1697,7 +1701,7 @@ export default function App() {
       </div>
 
       {/* ── BLOCKING FORCE-UPDATE POPUP ── */}
-      {showUpdatePopup && updateInfo && (
+      {Capacitor.isNativePlatform() && showUpdatePopup && updateInfo && (
         <div className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-2xl flex items-center justify-center p-4">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
