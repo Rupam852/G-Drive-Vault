@@ -9,9 +9,20 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Capacitor } from '@capacitor/core';
 
 import { TransferState } from './TransferManager';
-import { Capacitor } from '@capacitor/core';
+const isVersionOlder = (current: string, latest: string): boolean => {
+  const cParts = current.split('.').map(Number);
+  const lParts = latest.split('.').map(Number);
+  for (let i = 0; i < Math.max(cParts.length, lParts.length); i++) {
+    const cVal = cParts[i] || 0;
+    const lVal = lParts[i] || 0;
+    if (lVal > cVal) return true;
+    if (cVal > lVal) return false;
+  }
+  return false;
+};
 
 interface SettingsProps {
   user: any;
@@ -35,9 +46,11 @@ interface SettingsProps {
   onResumeTransfer?: (id: string) => void;
   defaultOpenTransfers?: boolean;
   onCloseTransfers?: () => void;
+  currentVersion?: string;
+  updateInfo?: any;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -228,6 +241,58 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
           );
         })}
       </div>
+
+      {/* ── APP VERSION & AUTO-UPDATE CARD ── */}
+      <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 rounded-xl flex items-center justify-center shrink-0">
+              <Cloud size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm">App Update</h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Current Version: v{currentVersion}</p>
+            </div>
+            {updateInfo && isVersionOlder(currentVersion, updateInfo.latestVersion) ? (
+              <span className="w-3.5 h-3.5 bg-red-500 rounded-full animate-ping shrink-0" />
+            ) : (
+              <span className="flex items-center gap-1 text-[10px] font-bold text-green-500 bg-green-50 dark:bg-green-950/30 px-2.5 py-1 rounded-full shrink-0">
+                <CheckCircle size={10} /> Up to Date
+              </span>
+            )}
+          </div>
+
+          {updateInfo && isVersionOlder(currentVersion, updateInfo.latestVersion) ? (
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/10 rounded-2xl space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-bold text-orange-800 dark:text-orange-400">v{updateInfo.latestVersion} Available</p>
+                  <p className="text-[11px] text-orange-600 dark:text-orange-500 mt-0.5 font-medium">A new version is ready to download.</p>
+                </div>
+                <Button 
+                  onClick={() => window.open(updateInfo.apkUrl, '_blank')}
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-500 active:scale-95 transition-all text-white rounded-xl font-bold px-4"
+                >
+                  Update Now
+                </Button>
+              </div>
+              {updateInfo.releaseNotes && (
+                <div className="pt-2.5 border-t border-orange-100/50 dark:border-orange-900/10">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400">Release Notes</span>
+                  <p className="text-xs font-semibold text-orange-700/80 dark:text-orange-300 mt-1 leading-relaxed">
+                    {updateInfo.releaseNotes}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 pt-1">
+              🎉 You are using the latest version of DriveVault.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* MODALS - Changed from AnimatePresence to standard conditional rendering to fix black screen */}
       {isTrashOpen && (

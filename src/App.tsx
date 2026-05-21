@@ -29,6 +29,19 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const CURRENT_VERSION = '1.0.0';
+
+function isVersionOlder(current: string, latest: string): boolean {
+  const cParts = current.split('.').map(Number);
+  const lParts = latest.split('.').map(Number);
+  for (let i = 0; i < Math.max(cParts.length, lParts.length); i++) {
+    const cVal = cParts[i] || 0;
+    const lVal = lParts[i] || 0;
+    if (lVal > cVal) return true;
+    if (cVal > lVal) return false;
+  }
+  return false;
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -51,6 +64,8 @@ export default function App() {
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
   const [trashedFiles, setTrashedFiles] = useState<FileItem[]>([]);
   const [hiddenFiles, setHiddenFiles] = useState<FileItem[]>([]);
+  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   
   const initialFileFilter = (() => {
     const saved = sessionStorage.getItem('drive_vault_file_filter');
@@ -747,6 +762,23 @@ export default function App() {
 
   useEffect(() => {
     fetchUser();
+
+    // Check for updates
+    const checkUpdates = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/app/update-info`);
+        if (res.ok) {
+          const data = await res.json();
+          setUpdateInfo(data);
+          if (isVersionOlder(CURRENT_VERSION, data.latestVersion)) {
+            setShowUpdatePopup(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check for updates on startup:', err);
+      }
+    };
+    checkUpdates();
 
     // Request notification permission if native platform
     const requestNotificationPermission = async () => {
@@ -1533,6 +1565,8 @@ export default function App() {
             onResumeTransfer={handleResumeTransfer}
             defaultOpenTransfers={defaultOpenTransfers}
             onCloseTransfers={() => setDefaultOpenTransfers(false)}
+            currentVersion={CURRENT_VERSION}
+            updateInfo={updateInfo}
           />
         );
       default:
@@ -1661,6 +1695,47 @@ export default function App() {
           breadcrumb={breadcrumb}
         />
       </div>
+
+      {/* ── BLOCKING FORCE-UPDATE POPUP ── */}
+      {showUpdatePopup && updateInfo && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-2xl flex items-center justify-center p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-[2.5rem] shadow-2xl p-6 md:p-8 max-w-sm w-full text-center space-y-6"
+          >
+            <div className="w-20 h-20 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 mx-auto animate-[pulse_2s_infinite]">
+              <Cloud size={40} className="animate-[bounce_2s_infinite]" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Update Required</h2>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                A new version of DriveVault is available. Please update to continue.
+              </p>
+            </div>
+            {updateInfo.releaseNotes && (
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">What's New in v{updateInfo.latestVersion}</span>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  {updateInfo.releaseNotes}
+                </p>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                window.open(updateInfo.apkUrl, '_blank');
+              }}
+              className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
+            >
+              Update Now
+            </button>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              v{CURRENT_VERSION} ➔ v{updateInfo.latestVersion}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <Toaster 
         theme="dark" 
         position="top-center" 

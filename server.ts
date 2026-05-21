@@ -467,6 +467,23 @@ app.post('/api/auth/logout', async (req, res) => {
   });
 });
 
+app.get('/api/app/update-info', (req, res) => {
+  try {
+    const filePath = path.join(__dirname, 'app-update.json');
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return res.json(JSON.parse(data));
+    }
+  } catch (err) {
+    console.error('Error reading app-update.json:', err);
+  }
+  res.json({
+    latestVersion: '1.0.0',
+    apkUrl: 'https://drive.google.com/file/d/1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa/view?usp=sharing',
+    releaseNotes: 'Initial stable release.'
+  });
+});
+
 // Multer config for disk storage (prevents RAM crash on large files)
 // 10GB limit - Render disk space supports this
 const upload = multer({ 
