@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.0.4';
+const CURRENT_VERSION = '1.0.5';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -854,8 +854,13 @@ export default function App() {
   const handleShareFile = async (id: string) => {
     const file = files.find(f => f.id === id) || recentFiles.find(f => f.id === id);
     if (file) {
-      setFileToShare(file);
-      setSharingState('share');
+      const link = file.webViewLink ||
+        (file.type === 'folder'
+          ? `https://drive.google.com/drive/folders/${file.id}?usp=sharing`
+          : `https://drive.google.com/file/d/${file.id}/view?usp=sharing`);
+      navigator.clipboard.writeText(link).then(() => {
+        toast.success('🔗 Link copied! Anyone with the link can view in Google Drive.');
+      }).catch(() => toast.error('Failed to copy link'));
     }
   };
 
@@ -1683,6 +1688,7 @@ export default function App() {
           currentFolderId={currentFolderId}
         />
 
+        {/* 
         <ShareDialog
           isOpen={sharingState === 'share'}
           onClose={() => {
@@ -1703,6 +1709,7 @@ export default function App() {
           tokens={tokens}
           user={user}
         />
+        */}
 
         <InfoDialog
           isOpen={isInfoOpen}
