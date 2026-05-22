@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.0.5';
+const CURRENT_VERSION = '1.0.6';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -69,6 +69,7 @@ export default function App() {
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
+  const [isAppActive, setIsAppActive] = useState(true);
   
   const initialFileFilter = (() => {
     const saved = sessionStorage.getItem('drive_vault_file_filter');
@@ -567,12 +568,12 @@ export default function App() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!user || !tokens) return; // Don't poll if not authenticated
+    if (!user || !tokens || !isAppActive) return; // Don't poll if not active or authenticated
 
     const POLL_MS = 5 * 60 * 1000; // 5 minutes
 
     const runPoll = () => {
-      if (document.hidden) return; // Skip if app is in background
+      if (document.hidden || !isAppActive) return; // Skip if app is in background
       fetchStorage();
       fetchRecentFiles();
       // Only send filter if we are in root. In subfolders, we want the whole folder content so local filter works.
@@ -588,7 +589,7 @@ export default function App() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden || !isAppActive) {
         // App went to background — stop polling to save battery
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       } else {
@@ -605,16 +606,16 @@ export default function App() {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, tokens]); // Only restart polling when auth state changes
+  }, [user, tokens, isAppActive]); // Restart/stop polling when active state changes
 
   // ── RENDER KEEP-ALIVE: Ping every 10 min to prevent cold starts ─────────
   // Render free tier sleeps after 15 min of inactivity causing 401/timeout
   // on next login. This silent ping keeps the server warm.
   useEffect(() => {
-    if (!user) return; // Only ping when logged in
+    if (!user || !isAppActive) return; // Only ping when logged in and active
     const KEEP_ALIVE_MS = 10 * 60 * 1000; // 10 minutes
     const ping = () => {
-      if (document.hidden) return; // Don't ping if app is in background
+      if (document.hidden || !isAppActive) return; // Don't ping if app is in background
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {},
         credentials: 'include',
@@ -622,7 +623,7 @@ export default function App() {
     };
     const id = setInterval(ping, KEEP_ALIVE_MS);
     return () => clearInterval(id);
-  }, [user, tokens]);
+  }, [user, tokens, isAppActive]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -820,6 +821,7 @@ export default function App() {
     let appStateListener: any;
     if (Capacitor.isNativePlatform()) {
       CapApp.addListener('appStateChange', ({ isActive }) => {
+        setIsAppActive(isActive);
         if (isActive) {
           checkLaunchIntent();
         }
