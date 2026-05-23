@@ -708,17 +708,17 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <Input 
               placeholder="Search files..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500 dark:text-white"
+              className="pl-10 h-10 sm:h-11 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500 dark:text-white text-sm"
             />
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-11 h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors">
-              <ArrowUpDown size={20} />
+            <DropdownMenuTrigger className="w-10 h-10 sm:w-11 sm:h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors shrink-0">
+              <ArrowUpDown size={18} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 border-none shadow-xl rounded-2xl p-2">
               <DropdownMenuItem onClick={() => setSortBy('name')} className="rounded-xl cursor-pointer">Sort by Name</DropdownMenuItem>
@@ -729,30 +729,28 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           </DropdownMenu>
           <button 
             onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
-            className="w-11 h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors shrink-0"
           >
-            {view === 'grid' ? <ListIcon size={20} /> : <Grid size={20} />}
+            {view === 'grid' ? <ListIcon size={18} /> : <Grid size={18} />}
           </button>
-          {!Capacitor.isNativePlatform() && (
-            <button 
-              onClick={() => {
-                if (isSelectionMode) {
-                  setSelectedIds(new Set());
-                  setIsSelectionMode(false);
-                } else {
-                  setIsSelectionMode(true);
-                }
-              }}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                isSelectionMode 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
-              }`}
-              title={isSelectionMode ? "Cancel Selection" : "Select Files"}
-            >
-              <CheckSquare size={20} />
-            </button>
-          )}
+          <button 
+            onClick={() => {
+              if (isSelectionMode) {
+                setSelectedIds(new Set());
+                setIsSelectionMode(false);
+              } else {
+                setIsSelectionMode(true);
+              }
+            }}
+            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+              isSelectionMode 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
+            }`}
+            title={isSelectionMode ? "Cancel Selection" : "Select Files"}
+          >
+            <CheckSquare size={18} />
+          </button>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
           {['all', 'image', 'video', 'document', 'audio', 'folder', 'archive'].map((type) => (
