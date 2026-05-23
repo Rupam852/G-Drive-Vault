@@ -65,6 +65,7 @@ export default function App() {
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
   const [trashedFiles, setTrashedFiles] = useState<FileItem[]>([]);
   const [hiddenFiles, setHiddenFiles] = useState<FileItem[]>([]);
+  const [autoOpenFile, setAutoOpenFile] = useState<FileItem | null>(null);
   const [updateInfo, setUpdateInfo] = useState<any>(null);
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -1587,6 +1588,24 @@ export default function App() {
     setActiveTab('files');
   };
 
+  const handleNavigateToFiles = (targetFolderId?: string, openFile?: FileItem) => {
+    setActiveTab('files');
+    if (targetFolderId) {
+      const folderName = recentFiles.find(f => f.id === targetFolderId)?.name || 'Folder';
+      navigateToFolder(targetFolderId, folderName);
+    } else if (openFile) {
+      setFileFilter('all');
+      fileFilterRef.current = 'all';
+      if (openFile.parents && openFile.parents.length > 0) {
+        const parentId = openFile.parents[0];
+        navigateToFolder(parentId, 'My Folder');
+      } else {
+        navigateToFolder('root', 'My Drive');
+      }
+      setAutoOpenFile(openFile);
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
@@ -1622,7 +1641,7 @@ export default function App() {
                 }
               }
             }}
-            onNavigateToFiles={() => setActiveTab('files')}
+            onNavigateToFiles={handleNavigateToFiles}
             isDownloadEnabled={isDownloadEnabled}
             onShowInfo={handleShowInfo}
           />
@@ -1665,6 +1684,8 @@ export default function App() {
             activeSubTab={currentFilter}
             isDownloadEnabled={isDownloadEnabled}
             onShowInfo={handleShowInfo}
+            autoOpenFile={autoOpenFile}
+            onClearAutoOpenFile={() => setAutoOpenFile(null)}
           />
         );
 

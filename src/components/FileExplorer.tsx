@@ -36,6 +36,8 @@ interface FileExplorerProps {
   isDownloadEnabled?: boolean;
   activeSubTab: string;
   onShowInfo: (file: FileItem) => void;
+  autoOpenFile?: FileItem | null;
+  onClearAutoOpenFile?: () => void;
 }
 
 const iconMap = {
@@ -49,7 +51,7 @@ const iconMap = {
   other: FileQuestion,
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
@@ -90,6 +92,19 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
   }, [selectedFile, actionMenuFile, isNewFolderOpen, isRenameOpen, isMoveDialogOpen, isSelectionMode]);
+
+  // Trigger autoOpenFile if passed from Dashboard
+  useEffect(() => {
+    if (autoOpenFile) {
+      const found = files.find(f => f.id === autoOpenFile.id);
+      if (found) {
+        setSelectedFile(found);
+      } else {
+        setSelectedFile(autoOpenFile);
+      }
+      if (onClearAutoOpenFile) onClearAutoOpenFile();
+    }
+  }, [autoOpenFile, files]);
 
   // Set webkitdirectory via setAttribute — React JSX does NOT pass unknown attrs to DOM
   // This makes the folder picker show a FOLDER chooser (not individual files) on Android

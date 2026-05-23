@@ -36,7 +36,7 @@ interface DashboardProps {
   onHide?: (id: string) => void;
   onMove?: (ids: string | string[], newParentId?: string) => void;
   onStar?: (id: string, starred: boolean) => void;
-  onNavigateToFiles?: () => void;
+  onNavigateToFiles?: (targetFolderId?: string, openFile?: FileItem) => void;
   isDownloadEnabled?: boolean;
   onShowInfo?: (file: FileItem) => void;
 }
@@ -471,9 +471,13 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
   const handleOpenFile = (file: FileItem) => {
     if (file.type === 'folder') {
-      if (onNavigateToFiles) onNavigateToFiles();
+      if (onNavigateToFiles) onNavigateToFiles(file.id);
     } else {
-      setSelectedFile(file);
+      if (onNavigateToFiles) {
+        onNavigateToFiles(undefined, file);
+      } else {
+        setSelectedFile(file);
+      }
     }
   };
 
