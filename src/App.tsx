@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.1.0';
+const CURRENT_VERSION = '1.1.1';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -107,6 +107,40 @@ export default function App() {
     sessionStorage.setItem('drive_vault_file_filter', fileFilter);
     fileFilterRef.current = fileFilter;
   }, [fileFilter]);
+
+  // Premium auto-hiding scrollbar observer (only shows scrollbar during active scrolling)
+  useEffect(() => {
+    let scrollTimeouts = new Map<HTMLElement, NodeJS.Timeout>();
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target || !target.classList) return;
+
+      // Add scrolling class to visual display
+      target.classList.add('is-scrolling');
+
+      // Clear existing timeout for this element
+      const existingTimeout = scrollTimeouts.get(target);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      // Hide scrollbar after 800ms of scroll inactivity
+      const timeout = setTimeout(() => {
+        target.classList.remove('is-scrolling');
+        scrollTimeouts.delete(target);
+      }, 800);
+
+      scrollTimeouts.set(target, timeout);
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      scrollTimeouts.forEach((timeout) => clearTimeout(timeout));
+      scrollTimeouts.clear();
+    };
+  }, []);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
   

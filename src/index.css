@@ -142,20 +142,24 @@
     transition: background-color 0.3s ease;
   }
   
-  /* Show thumb when scrolling or hovering over the specific container */
-  *:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.35);
+  /* Show thumb ONLY when actively scrolling */
+  .is-scrolling::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.45) !important;
   }
+  
+  /* Keep visible when hovering directly over the thumb itself (to drag it) */
   ::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(156, 163, 175, 0.6) !important;
+    background-color: rgba(156, 163, 175, 0.75) !important;
   }
+  
   * {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
     transition: scrollbar-color 0.3s ease;
   }
-  *:hover {
-    scrollbar-color: rgba(156, 163, 175, 0.35) transparent;
+  
+  .is-scrolling {
+    scrollbar-color: rgba(156, 163, 175, 0.45) transparent !important;
   }
 
   /* Global hand pointer cursor for all interactive elements on Web */
