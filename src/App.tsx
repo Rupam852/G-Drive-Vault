@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.0.7';
+const CURRENT_VERSION = '1.0.8';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -1713,6 +1713,7 @@ export default function App() {
           setActiveTab={setActiveTab} 
           user={user} 
           onLogout={handleLogout} 
+          onSwitchAccount={handleSwitchAccount}
         />
 
         {/* Main Content Area */}

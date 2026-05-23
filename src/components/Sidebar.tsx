@@ -1,4 +1,4 @@
-import { Home, Folder, Settings, Cloud, LogOut, ChevronRight } from 'lucide-react';
+import { Home, Folder, Settings, Cloud, LogOut, ChevronRight, ChevronDown } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 
@@ -7,9 +7,10 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   user: any;
   onLogout: () => void;
+  onSwitchAccount?: () => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, user, onLogout }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, user, onLogout, onSwitchAccount }: SidebarProps) {
   const tabs = [
     { id: 'home', icon: Home, label: 'Dashboard' },
     { id: 'files', icon: Folder, label: 'My Files' },
@@ -72,6 +73,15 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }: Sid
             <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.name}</p>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
           </div>
+          {onSwitchAccount && (
+            <button
+              onClick={onSwitchAccount}
+              className="p-1 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all active:scale-90"
+              title="Switch Account"
+            >
+              <ChevronDown size={18} />
+            </button>
+          )}
         </div>
         <button 
           onClick={onLogout}
