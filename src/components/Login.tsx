@@ -38,8 +38,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           if (errData.error === 'missing_refresh_token') {
-            await GoogleSignIn.signOut().catch(() => {});
-            throw new Error(errData.message);
+            // Server couldn't find a refresh_token. This is a one-time thing
+            // on very first install. Just show the message — no need to sign out.
+            throw new Error(errData.message || 'Please try signing in once more to grant Drive access.');
           }
           throw new Error('Token exchange failed on server');
         }
@@ -93,8 +94,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         transition={{ duration: 0.45, ease: 'easeOut' }}
         className="text-center space-y-8 max-w-xs w-full relative z-10"
       >
-        <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/30">
-          <Shield size={48} />
+        <div className="w-24 h-24 bg-slate-800 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl overflow-hidden border border-slate-700/50">
+          <img src="/logo.png" className="w-full h-full object-cover scale-95" alt="DriveVault" />
         </div>
 
         <div className="space-y-2">

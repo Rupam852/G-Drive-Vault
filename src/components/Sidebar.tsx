@@ -21,8 +21,8 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, onSwi
     <aside className="hidden md:flex flex-col w-72 h-screen bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 sticky top-0 transition-colors z-40">
       <div className="p-8">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-            <Cloud size={24} />
+          <div className="w-10 h-10 bg-slate-800 dark:bg-slate-700 rounded-xl overflow-hidden shadow-lg border border-slate-700/50">
+            <img src="/logo.png" className="w-full h-full object-cover scale-95" alt="DriveVault" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none">DriveVault</h1>

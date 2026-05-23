@@ -1524,8 +1524,8 @@ export default function App() {
   if (!isUnlocked) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
-        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 mb-6 shadow-lg shadow-blue-500/20">
-          <Shield size={40} />
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden flex items-center justify-center mb-6 shadow-lg">
+          <img src="/logo.png" className="w-full h-full object-cover scale-95" alt="DriveVault" />
         </div>
         <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">App Locked</h1>
         <p className="text-slate-500 dark:text-slate-400 text-center mb-10 text-sm font-medium">Please authenticate to access your Drive Vault</p>
