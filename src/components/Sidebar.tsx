@@ -21,8 +21,12 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, onSwi
     <aside className="hidden md:flex flex-col w-72 h-screen bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 sticky top-0 transition-colors z-40">
       <div className="p-8">
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-slate-800 dark:bg-slate-700 rounded-xl overflow-hidden shadow-lg border border-slate-700/50">
-            <img src="/logo.png" className="w-full h-full object-cover scale-95" alt="DriveVault" />
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+            <svg viewBox="0 0 108 108" className="w-7 h-7 text-white" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M54 20L84 37V71L54 88L24 71V37L54 20Z" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" />
+              <path d="M39 64C36 64 34 61.5 34 58.5C34 55.5 36.5 53 39.5 53C40 53 41 53 42 54C43 49 48 46 53 46C57 46 61 49 62 53C62.5 53 63 53 63.5 53C66.5 53 69 55.5 69 58.5C69 61.5 66.5 64 63.5 64H39Z" fill="currentColor" />
+              <circle cx="54" cy="31" r="3" fill="currentColor" fillOpacity="0.5" />
+            </svg>
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none">DriveVault</h1>

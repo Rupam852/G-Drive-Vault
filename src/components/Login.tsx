@@ -94,8 +94,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         transition={{ duration: 0.45, ease: 'easeOut' }}
         className="text-center space-y-8 max-w-xs w-full relative z-10"
       >
-        <div className="w-24 h-24 bg-slate-800 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl overflow-hidden border border-slate-700/50">
-          <img src="/logo.png" className="w-full h-full object-cover scale-95" alt="DriveVault" />
+        <div className="w-24 h-24 bg-blue-600 dark:bg-blue-600 rounded-[2.2rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/20 border border-blue-400/20 active:scale-95 transition-transform duration-300">
+          <svg viewBox="0 0 108 108" className="w-16 h-16 text-white" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M54 20L84 37V71L54 88L24 71V37L54 20Z" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+            <path d="M39 64C36 64 34 61.5 34 58.5C34 55.5 36.5 53 39.5 53C40 53 41 53 42 54C43 49 48 46 53 46C57 46 61 49 62 53C62.5 53 63 53 63.5 53C66.5 53 69 55.5 69 58.5C69 61.5 66.5 64 63.5 64H39Z" fill="currentColor" />
+            <circle cx="54" cy="31" r="3" fill="currentColor" fillOpacity="0.5" />
+          </svg>
         </div>
 
         <div className="space-y-2">

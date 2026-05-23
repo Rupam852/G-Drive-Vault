@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="100%" height="100%">
+    <rect width="108" height="108" rx="28" fill="#1E293B" />
+    <!-- Hexagon -->
+    <path d="M54 20L84 37V71L54 88L24 71V37L54 20Z" stroke="#3B82F6" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none" />
+    <!-- Cloud -->
+    <path d="M39 64C36 64 34 61.5 34 58.5C34 55.5 36.5 53 39.5 53C40 53 41 53 42 54C43 49 48 46 53 46C57 46 61 49 62 53C62.5 53 63 53 63.5 53C66.5 53 69 55.5 69 58.5C69 61.5 66.5 64 63.5 64H39Z" fill="#3B82F6" />
+    <!-- Dot -->
+    <circle cx="54" cy="31" r="3" fill="#3B82F6" fill-opacity="0.5" />
+</svg>
