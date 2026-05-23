@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.0.6';
+const CURRENT_VERSION = '1.0.7';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -1408,6 +1408,88 @@ export default function App() {
     toast.info('Logged out');
   };
 
+  const handleSwitchAccount = async () => {
+    // ── NATIVE (Android / iOS) ────────────────────────────────────────────
+    if (Capacitor.isNativePlatform()) {
+      try {
+        toast.info('Opening account chooser...');
+        
+        // Dynamically load GoogleSignIn
+        const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
+        
+        // Clear native google sign in cached account session first so chooser always pops up
+        await GoogleSignIn.signOut().catch(() => {});
+        
+        await GoogleSignIn.initialize({
+          clientId: '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com',
+          scopes: [
+            'https://www.googleapis.com/auth/drive',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+          ],
+        });
+
+        const result = await GoogleSignIn.signIn();
+        if (!result.serverAuthCode) throw new Error('No serverAuthCode returned from Google');
+
+        setIsLoading(true);
+        const response = await fetch(`${API_BASE_URL}/api/auth/native`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: result.serverAuthCode }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Token exchange failed on server');
+        }
+        
+        const authData = await response.json();
+        setTokens(authData.tokens);
+        localStorage.setItem('drive_vault_tokens', JSON.stringify(authData.tokens));
+        setUser(authData.user);
+        localStorage.setItem('drive_vault_user', JSON.stringify(authData.user));
+        setIsLoading(false);
+        toast.success(`Successfully switched to ${authData.user.name || 'new account'}`);
+        
+        // Reload files for the new account
+        fetchUser(authData.tokens);
+      } catch (error: any) {
+        console.error('[Native Switch Account] Error:', error);
+        setIsLoading(false);
+        toast.error('Switch account failed: ' + (error.message || 'Unknown error'));
+      }
+      return;
+    }
+
+    // ── WEB (Browser popup with prompt=select_account) ─────────────────────
+    try {
+      toast.info('Opening account chooser...');
+      // Open popup immediately to bypass popup blockers
+      const popup = window.open('', 'google_oauth', 'width=600,height=700');
+      if (!popup) {
+        toast.error('Popup was blocked. Please allow popups for this site.');
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/url`);
+      if (!response.ok) {
+        popup.close();
+        throw new Error('Could not get auth URL from server');
+      }
+      const { url } = await response.json();
+      
+      // Ensure select_account is enforced in the web URL
+      const forceSelectUrl = url.includes('prompt=') 
+        ? url.replace(/prompt=[a-zA-Z_]+/, 'prompt=select_account')
+        : `${url}&prompt=select_account`;
+      
+      popup.location.href = forceSelectUrl;
+    } catch (error) {
+      console.error('[Web Switch Account] Error:', error);
+      toast.error('Failed to initiate account switcher');
+    }
+  };
+
   if (!isUnlocked) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
@@ -1580,6 +1662,7 @@ export default function App() {
             onCloseTransfers={() => setDefaultOpenTransfers(false)}
             currentVersion={CURRENT_VERSION}
             updateInfo={updateInfo}
+            onSwitchAccount={handleSwitchAccount}
           />
         );
       default:

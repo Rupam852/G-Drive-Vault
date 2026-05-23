@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -48,9 +48,10 @@ interface SettingsProps {
   onCloseTransfers?: () => void;
   currentVersion?: string;
   updateInfo?: any;
+  onSwitchAccount?: () => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -210,6 +211,18 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
               <h3 className="font-bold text-slate-900 dark:text-white text-lg">{user?.name || 'User'}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">{user?.email || 'No email provided'}</p>
             </div>
+
+            {onSwitchAccount && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0 self-center transition-all active:scale-90"
+                onClick={onSwitchAccount}
+                title="Switch Google Account"
+              >
+                <ChevronDown size={20} className="text-slate-400 dark:text-slate-500" />
+              </Button>
+            )}
 
           </CardContent>
         </Card>
