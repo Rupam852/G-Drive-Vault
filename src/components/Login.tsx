@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-const WEB_CLIENT_ID = '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '443871816940-j8ifmrgsd4f0s1to4bttjm3uh93ujl2l.apps.googleusercontent.com';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 interface LoginProps {
@@ -45,7 +45,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           }
           throw new Error('Token exchange failed on server');
         }
-        
+
         const authData = await response.json();
         localStorage.setItem('drive_vault_tokens', JSON.stringify(authData.tokens));
         onLoginSuccess(authData.tokens);
@@ -64,14 +64,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         toast.error('Popup was blocked. Please allow popups for this site.');
         return;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/api/auth/url`);
       if (!response.ok) {
         popup.close();
         throw new Error('Could not get auth URL from server');
       }
       const { url } = await response.json();
-      
+
       popup.location.href = url;
     } catch (error) {
       console.error('[Web Login] Error:', error);
@@ -117,7 +117,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
               Connect Drive
             </Button>
-            <button 
+            <button
               className="md:hidden text-slate-400 hover:text-white"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -171,9 +171,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <img src="https://www.google.com/favicon.ico" className="w-6 h-6" alt="Google" />
             Connect Google Drive
           </Button>
-          
+
           {!Capacitor.isNativePlatform() && (
-            <a 
+            <a
               href="https://drive.google.com/file/d/1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa/view?usp=sharing"
               target="_blank"
               rel="noopener noreferrer"
@@ -275,7 +275,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <div className="flex flex-wrap justify-center gap-6 text-xs text-slate-500 font-medium">
             <a href="/privacy-policy" target="_blank" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
             <a href="/terms-of-service" target="_blank" className="hover:text-slate-300 transition-colors">Terms of Service</a>
-            <span>Developer Support: rupambairagya08@gmail.com</span>
+            <span>Developer Support: rupambairagya44@gmail.com</span>
           </div>
 
           <p className="text-[11px] text-slate-600">&copy; {new Date().getFullYear()} Drive Vault. All rights reserved.</p>

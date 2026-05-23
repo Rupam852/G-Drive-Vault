@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   plugins: {
     GoogleSignIn: {
-      androidClientId: '366598728765-rvhkrkvmisgeu0tn27jatbsajbp12qsk.apps.googleusercontent.com',
-      serverClientId: '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com'
+      androidClientId: '443871816940-921g8ap80g04qokuhst6t6leo6v8dqrk.apps.googleusercontent.com',
+      serverClientId: '443871816940-j8ifmrgsd4f0s1to4bttjm3uh93ujl2l.apps.googleusercontent.com'
     }
   }
 };

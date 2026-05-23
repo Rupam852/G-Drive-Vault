@@ -1453,7 +1453,7 @@ export default function App() {
         await GoogleSignIn.signOut().catch(() => {});
         
         await GoogleSignIn.initialize({
-          clientId: '366598728765-r8pdfc9s1bf4mkplf3k250mqqnj7lkbk.apps.googleusercontent.com',
+          clientId: '443871816940-j8ifmrgsd4f0s1to4bttjm3uh93ujl2l.apps.googleusercontent.com',
           scopes: [
             'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/userinfo.email',
