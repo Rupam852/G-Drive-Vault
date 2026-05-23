@@ -279,7 +279,7 @@ export default function App() {
       }
       
       const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => controller.abort(), 12000);
+      const fetchTimeout = setTimeout(() => controller.abort(), 45000);
 
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, { 
         headers,
@@ -320,7 +320,6 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('[App] Fetch user error:', err);
-      setUser(null);
       setIsLoading(false);
     }
   };
@@ -801,8 +800,6 @@ export default function App() {
 
 
   useEffect(() => {
-    fetchUser();
-
     // Check for updates
     const checkUpdates = async () => {
       try {
