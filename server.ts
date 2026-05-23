@@ -353,26 +353,30 @@ app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
     const { tokens } = await client.getToken(code as string);
     console.log('[Server] Received tokens from Google');
 
-    // ── Postgres Token Persistence for Web logins ─────────────────────────
-    if (tokens.refresh_token) {
-      try {
-        client.setCredentials(tokens);
-        const oauth2 = google.oauth2({ version: 'v2', auth: client });
-        const userinfo = await oauth2.userinfo.get();
-        if (userinfo.data.email) {
-          await upsertTokens(
-            userinfo.data.email,
-            tokens.refresh_token,
-            tokens.access_token,
-            tokens.expiry_date as number
-          );
-          console.log('[Auth/Web] Upserted tokens in DB for', userinfo.data.email);
+    // Get user email to persist or merge refresh token
+    client.setCredentials(tokens);
+    const oauth2 = google.oauth2({ version: 'v2', auth: client });
+    const userinfo = await oauth2.userinfo.get();
+    const email = userinfo.data.email;
+
+    if (email) {
+      if (tokens.refresh_token) {
+        // First-time consent login: save refresh token in DB
+        await upsertTokens(email, tokens.refresh_token, tokens.access_token, tokens.expiry_date as number);
+        console.log('[Auth/Web] Saved first-time refresh token in DB for', email);
+      } else {
+        // Subsequent login: look up and merge stored refresh token from DB
+        const storedRefresh = await getStoredRefreshToken(email);
+        if (storedRefresh) {
+          tokens.refresh_token = storedRefresh;
+          client.setCredentials(tokens); // Re-apply merged tokens
+          await upsertTokens(email, null, tokens.access_token, tokens.expiry_date as number);
+          console.log('[Auth/Web] Re-login: merged DB refresh_token for', email);
+        } else {
+          console.warn('[Auth/Web] No refresh token found in DB for re-login');
         }
-      } catch (e) {
-        console.warn('[Auth/Web] Could not store tokens in DB:', e);
       }
     }
-    // ───────────────────────────────────────────────────────────
 
     // Still save to session as fallback
     (req as any).session.tokens = tokens;
@@ -446,6 +450,10 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const client = getOAuth2Client(req);
     client.setCredentials(tokens);
+    
+    // Trigger automatic refresh using refresh_token if the access_token is expired
+    await client.getAccessToken();
+
     const oauth2 = google.oauth2({ version: 'v2', auth: client });
     const userInfo = await oauth2.userinfo.get();
     res.json(userInfo.data);
