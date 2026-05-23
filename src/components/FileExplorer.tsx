@@ -622,10 +622,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
         onContextMenu={(e) => e.preventDefault()}
-        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-all duration-200 cursor-pointer group relative select-none border-l-4 ${
+        className={`flex items-center gap-4 p-3.5 rounded-2xl bg-white dark:bg-slate-900/30 border border-slate-100/70 dark:border-slate-800/50 mb-2.5 hover:shadow-sm hover:border-blue-100 dark:hover:border-blue-950 transition-all duration-200 cursor-pointer group relative select-none border-l-4 ${
           selectedIds.has(file.id) 
-            ? 'bg-blue-50/70 dark:bg-blue-500/10 border-l-blue-500 pl-2 shadow-sm' 
-            : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-transparent'
+            ? 'bg-blue-50/70 dark:bg-blue-500/10 border-l-blue-500 pl-3 shadow-sm' 
+            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/80 border-l-transparent'
         }`}
       >
         {isSelectionMode && (
