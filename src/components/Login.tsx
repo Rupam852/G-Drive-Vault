@@ -275,7 +275,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <div className="flex flex-wrap justify-center gap-6 text-xs text-slate-500 font-medium">
             <a href="/privacy-policy" target="_blank" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
             <a href="/terms-of-service" target="_blank" className="hover:text-slate-300 transition-colors">Terms of Service</a>
-            <span>Developer Support: rupambairagya44@gmail.com</span>
+            <span>Developer Support: rupambairagya08@gmail.com</span>
           </div>
 
           <p className="text-[11px] text-slate-600">&copy; {new Date().getFullYear()} Drive Vault. All rights reserved.</p>
