@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -189,13 +189,12 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   };
 
   const handlePressStart = (file: FileItem) => {
+    if (!Capacitor.isNativePlatform()) return; // Disable long-press selection on Website (Mobile-only)
     isPressingRef.current = true;
     pressTimerRef.current = setTimeout(() => {
       if (isPressingRef.current) {
         // Vibrate if on mobile
-        if (Capacitor.isNativePlatform()) {
-          try { (window as any).navigator.vibrate?.(40); } catch(e){}
-        }
+        try { (window as any).navigator.vibrate?.(40); } catch(e){}
         toggleSelection(file);
       }
     }, 600); // 600ms for long press
@@ -622,10 +621,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
         onContextMenu={(e) => e.preventDefault()}
-        className={`flex items-center gap-4 p-3.5 rounded-2xl bg-white dark:bg-slate-900/30 border border-slate-100/70 dark:border-slate-800/50 mb-2.5 hover:shadow-sm hover:border-blue-100 dark:hover:border-blue-950 transition-all duration-200 cursor-pointer group relative select-none border-l-4 ${
+        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-all duration-200 cursor-pointer group relative select-none ${
           selectedIds.has(file.id) 
-            ? 'bg-blue-50/70 dark:bg-blue-500/10 border-l-blue-500 pl-3 shadow-sm' 
-            : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/80 border-l-transparent'
+            ? 'bg-blue-50/70 dark:bg-blue-500/10 shadow-sm' 
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
         }`}
       >
         {isSelectionMode && (
@@ -719,6 +718,26 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           >
             {view === 'grid' ? <ListIcon size={20} /> : <Grid size={20} />}
           </button>
+          {!Capacitor.isNativePlatform() && (
+            <button 
+              onClick={() => {
+                if (isSelectionMode) {
+                  setSelectedIds(new Set());
+                  setIsSelectionMode(false);
+                } else {
+                  setIsSelectionMode(true);
+                }
+              }}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                isSelectionMode 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
+              }`}
+              title={isSelectionMode ? "Cancel Selection" : "Select Files"}
+            >
+              <CheckSquare size={20} />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
           {['all', 'image', 'video', 'document', 'audio', 'folder', 'archive'].map((type) => (
