@@ -386,13 +386,18 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               <div
                 className={`
                   ${file.type === 'video' ? 'aspect-video' : file.type === 'document' ? 'aspect-[4/5] min-h-[400px] max-h-[65vh]' : file.type === 'other' ? 'py-8' : file.type === 'audio' ? 'h-auto' : 'aspect-square max-h-[280px]'}
-                  w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group cursor-pointer
+                  w-full bg-[#1e293b]/50 rounded-2xl flex items-center justify-center text-slate-700 overflow-hidden border border-slate-800/50 relative group
+                  ${(file.type !== 'video' && file.type !== 'audio' && file.type !== 'document') ? 'cursor-pointer' : ''}
                 `}
-                onClick={() => !previewError && setIsExpanded(true)}
+                onClick={() => {
+                  if (!previewError && file.type !== 'video' && file.type !== 'audio' && file.type !== 'document') {
+                    setIsExpanded(true);
+                  }
+                }}
               >
                 {renderPreviewContent(false)}
 
-                {!previewError && !isLoading && previewUrl && (
+                {!previewError && !isLoading && previewUrl && (file.type === 'image') && (
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-white flex items-center gap-2">
                       <Maximize2 size={18} />
