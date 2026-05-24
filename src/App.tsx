@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.3.1';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -1900,6 +1900,11 @@ export default function App() {
                 onClick={() => {
                   if (updateInfo && updateInfo.apkUrl) {
                     window.open(updateInfo.apkUrl, '_blank');
+                    if (Capacitor.isNativePlatform()) {
+                      setTimeout(() => {
+                        CapApp.minimizeApp().catch(console.error);
+                      }, 1200);
+                    }
                   }
                 }}
                 className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
