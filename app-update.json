@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.5.1",
+  "latestVersion": "1.5.2",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1IUfEQ9EdUF5Cv55ZPrHDfBddA60UVIos&confirm=t",
-  "releaseNotes": "Performance update optimizing the post-login transition! Resolves micro-stutter and UI layout shifts by batching API fetches and memoizing storage stats calculation. 🚀⚡"
+  "releaseNotes": "Premium visual update introducing clean single-line toast notifications with elegant filename truncation, alongside blazing fast 0ms SWR caching for folder navigation! 🚀💎⚡"
 }
