@@ -14,6 +14,8 @@ import androidx.core.app.NotificationManagerCompat;
 import android.app.DownloadManager;
 import android.net.Uri;
 import android.os.Environment;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import android.os.AsyncTask;
 import java.io.File;
@@ -167,8 +169,10 @@ public class UploadNotificationPlugin extends Plugin {
         );
 
         // 2. Build NotificationBuilder
+        Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setLargeIcon(largeIcon)
                 .setContentTitle(isPaused ? "[Paused] " + title : title)
                 .setContentText(speedText)
                 .setContentIntent(contentPendingIntent)
@@ -222,8 +226,10 @@ public class UploadNotificationPlugin extends Plugin {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setLargeIcon(largeIcon)
                 .setContentTitle(notificationTitle)
                 .setContentText(title)
                 .setContentIntent(contentPendingIntent)
@@ -390,8 +396,10 @@ public class UploadNotificationPlugin extends Plugin {
                     );
 
                     // Builder
+                    Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
                     NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setLargeIcon(largeIcon)
                             .setContentTitle("Downloading " + filename)
                             .setContentIntent(contentPendingIntent)
                             .setOngoing(true)
@@ -484,8 +492,10 @@ public class UploadNotificationPlugin extends Plugin {
                     } catch (Exception ignored) {}
 
                     // Complete success notification
+                    Bitmap successLargeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
                     NotificationCompat.Builder successBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setLargeIcon(successLargeIcon)
                             .setContentTitle("Download Successful")
                             .setContentText("Downloaded " + filename)
                             .setContentIntent(contentPendingIntent)

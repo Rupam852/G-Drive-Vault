@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.4.9",
+  "latestVersion": "1.5.0",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "Clean production build with full resource refresh, ensuring the new cloud-hexagon icon renders correctly across all background notifications! 🚀🛡️"
+  "releaseNotes": "Major release introducing explicit setLargeIcon bindings across all background processes, ensuring the custom cloud-hexagon logo displays flawlessly on all Android devices and UI skins! 🚀🛡️"
 }
