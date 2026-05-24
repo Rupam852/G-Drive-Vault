@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.4.6",
+  "latestVersion": "1.4.7",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "100% Vector adaptive logo integration (no more legacy shield icons anywhere on the home screen or notifications), zero-branding splash screen, and extremely fast boot loading sequence! 🚀🛡️"
+  "releaseNotes": "Premium high-resolution custom logo.svg integration across all devices, launchers, notifications, and native update dialogs! 🚀🛡️"
 }
