@@ -125,68 +125,70 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     setIsRenameOpen(true);
   };
 
-  const stats: StorageStats = {
-    used: storageInfo ? parseInt(storageInfo.usage) : files.reduce((acc, f) => acc + f.sizeBytes, 0),
-    total: storageInfo ? parseInt(storageInfo.limit) : 15 * 1024 * 1024 * 1024, // Default to 15GB if unknown
-    categories: [
-      { 
-        name: 'Images', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.image.size) : formatBytes(files.filter(f => f.type === 'image').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-blue-500', 
-        count: storageBreakdown ? storageBreakdown.image.count : files.filter(f => f.type === 'image').length, 
-        type: 'image' 
-      },
-      { 
-        name: 'Videos', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.video.size) : formatBytes(files.filter(f => f.type === 'video').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-purple-500', 
-        count: storageBreakdown ? storageBreakdown.video.count : files.filter(f => f.type === 'video').length, 
-        type: 'video' 
-      },
-      { 
-        name: 'Documents', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.document.size) : formatBytes(files.filter(f => f.type === 'document').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-orange-500', 
-        count: storageBreakdown ? storageBreakdown.document.count : files.filter(f => f.type === 'document').length, 
-        type: 'document' 
-      },
-      { 
-        name: 'Audio', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.audio.size) : formatBytes(files.filter(f => f.type === 'audio').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-green-500', 
-        count: storageBreakdown ? storageBreakdown.audio.count : files.filter(f => f.type === 'audio').length, 
-        type: 'audio' 
-      },
-      { 
-        name: 'APKs & Apps', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.apk.size) : formatBytes(files.filter(f => f.type === 'apk').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-teal-500', 
-        count: storageBreakdown ? storageBreakdown.apk.count : files.filter(f => f.type === 'apk').length, 
-        type: 'apk' 
-      },
-      { 
-        name: 'Folders', 
-        size: '--', 
-        color: 'bg-yellow-500', 
-        count: files.filter(f => f.type === 'folder').length, 
-        type: 'folder' 
-      },
-      { 
-        name: 'Archives', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.archive.size) : formatBytes(files.filter(f => f.type === 'archive').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-red-500', 
-        count: storageBreakdown ? storageBreakdown.archive.count : files.filter(f => f.type === 'archive').length, 
-        type: 'archive' 
-      },
-      { 
-        name: 'Other Files', 
-        size: storageBreakdown ? formatBytes(storageBreakdown.other.size) : formatBytes(files.filter(f => f.type === 'other').reduce((acc, f) => acc + f.sizeBytes, 0)), 
-        color: 'bg-slate-500', 
-        count: storageBreakdown ? storageBreakdown.other.count : files.filter(f => f.type === 'other').length, 
-        type: 'other' 
-      },
-    ]
-  };
+  const stats: StorageStats = React.useMemo(() => {
+    return {
+      used: storageInfo ? parseInt(storageInfo.usage) : files.reduce((acc, f) => acc + f.sizeBytes, 0),
+      total: storageInfo ? parseInt(storageInfo.limit) : 15 * 1024 * 1024 * 1024, // Default to 15GB if unknown
+      categories: [
+        { 
+          name: 'Images', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.image.size) : formatBytes(files.filter(f => f.type === 'image').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-blue-500', 
+          count: storageBreakdown ? storageBreakdown.image.count : files.filter(f => f.type === 'image').length, 
+          type: 'image' 
+        },
+        { 
+          name: 'Videos', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.video.size) : formatBytes(files.filter(f => f.type === 'video').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-purple-500', 
+          count: storageBreakdown ? storageBreakdown.video.count : files.filter(f => f.type === 'video').length, 
+          type: 'video' 
+        },
+        { 
+          name: 'Documents', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.document.size) : formatBytes(files.filter(f => f.type === 'document').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-orange-500', 
+          count: storageBreakdown ? storageBreakdown.document.count : files.filter(f => f.type === 'document').length, 
+          type: 'document' 
+        },
+        { 
+          name: 'Audio', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.audio.size) : formatBytes(files.filter(f => f.type === 'audio').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-green-500', 
+          count: storageBreakdown ? storageBreakdown.audio.count : files.filter(f => f.type === 'audio').length, 
+          type: 'audio' 
+        },
+        { 
+          name: 'APKs & Apps', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.apk.size) : formatBytes(files.filter(f => f.type === 'apk').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-teal-500', 
+          count: storageBreakdown ? storageBreakdown.apk.count : files.filter(f => f.type === 'apk').length, 
+          type: 'apk' 
+        },
+        { 
+          name: 'Folders', 
+          size: '--', 
+          color: 'bg-yellow-500', 
+          count: files.filter(f => f.type === 'folder').length, 
+          type: 'folder' 
+        },
+        { 
+          name: 'Archives', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.archive.size) : formatBytes(files.filter(f => f.type === 'archive').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-red-500', 
+          count: storageBreakdown ? storageBreakdown.archive.count : files.filter(f => f.type === 'archive').length, 
+          type: 'archive' 
+        },
+        { 
+          name: 'Other Files', 
+          size: storageBreakdown ? formatBytes(storageBreakdown.other.size) : formatBytes(files.filter(f => f.type === 'other').reduce((acc, f) => acc + f.sizeBytes, 0)), 
+          color: 'bg-slate-500', 
+          count: storageBreakdown ? storageBreakdown.other.count : files.filter(f => f.type === 'other').length, 
+          type: 'other' 
+        },
+      ]
+    };
+  }, [storageInfo, storageBreakdown, files]);
 
   const handleDownload = async (file: FileItem) => {
     if (!file || !tokens) return;

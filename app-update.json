@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.5.0",
+  "latestVersion": "1.5.1",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "Major release introducing explicit setLargeIcon bindings across all background processes, ensuring the custom cloud-hexagon logo displays flawlessly on all Android devices and UI skins! 🚀🛡️"
+  "releaseNotes": "Performance update optimizing the post-login transition! Resolves micro-stutter and UI layout shifts by batching API fetches and memoizing storage stats calculation. 🚀⚡"
 }

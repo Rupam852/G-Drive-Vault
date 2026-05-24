@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.5.0';
+const CURRENT_VERSION = '1.5.1';
 
 // Global fetch interceptor to automatically save refreshed OAuth tokens sent by the backend
 if (typeof window !== 'undefined') {
@@ -294,11 +294,15 @@ export default function App() {
         console.log('[App] User data received:', data);
         setUser(data);
         localStorage.setItem('drive_vault_user', JSON.stringify(data));
-        setIsLoading(false);
 
-        fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current);
-        fetchRecentFiles(activeTokens);
-        fetchStorage(activeTokens);
+        // Fetch critical initial data in parallel BEFORE removing loading screen to prevent UI stutter/flicker
+        await Promise.all([
+          fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current),
+          fetchRecentFiles(activeTokens),
+          fetchStorage(activeTokens)
+        ]).catch(err => console.error('[App] Error in initial batch fetch:', err));
+
+        setIsLoading(false);
 
         // Defer CPU/Network intensive fetches to eliminate post-login micro-stutter
         setTimeout(() => {
