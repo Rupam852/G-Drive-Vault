@@ -1900,12 +1900,7 @@ export default function App() {
               <button
                 onClick={() => {
                   if (updateInfo && updateInfo.apkUrl) {
-                    window.open(updateInfo.apkUrl, '_blank');
-                    if (Capacitor.isNativePlatform()) {
-                      setTimeout(() => {
-                        CapApp.minimizeApp().catch(console.error);
-                      }, 1200);
-                    }
+                    window.open(updateInfo.apkUrl, '_system');
                   }
                 }}
                 className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
