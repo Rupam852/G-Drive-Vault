@@ -79,6 +79,95 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
   };
 
+  if (Capacitor.isNativePlatform()) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-white font-sans flex flex-col justify-between p-6 relative overflow-hidden selection:bg-blue-600/30">
+        {/* Background blobs / glows */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[60%] bg-blue-600/15 rounded-full blur-[140px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px]" />
+        </div>
+
+        {/* Top spacer / status bar match */}
+        <div className="h-6" />
+
+        {/* Centered Premium Content */}
+        <div className="flex-1 flex flex-col justify-center items-center max-w-sm mx-auto w-full space-y-12 z-10">
+          {/* Logo container with double-ring glowing effect */}
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="relative"
+          >
+            {/* Outer glow ring */}
+            <div className="absolute inset-0 rounded-[2.5rem] bg-blue-500/20 blur-xl animate-[pulse_3s_infinite]" />
+            
+            {/* Inner ring & Logo */}
+            <div className="relative w-24 h-24 bg-slate-900 border border-slate-800/80 rounded-[2rem] flex items-center justify-center shadow-2xl">
+              <div className="w-16 h-16 bg-blue-600 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <svg viewBox="0 0 108 108" className="w-10 h-10 text-white" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M54 20L84 37V71L54 88L24 71V37L54 20Z" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" />
+                  <path d="M39 64C36 64 34 61.5 34 58.5C34 55.5 36.5 53 39.5 53C40 53 41 53 42 54C43 49 48 46 53 46C57 46 61 49 62 53C62.5 53 63 53 63.5 53C66.5 53 69 55.5 69 58.5C69 61.5 66.5 64 63.5 64H39Z" fill="currentColor" />
+                  <circle cx="54" cy="31" r="3" fill="currentColor" fillOpacity="0.5" />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Title & Subtitle */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center space-y-3"
+          >
+            <h1 className="text-4xl font-black tracking-tight bg-gradient-to-b from-white to-slate-300 bg-clip-text text-transparent">
+              DriveVault
+            </h1>
+            <p className="text-sm font-medium text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Biometric-protected direct cloud interface. No middleman servers, ever.
+            </p>
+          </motion.div>
+
+          {/* Premium Google Sign-in Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full"
+          >
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full h-15 bg-white text-slate-900 rounded-2xl font-extrabold text-md flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-transform"
+            >
+              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google Logo" />
+              Connect Google Drive
+            </button>
+          </motion.div>
+
+          {/* Biometric/Security badge */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900/50 border border-slate-800/60 rounded-full text-[11px] font-bold text-slate-400 uppercase tracking-wider"
+          >
+            <Shield size={12} className="text-blue-500" />
+            OAuth 2.0 & Biometrics Secured
+          </motion.div>
+        </div>
+
+        {/* Small Bottom Links */}
+        <div className="z-10 text-center py-4 flex justify-center gap-6 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+          <a href="/privacy-policy" target="_blank" className="hover:text-slate-400 transition-colors">Privacy Policy</a>
+          <span>•</span>
+          <a href="/terms-of-service" target="_blank" className="hover:text-slate-400 transition-colors">Terms of Service</a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020617] text-white font-sans overflow-x-hidden selection:bg-blue-600/30">
       {/* Background blobs */}
