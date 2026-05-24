@@ -240,12 +240,10 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       return (
         <video
           src={previewUrl}
-          className="w-full h-full object-contain bg-black"
+          className="w-full h-full object-contain bg-black rounded-2xl"
           poster={file.thumbnail?.replace('=s220', '=s1000')}
-          controls={fullscreen}
-          autoPlay={fullscreen}
+          controls
           playsInline
-          muted={!fullscreen}
           onError={() => setPreviewError(true)}
         />
       );
