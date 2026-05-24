@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare, Minus } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,9 @@ interface FileExplorerProps {
   onShowInfo: (file: FileItem) => void;
   autoOpenFile?: FileItem | null;
   onClearAutoOpenFile?: () => void;
+  activeDownloads: any[];
+  setActiveDownloads: React.Dispatch<React.SetStateAction<any[]>>;
+  onCancelDownload: (id: string) => void;
 }
 
 const iconMap = {
@@ -65,7 +68,7 @@ const iconMap = {
   other: FileQuestion,
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
@@ -88,9 +91,6 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   const [moveBrowsePath, setMoveBrowsePath] = useState<{id: string, name: string}[]>([{id: "root", name: "My Drive"}]);
   const [moveBrowseFolders, setMoveBrowseFolders] = useState<FileItem[]>([]);
   const [moveBrowseLoading, setMoveBrowseLoading] = useState(false);
-  const [activeDownloads, setActiveDownloads] = useState<{
-    id: string; name: string; progress: number; controller: AbortController;
-  }[]>([]);
 
   // CENTRAL BACK GESTURE HANDLING
   useEffect(() => {
@@ -275,17 +275,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
   };
 
   const cancelDownload = async (dlId: string, controller: AbortController) => {
-    controller.abort();
-    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
-      try {
-        const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
-        await UploadNotification.cancelNotification({ id: dlId });
-      } catch (e) {
-        console.warn('Failed to cancel native download:', e);
-      }
-    }
-    setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
-    toast.info('Download cancelled');
+    onCancelDownload(dlId);
   };
 
   const handleDownload = async (file: FileItem) => {
@@ -338,9 +328,39 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           }
           
           let progressListener: any;
+          const startTime = Date.now();
+          const totalSizeBytes = file.sizeBytes || 0;
+
           UploadNotification.addListener('onDownloadProgress', (data: any) => {
             if (data.id === dlId) {
-              setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: data.progress } : d));
+              const now = Date.now();
+              const elapsedSeconds = (now - startTime) / 1000;
+              const progressPct = data.progress;
+              const received = totalSizeBytes > 0 ? (progressPct / 100) * totalSizeBytes : 0;
+              const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
+              const remainingBytes = totalSizeBytes > 0 ? Math.max(0, totalSizeBytes - received) : 0;
+              const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
+
+              const formatBytesHelper = (bytes: number, decimals = 1) => {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+              };
+
+              const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
+              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
+              const progressSizeText = totalSizeBytes > 0 ? `${formatBytesHelper(received)} / ${formatBytesHelper(totalSizeBytes)}` : formatBytesHelper(received);
+
+              setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+                ...d,
+                progress: progressPct,
+                speed: speedText,
+                eta: etaText,
+                sizeText: progressSizeText
+              } : d));
             }
           }).then(l => progressListener = l);
 
@@ -350,6 +370,20 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             id: dlId,
             size: file.sizeBytes || 0
           }).then(() => {
+            try {
+              const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+              const histEntry = {
+                id: dlId,
+                name: finalFilename,
+                date: new Date().toISOString(),
+                size: file.sizeBytes || 0,
+                status: 'completed'
+              };
+              hist.unshift(histEntry);
+              localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+            } catch (e) {
+              console.error('Failed to save download history:', e);
+            }
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
             if (progressListener) progressListener.remove();
             toast.success('Download Completed', { description: truncateFilename(finalFilename, 35) });
@@ -488,20 +522,27 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         if (value) {
           received += value.length;
           const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
-          setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: pct } : d));
+          const now = Date.now();
+          const elapsedSeconds = (now - startTime) / 1000;
+          const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
+          const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
+          const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
+          
+          const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
+          const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
+          const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
+
+          setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+            ...d,
+            progress: pct,
+            speed: speedText,
+            eta: etaText,
+            sizeText: progressSizeText
+          } : d));
 
           if (isNative) {
             // Update custom notification with app logo, progress speed, growing size/total size, and bacha hua time
-            const now = Date.now();
             if (now - lastNotificationTime > 800) {
-              const elapsedSeconds = (now - startTime) / 1000;
-              const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
-              const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
-              const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
-              
-              const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
-              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
-              const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
               const speedDetails = total > 0 ? `${progressSizeText} • ${speedText} • ${etaText}` : `${progressSizeText} • ${speedText}`;
 
               try {
@@ -559,6 +600,21 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         toast.success('Downloaded successfully', { description: truncateFilename(finalFilename, 35) });
+      }
+
+      try {
+        const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+        const histEntry = {
+          id: dlId,
+          name: finalFilename,
+          date: new Date().toISOString(),
+          size: file.sizeBytes || 0,
+          status: 'completed'
+        };
+        hist.unshift(histEntry);
+        localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+      } catch (e) {
+        console.error('Failed to save download history:', e);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -1157,9 +1213,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       </Dialog>
 
       {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
-      {activeDownloads.length > 0 && (
+      {activeDownloads.filter(d => !d.isHidden).length > 0 && (
         <div className="fixed top-0 left-0 right-0 z-[999] space-y-1 p-3 pointer-events-none">
-          {activeDownloads.map(dl => (
+          {activeDownloads.filter(d => !d.isHidden).map(dl => (
             <div key={dl.id} className="bg-slate-900/97 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl border border-slate-700/60 pointer-events-auto">
               <div className="w-8 h-8 rounded-lg bg-blue-900/40 flex items-center justify-center shrink-0">
                 <Download size={16} className="text-blue-400 animate-bounce" />
@@ -1180,12 +1236,22 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               <span className="text-[11px] font-bold text-blue-400 shrink-0 min-w-[42px] text-right">
                 {dl.progress >= 0 ? `${dl.progress}%` : ''}
               </span>
-              <button
-                onClick={() => cancelDownload(dl.id, dl.controller)}
-                className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0"
-              >
-                <X size={14} />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setActiveDownloads(prev => prev.map(d => d.id === dl.id ? { ...d, isHidden: true } : d))}
+                  className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300 hover:text-white transition-all shrink-0 pointer-events-auto"
+                  title="Minimize to Background"
+                >
+                  <Minus size={14} />
+                </button>
+                <button
+                  onClick={() => cancelDownload(dl.id, dl.controller)}
+                  className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0 pointer-events-auto"
+                  title="Cancel Download"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

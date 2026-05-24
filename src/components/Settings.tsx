@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -49,9 +49,13 @@ interface SettingsProps {
   currentVersion?: string;
   updateInfo?: any;
   onSwitchAccount?: () => void;
+  activeDownloads?: any[];
+  onCancelDownload?: (id: string) => void;
+  onPauseDownload?: (id: string) => void;
+  onResumeDownload?: (id: string) => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount, activeDownloads = [], onCancelDownload, onPauseDownload, onResumeDownload }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -72,6 +76,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   // Profile state
   const [displayName, setDisplayName] = useState(user?.name || '');
   const [uploadHistory, setUploadHistory] = useState<any[]>([]);
+  const [downloadHistory, setDownloadHistory] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'uploads' | 'downloads'>('uploads');
 
   // Load upload history from localStorage
   React.useEffect(() => {
@@ -80,6 +86,28 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
       setUploadHistory(hist);
     } catch {}
   }, [transfers]);
+
+  // Load download history from localStorage
+  React.useEffect(() => {
+    try {
+      const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+      setDownloadHistory(hist);
+    } catch {}
+  }, [activeDownloads]);
+
+  const clearDownloadHistory = () => {
+    localStorage.removeItem('drive_vault_download_history');
+    setDownloadHistory([]);
+    toast.success('Download history cleared');
+  };
+
+  const deleteDownloadHistoryItem = (id: string, idx: number) => {
+    const updated = downloadHistory.filter((_, i) => i !== idx);
+    setDownloadHistory(updated);
+    try {
+      localStorage.setItem('drive_vault_download_history', JSON.stringify(updated));
+    } catch {}
+  };
 
   // Sync isTransfersOpen from external props
   React.useEffect(() => {
@@ -170,7 +198,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   };
 
   const menuItems = [
-    { icon: History, label: 'Upload History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
+    { icon: History, label: 'Transfer History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
     { icon: Trash2, label: 'Trash Bin', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', onClick: () => setIsTrashOpen(true) },
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true), hideOnWeb: true },
@@ -373,12 +401,19 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
           <div className="w-full h-full md:h-auto md:max-h-full md:max-w-3xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
               <div>
-                <h2 className="text-xl font-bold">Upload History</h2>
-                <p className="text-xs text-slate-400">{uploadHistory.length} uploads recorded</p>
+                <h2 className="text-xl font-bold">Transfer History</h2>
+                <p className="text-xs text-slate-400">
+                  {activeTab === 'uploads' ? `${uploadHistory.length} uploads` : `${downloadHistory.length} downloads`} recorded
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                {uploadHistory.length > 0 && (
+                {activeTab === 'uploads' && uploadHistory.length > 0 && (
                   <Button variant="outline" size="sm" onClick={clearUploadHistory} className="rounded-xl text-slate-500 border-slate-200">
+                    Clear All
+                  </Button>
+                )}
+                {activeTab === 'downloads' && downloadHistory.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearDownloadHistory} className="rounded-xl text-slate-500 border-slate-200">
                     Clear All
                   </Button>
                 )}
@@ -391,108 +426,220 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
               </div>
             </div>
 
+            {/* Sliding Tab selector */}
+            <div className="px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-2xl">
+                <button
+                  onClick={() => setActiveTab('uploads')}
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'uploads' ? 'bg-white dark:bg-slate-900 text-blue-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  <Cloud size={15} />
+                  Uploads
+                </button>
+                <button
+                  onClick={() => setActiveTab('downloads')}
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'downloads' ? 'bg-white dark:bg-slate-900 text-blue-500 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  <Download size={15} />
+                  Downloads
+                </button>
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
-              {activeUploads.length === 0 && uploadHistory.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-                  <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-                    <History size={40} />
+              {activeTab === 'uploads' ? (
+                activeUploads.length === 0 && uploadHistory.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 py-16">
+                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                      <Cloud size={40} className="text-slate-400" />
+                    </div>
+                    <p className="font-semibold text-sm">No uploads yet</p>
+                    <p className="text-xs text-center text-slate-400">Your upload history will appear here</p>
                   </div>
-                  <p className="font-semibold">No uploads yet</p>
-                  <p className="text-xs text-center text-slate-400">Your upload history will appear here</p>
-                </div>
-              ) : (
-                <>
-                {activeUploads.map(t => {
-                  const speedStr = t.speed ? (t.speed > 1048576 ? `${(t.speed/1048576).toFixed(1)} MB/s` : `${(t.speed/1024).toFixed(0)} KB/s`) : 'Calculating...';
-                  const timeStr = t.remainingSeconds ? (t.remainingSeconds > 60 ? `${Math.floor(t.remainingSeconds/60)}m ${Math.round(t.remainingSeconds%60)}s left` : `${Math.round(t.remainingSeconds)}s left`) : '';
-                  return (
-                    <div key={t.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
-                      <div className="flex items-center gap-3">
-                        {/* Left Side: Play/Pause Button */}
-                        {(t.status === 'uploading' || t.status === 'paused') && (
-                          <button
-                            onClick={() => {
-                              if (t.status === 'uploading' && onPauseTransfer) onPauseTransfer(t.id);
-                              else if (t.status === 'paused' && onResumeTransfer) onResumeTransfer(t.id);
-                            }}
-                            className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 transition active:scale-95 cursor-pointer"
-                            title={t.status === 'uploading' ? 'Pause Upload' : 'Resume Upload'}
-                          >
-                            {t.status === 'uploading' ? (
-                              <Pause size={18} fill="currentColor" />
-                            ) : (
-                              <Play size={18} className="ml-0.5" fill="currentColor" />
+                ) : (
+                  <>
+                    {activeUploads.map(t => {
+                      const speedStr = t.speed ? (t.speed > 1048576 ? `${(t.speed/1048576).toFixed(1)} MB/s` : `${(t.speed/1024).toFixed(0)} KB/s`) : 'Calculating...';
+                      const timeStr = t.remainingSeconds ? (t.remainingSeconds > 60 ? `${Math.floor(t.remainingSeconds/60)}m ${Math.round(t.remainingSeconds%60)}s left` : `${Math.round(t.remainingSeconds)}s left`) : '';
+                      return (
+                        <div key={t.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
+                          <div className="flex items-center gap-3">
+                            {(t.status === 'uploading' || t.status === 'paused') && (
+                              <button
+                                onClick={() => {
+                                  if (t.status === 'uploading' && onPauseTransfer) onPauseTransfer(t.id);
+                                  else if (t.status === 'paused' && onResumeTransfer) onResumeTransfer(t.id);
+                                }}
+                                className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 transition active:scale-95 cursor-pointer"
+                                title={t.status === 'uploading' ? 'Pause Upload' : 'Resume Upload'}
+                              >
+                                {t.status === 'uploading' ? (
+                                  <Pause size={18} fill="currentColor" />
+                                ) : (
+                                  <Play size={18} className="ml-0.5" fill="currentColor" />
+                                )}
+                              </button>
                             )}
-                          </button>
-                        )}
-                        {t.status === 'pending' && (
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                            <Loader2 size={20} className="text-blue-500 animate-spin" />
+                            {t.status === 'pending' && (
+                              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                                <Loader2 size={20} className="text-blue-500 animate-spin" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{t.name}</p>
+                              <div className="flex items-center justify-between mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                <span>{t.status === 'paused' ? 'Paused' : (t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`)}</span>
+                                <span>{t.progress}%</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {onCancelTransfer && (
+                                <button
+                                  onClick={() => onCancelTransfer(t.id)}
+                                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                                  title="Cancel Upload"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{t.name}</p>
-                          <div className="flex items-center justify-between mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                            <span>{t.status === 'paused' ? 'Paused' : (t.status === 'pending' ? 'Starting...' : `${speedStr} • ${timeStr}`)}</span>
-                            <span>{t.progress}%</span>
+                          <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
+                            <motion.div 
+                              className={`h-full rounded-full ${t.status === 'paused' ? 'bg-amber-500' : 'bg-blue-500'}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${t.progress}%` }}
+                              transition={{ duration: 0.2 }}
+                            />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {onCancelTransfer && (
+                      );
+                    })}
+                    {uploadHistory.map((item, idx) => {
+                      const date = new Date(item.date);
+                      const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                      const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                      const sizeStr = item.size ? (item.size > 1048576 ? `${(item.size/1048576).toFixed(1)} MB` : item.size > 1024 ? `${(item.size/1024).toFixed(0)} KB` : `${item.size} B`) : '';
+                      return (
+                        <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm group">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                            <Cloud size={20} className="text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{item.name}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {item.folderName || 'My Drive'} {sizeStr ? `• ${sizeStr}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
+                              <p className="text-[10px] text-slate-400">{timeStr}</p>
+                            </div>
                             <button
-                              onClick={() => onCancelTransfer(t.id)}
-                              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
-                              title="Cancel Upload"
+                              onClick={() => deleteHistoryItem(item.id, idx)}
+                              className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
                             >
-                              <X size={16} />
+                              <X size={14} />
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
-                        <motion.div 
-                          className={`h-full rounded-full ${t.status === 'paused' ? 'bg-amber-500' : 'bg-blue-500'}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${t.progress}%` }}
-                          transition={{ duration: 0.2 }}
-                        />
-                      </div>
+                      );
+                    })}
+                  </>
+                )
+              ) : (
+                activeDownloads.length === 0 && downloadHistory.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 py-16">
+                    <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                      <Download size={40} className="text-slate-400" />
                     </div>
-                  );
-                })}
-                {uploadHistory.map((item, idx) => {
-                  const date = new Date(item.date);
-                  const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-                  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-                  const sizeStr = item.size ? (item.size > 1048576 ? `${(item.size/1048576).toFixed(1)} MB` : item.size > 1024 ? `${(item.size/1024).toFixed(0)} KB` : `${item.size} B`) : '';
-                  return (
-                    <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm group">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                        <Cloud size={20} className="text-blue-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{item.name}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          {item.folderName || 'My Drive'} {sizeStr ? `• ${sizeStr}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-right">
-                          <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
-                          <p className="text-[10px] text-slate-400">{timeStr}</p>
+                    <p className="font-semibold text-sm">No downloads yet</p>
+                    <p className="text-xs text-center text-slate-400">Your download history will appear here</p>
+                  </div>
+                ) : (
+                  <>
+                    {activeDownloads.map(t => {
+                      return (
+                        <div key={t.id} className="flex flex-col gap-2 p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 shadow-sm relative overflow-hidden">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => {
+                                if (t.status === 'paused' && onResumeDownload) onResumeDownload(t.id);
+                                else if (onPauseDownload) onPauseDownload(t.id);
+                              }}
+                              className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800 transition active:scale-95 cursor-pointer"
+                              title={t.status === 'paused' ? 'Resume Download' : 'Pause Download'}
+                            >
+                              {t.status === 'paused' ? (
+                                <Play size={18} className="ml-0.5" fill="currentColor" />
+                              ) : (
+                                <Pause size={18} fill="currentColor" />
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{t.name}</p>
+                              <div className="flex items-center justify-between mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                <span>{t.status === 'paused' ? 'Paused' : `${t.speed || 'Calculating...'} ${t.eta ? `• ${t.eta}` : ''} ${t.sizeText ? `• ${t.sizeText}` : ''}`}</span>
+                                <span>{t.progress}%</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {onCancelDownload && (
+                                <button
+                                  onClick={() => onCancelDownload(t.id)}
+                                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                                  title="Cancel Download"
+                                >
+                                  <X size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="w-full bg-blue-100 dark:bg-blue-900/30 rounded-full h-1.5 mt-1 overflow-hidden">
+                            <motion.div 
+                              className={`h-full rounded-full ${t.status === 'paused' ? 'bg-amber-500' : 'bg-blue-500'}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${t.progress}%` }}
+                              transition={{ duration: 0.2 }}
+                            />
+                          </div>
                         </div>
-                        <button
-                          onClick={() => deleteHistoryItem(item.id, idx)}
-                          className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-                }
-                </>
+                      );
+                    })}
+                    {downloadHistory.map((item, idx) => {
+                      const date = new Date(item.date);
+                      const dateStr = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                      const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                      const sizeStr = item.size ? (item.size > 1048576 ? `${(item.size/1048576).toFixed(1)} MB` : item.size > 1024 ? `${(item.size/1024).toFixed(0)} KB` : `${item.size} B`) : '';
+                      return (
+                        <div key={item.id || idx} className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm group">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                            <Download size={20} className="text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{item.name}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {sizeStr ? `Size: ${sizeStr}` : 'Completed'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <p className="text-[10px] font-semibold text-slate-500">{dateStr}</p>
+                              <p className="text-[10px] text-slate-400">{timeStr}</p>
+                            </div>
+                            <button
+                              onClick={() => deleteDownloadHistoryItem(item.id, idx)}
+                              className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )
               )}
             </div>
           </div>

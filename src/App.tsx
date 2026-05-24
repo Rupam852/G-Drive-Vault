@@ -157,6 +157,82 @@ export default function App() {
   };
 
   const [transfers, setTransfers] = useState<TransferState[]>([]);
+  const [activeDownloads, setActiveDownloads] = useState<{
+    id: string;
+    name: string;
+    progress: number;
+    controller: AbortController;
+    speed?: string;
+    eta?: string;
+    sizeText?: string;
+    status: 'downloading' | 'paused' | 'completed' | 'error';
+    sizeBytes: number;
+    isHidden?: boolean;
+  }[]>([]);
+
+  const handleCancelDownload = async (dlId: string) => {
+    const dl = activeDownloads.find(d => d.id === dlId);
+    if (dl) {
+      try {
+        dl.controller.abort();
+      } catch {}
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+        try {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          await UploadNotification.cancelNotification({ id: dlId });
+        } catch (e) {
+          console.warn('Failed to cancel native download:', e);
+        }
+      }
+    }
+    setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
+    toast.info('Download cancelled');
+  };
+
+  const handlePauseDownload = async (dlId: string) => {
+    setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, status: 'paused' } : d));
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+      try {
+        const dl = activeDownloads.find(d => d.id === dlId);
+        if (dl) {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          await UploadNotification.showProgressNotification({
+            id: dlId,
+            title: `Downloading ${dl.name}`,
+            progress: dl.progress,
+            speedText: 'Paused',
+            isPaused: true
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to pause native notification:', e);
+      }
+    }
+    toast.info('Download paused');
+  };
+
+  const handleResumeDownload = async (dlId: string) => {
+    setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, status: 'downloading' } : d));
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+      try {
+        const dl = activeDownloads.find(d => d.id === dlId);
+        if (dl) {
+          const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+          await UploadNotification.showProgressNotification({
+            id: dlId,
+            title: `Downloading ${dl.name}`,
+            progress: dl.progress,
+            speedText: dl.speed || 'Resuming...',
+            isPaused: false
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to resume native notification:', e);
+      }
+    }
+    toast.info('Download resumed');
+  };
+
   const activeUploadsRef = useRef<{ [key: string]: XMLHttpRequest }>({});
   const uploadSessionsRef = useRef<Record<string, { uploadUrl: string, file: File, currentFolderId: string }>>({});
   const uploadSpeedsRef = useRef<Record<string, number>>({});
@@ -1713,6 +1789,9 @@ export default function App() {
             onShowInfo={handleShowInfo}
             autoOpenFile={autoOpenFile}
             onClearAutoOpenFile={() => setAutoOpenFile(null)}
+            activeDownloads={activeDownloads}
+            setActiveDownloads={setActiveDownloads}
+            onCancelDownload={handleCancelDownload}
           />
         );
 
@@ -1746,6 +1825,10 @@ export default function App() {
             currentVersion={CURRENT_VERSION}
             updateInfo={updateInfo}
             onSwitchAccount={handleSwitchAccount}
+            activeDownloads={activeDownloads}
+            onCancelDownload={handleCancelDownload}
+            onPauseDownload={handlePauseDownload}
+            onResumeDownload={handleResumeDownload}
           />
         );
       default:
