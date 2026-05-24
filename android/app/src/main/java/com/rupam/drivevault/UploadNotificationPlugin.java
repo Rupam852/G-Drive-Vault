@@ -168,7 +168,7 @@ public class UploadNotificationPlugin extends Plugin {
 
         // 2. Build NotificationBuilder
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(isPaused ? "[Paused] " + title : title)
                 .setContentText(speedText)
                 .setContentIntent(contentPendingIntent)
@@ -223,7 +223,7 @@ public class UploadNotificationPlugin extends Plugin {
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(notificationTitle)
                 .setContentText(title)
                 .setContentIntent(contentPendingIntent)
@@ -391,7 +391,7 @@ public class UploadNotificationPlugin extends Plugin {
 
                     // Builder
                     NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                            .setSmallIcon(R.mipmap.ic_launcher)
+                            .setSmallIcon(R.drawable.ic_launcher_foreground)
                             .setContentTitle("Downloading " + filename)
                             .setContentIntent(contentPendingIntent)
                             .setOngoing(true)
@@ -485,7 +485,7 @@ public class UploadNotificationPlugin extends Plugin {
 
                     // Complete success notification
                     NotificationCompat.Builder successBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                            .setSmallIcon(R.mipmap.ic_launcher)
+                            .setSmallIcon(R.drawable.ic_launcher_foreground)
                             .setContentTitle("Download Successful")
                             .setContentText("Downloaded " + filename)
                             .setContentIntent(contentPendingIntent)
