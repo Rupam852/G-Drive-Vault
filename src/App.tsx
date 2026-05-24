@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.3.5';
+const CURRENT_VERSION = '1.3.6';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -71,7 +71,7 @@ export default function App() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [isAppActive, setIsAppActive] = useState(true);
-  
+
   const initialFileFilter = (() => {
     const saved = sessionStorage.getItem('drive_vault_file_filter');
     return saved || 'all';
@@ -79,16 +79,16 @@ export default function App() {
   const [fileFilter, setFileFilter] = useState<string>(initialFileFilter);
   const fileFilterRef = useRef<string>(initialFileFilter);
   const [currentFilter, setCurrentFilter] = useState('all');
-  
+
   const initialFolderId = (() => {
     const saved = sessionStorage.getItem('drive_vault_current_folder_id');
     return saved || 'root';
   })();
   const [currentFolderId, setCurrentFolderId] = useState<string>(initialFolderId);
   const currentFolderIdRef = useRef<string>(initialFolderId); // always latest, no stale closure
-  const [breadcrumb, setBreadcrumb] = useState<{id: string, name: string}[]>(() => {
+  const [breadcrumb, setBreadcrumb] = useState<{ id: string, name: string }[]>(() => {
     const saved = sessionStorage.getItem('drive_vault_breadcrumb');
-    return saved ? JSON.parse(saved) : [{id: 'root', name: 'My Drive'}];
+    return saved ? JSON.parse(saved) : [{ id: 'root', name: 'My Drive' }];
   });
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function App() {
   }, []);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
-  
+
   const [sharingState, setSharingState] = useState<'idle' | 'share' | 'manage'>('idle');
   const [fileToShare, setFileToShare] = useState<FileItem | null>(null);
 
@@ -155,7 +155,7 @@ export default function App() {
     setFileForInfo(file);
     setIsInfoOpen(true);
   };
-  
+
   const [transfers, setTransfers] = useState<TransferState[]>([]);
   const activeUploadsRef = useRef<{ [key: string]: XMLHttpRequest }>({});
   const uploadSessionsRef = useRef<Record<string, { uploadUrl: string, file: File, currentFolderId: string }>>({});
@@ -232,7 +232,7 @@ export default function App() {
 
     setIsUnlocked(false);
     isAuthenticatingRef.current = true;
-    
+
     try {
       const result = await NativeBiometric.isAvailable();
       if (!result.isAvailable) {
@@ -272,23 +272,23 @@ export default function App() {
       localStorage.setItem('drive_vault_tokens', JSON.stringify(currentTokens));
     }
     console.log('[App] Fetching user profile, using tokens:', !!activeTokens);
-    
+
     try {
       const headers: any = {};
       if (activeTokens) {
         headers['x-goog-tokens'] = JSON.stringify(activeTokens);
       }
-      
+
       const controller = new AbortController();
       const fetchTimeout = setTimeout(() => controller.abort(), 45000);
 
-      const res = await fetch(`${API_BASE_URL}/api/auth/me`, { 
+      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers,
         credentials: 'include',
         signal: controller.signal
       });
       clearTimeout(fetchTimeout);
-      
+
       console.log('[App] Fetch user response status:', res.status);
       if (res.ok) {
         const data = await res.json();
@@ -296,7 +296,7 @@ export default function App() {
         setUser(data);
         localStorage.setItem('drive_vault_user', JSON.stringify(data));
         setIsLoading(false);
-        
+
         fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current);
         fetchRecentFiles(activeTokens);
         fetchStorage(activeTokens);
@@ -309,7 +309,7 @@ export default function App() {
         setUser(null);
         localStorage.removeItem('drive_vault_user');
         localStorage.removeItem('drive_vault_tokens');
-        
+
         if (Capacitor.isNativePlatform()) {
           import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
             GoogleSignIn.signOut().catch(console.error);
@@ -461,11 +461,11 @@ export default function App() {
       let url = `/api/drive/files?folderId=${folderId}`;
       if (filter) url += `&filter=${filter}`;
 
-      const res = await fetch(`${API_BASE_URL}${url}`, { 
+      const res = await fetch(`${API_BASE_URL}${url}`, {
         headers,
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         const driveFiles = await res.json();
         const mappedFiles = mapDriveFiles(driveFiles);
@@ -489,13 +489,13 @@ export default function App() {
       if (index !== -1) {
         newBreadcrumb = prev.slice(0, index + 1);
       } else {
-        newBreadcrumb = [...prev, {id: folderId, name: folderName}];
+        newBreadcrumb = [...prev, { id: folderId, name: folderName }];
       }
-      
+
       if (!isBacking) {
         window.history.pushState({ folderId, folderName }, '', '');
       }
-      
+
       return newBreadcrumb;
     });
     fetchFiles(folderId);
@@ -554,7 +554,7 @@ export default function App() {
     const setupAppBackListener = async () => {
       const listener = await CapApp.addListener('backButton', async ({ canGoBack }) => {
         // Dispatch custom event to see if any sub-component wants to consume the back gesture
-        const backEvent = new CustomEvent('vault-back', { 
+        const backEvent = new CustomEvent('vault-back', {
           cancelable: true,
           detail: { canGoBack }
         });
@@ -564,7 +564,7 @@ export default function App() {
         if (backEvent.defaultPrevented) return;
 
         // --- Fallback Global Priorities ---
-        
+
         // 1. Close global dialogs managed in App.tsx
         if (isInfoOpen) { setIsInfoOpen(false); return; }
         if (isMoveOpen) { setIsMoveOpen(false); return; }
@@ -654,7 +654,7 @@ export default function App() {
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {},
         credentials: 'include',
-      }).catch(() => {}); // Silently ignore errors
+      }).catch(() => { }); // Silently ignore errors
     };
     const id = setInterval(ping, KEEP_ALIVE_MS);
     return () => clearInterval(id);
@@ -673,13 +673,13 @@ export default function App() {
     try {
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/hide`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/hide`, {
         method: 'POST',
         headers,
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         setFiles(prev => prev.filter(f => f.id !== id));
         setRecentFiles(prev => prev.filter(f => f.id !== id));
@@ -700,7 +700,7 @@ export default function App() {
     try {
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
+
       const promises = ids.map(id => fetch(`${API_BASE_URL}/api/drive/files/${id}/unhide`, {
         method: 'POST',
         headers,
@@ -708,7 +708,7 @@ export default function App() {
       }));
 
       await Promise.all(promises);
-      
+
       // Update hidden files immediately locally
       setHiddenFiles(prev => prev.filter(f => !ids.includes(f.id)));
       fetchFiles(currentFolderId);
@@ -724,18 +724,18 @@ export default function App() {
     try {
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}`, {
         method: 'DELETE',
         headers,
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         setFiles(prev => prev.filter(f => f.id !== id));
         fetchRecentFiles();
         fetchTrash();
-        
+
         // Use a 1.5s delay to let Google Drive index catch up, then fetch real counts
         setTimeout(() => {
           fetchStorage();
@@ -753,13 +753,13 @@ export default function App() {
     try {
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/restore`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/restore`, {
         method: 'POST',
         headers,
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchFiles(currentFolderId);
@@ -782,13 +782,13 @@ export default function App() {
     try {
       const headers: any = {};
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/permanent`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/permanent`, {
         method: 'DELETE',
         headers,
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchStorageBreakdown();
@@ -905,7 +905,7 @@ export default function App() {
       fetchFiles(currentFolderId);
     } else {
       // Switching to recent/starred/shared resets folder to root
-      setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+      setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
       setCurrentFolderId('root');
       currentFolderIdRef.current = 'root'; // keep ref in sync
       fetchFiles('root', undefined, tab);
@@ -938,13 +938,13 @@ export default function App() {
       if (event.lengthComputable) {
         const now = Date.now();
         const timeDiff = (now - lastTime) / 1000;
-        
+
         if (timeDiff > 0.3 || event.loaded === event.total) {
           const absoluteLoaded = chunkStart + event.loaded;
           const absoluteTotal = file.size;
           const bytesDiff = absoluteLoaded - (lastLoaded + chunkStart);
           const instantSpeed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
-          
+
           // Smoothen the speed using Exponential Moving Average (EMA) with alpha = 0.15
           const prevSpeed = uploadSpeedsRef.current[transferId] || 0;
           const speed = prevSpeed === 0 ? instantSpeed : (0.15 * instantSpeed) + (0.85 * prevSpeed);
@@ -953,12 +953,12 @@ export default function App() {
           const remainingBytes = absoluteTotal - absoluteLoaded;
           const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
           const progress = Math.round((absoluteLoaded / absoluteTotal) * 100);
-          
+
           lastLoaded = event.loaded;
           lastTime = now;
 
-          setTransfers(prev => prev.map(t => t.id === transferId ? { 
-            ...t, 
+          setTransfers(prev => prev.map(t => t.id === transferId ? {
+            ...t,
             progress,
             speed,
             remainingSeconds,
@@ -970,8 +970,8 @@ export default function App() {
           try {
             if (Capacitor.isNativePlatform() && isNotificationEnabled) {
               const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
-              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
-              
+              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds / 60)}m left` : `${Math.round(remainingSeconds)}s left`;
+
               UploadNotification.showProgressNotification({
                 id: transferId,
                 title: file.name,
@@ -980,7 +980,7 @@ export default function App() {
                 isPaused: false
               });
             }
-          } catch {}
+          } catch { }
         }
       }
     };
@@ -1000,7 +1000,7 @@ export default function App() {
                 title: file.name
               });
             }
-          } catch {}
+          } catch { }
 
           const folderLabel = uploadToFolder === 'root' ? 'My Drive' : (breadcrumb[breadcrumb.length - 1]?.name || 'Folder');
           const histEntry = { id: transferId, name: file.name, folderId: uploadToFolder, folderName: folderLabel, date: new Date().toISOString(), size: file.size };
@@ -1008,13 +1008,13 @@ export default function App() {
             const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
             hist.unshift(histEntry);
             localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
-          } catch {}
+          } catch { }
           toast.success(`Uploaded ${file.name} to ${folderLabel}`);
           if (uploadToFolder === currentFolderIdRef.current) {
             fetchFiles(uploadToFolder, undefined, fileFilterRef.current);
           }
           fetchStorage();
-          fetchStorageBreakdown(); 
+          fetchStorageBreakdown();
           fetchRecentFiles();
         } else {
           // Google resumable redirect response indicates next chunk index range
@@ -1054,7 +1054,7 @@ export default function App() {
   const handleUploadFile = async (file: File, relativePath?: string, targetFolderId?: string) => {
     const uploadToFolder = targetFolderId ?? currentFolderIdRef.current ?? 'root';
     const transferId = Math.random().toString(36).substring(7);
-    
+
     setTransfers(prev => [...prev, {
       id: transferId,
       name: file.name,
@@ -1116,7 +1116,7 @@ export default function App() {
       xhr.abort();
     }
     setTransfers(prev => prev.map(t => t.id === id ? { ...t, status: 'paused' } : t));
-    
+
     try {
       if (Capacitor.isNativePlatform() && isNotificationEnabled) {
         const transfer = transfers.find(t => t.id === id);
@@ -1128,7 +1128,7 @@ export default function App() {
           isPaused: true
         });
       }
-    } catch {}
+    } catch { }
   };
 
   const handleResumeTransfer = async (id: string) => {
@@ -1150,7 +1150,7 @@ export default function App() {
           isPaused: false
         });
       }
-    } catch {}
+    } catch { }
 
     try {
       const checkRes = await fetch(session.uploadUrl, {
@@ -1195,12 +1195,12 @@ export default function App() {
     }
     setTransfers(prev => prev.map(t => t.id === id ? { ...t, status: 'error', name: `${t.name} (Cancelled)` } : t));
     delete uploadSessionsRef.current[id];
-    
+
     try {
       if (Capacitor.isNativePlatform()) {
         UploadNotification.cancelNotification({ id });
       }
-    } catch {}
+    } catch { }
     toast.error('Upload cancelled');
   };
 
@@ -1233,7 +1233,7 @@ export default function App() {
     e.preventDefault();
     e.stopPropagation();
     if (Capacitor.isNativePlatform()) return;
-    
+
     setIsGlobalDragging(false);
     dragCounter.current = 0;
 
@@ -1276,14 +1276,14 @@ export default function App() {
       const parentId = targetFolderId || currentFolderId;
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/folders`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/folders`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ name, parentId }),
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         const newFolder = await res.json();
         const mapped = mapDriveFiles([newFolder])[0];
@@ -1308,14 +1308,14 @@ export default function App() {
     try {
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ name: newName }),
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         const updatedFile = await res.json();
         const mapped = mapDriveFiles([updatedFile])[0];
@@ -1333,14 +1333,14 @@ export default function App() {
     try {
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/star`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/star`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ starred }),
-        credentials: 'include' 
+        credentials: 'include'
       });
-      
+
       if (res.ok) {
         setFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
         setRecentFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
@@ -1362,22 +1362,22 @@ export default function App() {
     const performMove = async (id: string) => {
       const headers: any = { 'Content-Type': 'application/json' };
       if (tokens) headers['x-goog-tokens'] = JSON.stringify(tokens);
-      
-      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/move`, { 
+
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${id}/move`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ 
-          newParentId, 
+        body: JSON.stringify({
+          newParentId,
           oldParentId: 'root' // Server handles picking up correct old parents if needed, but 'root' is safe fallback
         }),
-        credentials: 'include' 
+        credentials: 'include'
       });
       return res.ok;
     };
 
     try {
       if (moveCount > 1) toast.loading(`📦 Moving ${moveCount} items...`, { id: 'move-toast' });
-      
+
       for (const id of targetIds) {
         const success = await performMove(id);
         if (success) successCount++;
@@ -1411,10 +1411,10 @@ export default function App() {
     if (tokens) {
       headers['x-goog-tokens'] = JSON.stringify(tokens);
     }
-    await fetch(`${API_BASE_URL}/api/auth/logout`, { 
-      method: 'POST', 
+    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: 'POST',
       headers,
-      credentials: 'include' 
+      credentials: 'include'
     });
     setUser(null);
     setTokens(null);
@@ -1425,19 +1425,19 @@ export default function App() {
     sessionStorage.removeItem('drive_vault_current_folder_id');
     sessionStorage.removeItem('drive_vault_breadcrumb');
     sessionStorage.removeItem('drive_vault_file_filter');
-    
+
     // Reset React state variables back to defaults on logout
     setActiveTab('home');
     setCurrentFolderId('root');
-    setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+    setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
     setFileFilter('all');
-    
+
     if (Capacitor.isNativePlatform()) {
       import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
         GoogleSignIn.signOut().catch(console.error);
       });
     }
-    
+
     toast.info('Logged out');
   };
 
@@ -1446,13 +1446,13 @@ export default function App() {
     if (Capacitor.isNativePlatform()) {
       try {
         toast.info('Opening account chooser...');
-        
+
         // Dynamically load GoogleSignIn
         const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
-        
+
         // Clear native google sign in cached account session first so chooser always pops up
-        await GoogleSignIn.signOut().catch(() => {});
-        
+        await GoogleSignIn.signOut().catch(() => { });
+
         await GoogleSignIn.initialize({
           clientId: '443871816940-j8ifmrgsd4f0s1to4bttjm3uh93ujl2l.apps.googleusercontent.com',
           scopes: [
@@ -1475,7 +1475,7 @@ export default function App() {
         if (!response.ok) {
           throw new Error('Token exchange failed on server');
         }
-        
+
         const authData = await response.json();
         setTokens(authData.tokens);
         localStorage.setItem('drive_vault_tokens', JSON.stringify(authData.tokens));
@@ -1483,7 +1483,7 @@ export default function App() {
         localStorage.setItem('drive_vault_user', JSON.stringify(authData.user));
         setIsLoading(false);
         toast.success(`Successfully switched to ${authData.user.name || 'new account'}`);
-        
+
         // Reload files for the new account
         fetchUser(authData.tokens);
       } catch (error: any) {
@@ -1503,19 +1503,19 @@ export default function App() {
         toast.error('Popup was blocked. Please allow popups for this site.');
         return;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/api/auth/url`);
       if (!response.ok) {
         popup.close();
         throw new Error('Could not get auth URL from server');
       }
       const { url } = await response.json();
-      
+
       // Ensure select_account is enforced in the web URL
-      const forceSelectUrl = url.includes('prompt=') 
+      const forceSelectUrl = url.includes('prompt=')
         ? url.replace(/prompt=[a-zA-Z_]+/, 'prompt=select_account')
         : `${url}&prompt=select_account`;
-      
+
       popup.location.href = forceSelectUrl;
     } catch (error) {
       console.error('[Web Switch Account] Error:', error);
@@ -1535,8 +1535,8 @@ export default function App() {
         </div>
         <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">App Locked</h1>
         <p className="text-slate-500 dark:text-slate-400 text-center mb-10 text-sm font-medium">Please authenticate to access your Drive Vault</p>
-        <button 
-          onClick={checkBiometric} 
+        <button
+          onClick={checkBiometric}
           className="rounded-2xl px-10 h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xl shadow-blue-500/30 transition-all active:scale-95"
         >
           Unlock App
@@ -1558,10 +1558,10 @@ export default function App() {
     return (
       <>
         <Login onLoginSuccess={fetchUser} />
-        <Toaster 
-          theme="dark" 
-          position="top-center" 
-          richColors 
+        <Toaster
+          theme="dark"
+          position="top-center"
+          richColors
           closeButton
           toastOptions={{
             style: {
@@ -1584,7 +1584,7 @@ export default function App() {
   const handleCategoryClick = (type: string) => {
     setFileFilter(type);
     setCurrentFolderId('root');
-    setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+    setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
     fetchFiles('root', undefined, type); // Pass type so backend searches ALL Drive by mimeType
     setActiveTab('files');
   };
@@ -1611,18 +1611,18 @@ export default function App() {
     switch (activeTab) {
       case 'home':
         return (
-          <Dashboard 
-            user={user} 
+          <Dashboard
+            user={user}
             tokens={tokens}
-            files={recentFiles} 
-            storageInfo={storageInfo} 
+            files={recentFiles}
+            storageInfo={storageInfo}
             storageBreakdown={storageBreakdown}
-            onUpload={handleUploadFile} 
-            setActiveTab={setActiveTab} 
+            onUpload={handleUploadFile}
+            setActiveTab={setActiveTab}
             onRefreshStorage={() => {
               fetchStorage();
               fetchStorageBreakdown();
-            }} 
+            }}
             onCategoryClick={handleCategoryClick}
             onCreateFolder={handleCreateFolder}
             onRename={handleRenameFile}
@@ -1649,8 +1649,8 @@ export default function App() {
         );
       case 'files':
         return (
-          <FileExplorer 
-            files={files} 
+          <FileExplorer
+            files={files}
             tokens={tokens}
             breadcrumb={breadcrumb}
             filterType={fileFilter}
@@ -1692,11 +1692,11 @@ export default function App() {
 
       case 'settings':
         return (
-          <Settings 
+          <Settings
             user={user}
             setUser={setUser}
-            isDarkMode={isDarkMode} 
-            setIsDarkMode={setIsDarkMode} 
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
             onLogout={handleLogout}
             trashedFiles={trashedFiles}
             hiddenFiles={hiddenFiles}
@@ -1705,7 +1705,7 @@ export default function App() {
             onPermanentDelete={handlePermanentDelete}
             transfers={transfers}
             onClearTransfers={() => setTransfers([])}
-             isDownloadEnabled={isDownloadEnabled}
+            isDownloadEnabled={isDownloadEnabled}
             setIsDownloadEnabled={(val) => {
               setIsDownloadEnabled(val);
               localStorage.setItem('drive_vault_download_permission', val.toString());
@@ -1723,14 +1723,14 @@ export default function App() {
           />
         );
       default:
-        return <Dashboard 
-          user={user} 
+        return <Dashboard
+          user={user}
           tokens={tokens}
-          files={recentFiles} 
-          storageInfo={storageInfo} 
+          files={recentFiles}
+          storageInfo={storageInfo}
           storageBreakdown={storageBreakdown}
-          onUpload={handleUploadFile} 
-          setActiveTab={setActiveTab} 
+          onUpload={handleUploadFile}
+          setActiveTab={setActiveTab}
           onRefreshStorage={() => {
             fetchStorage();
             fetchStorageBreakdown();
@@ -1756,7 +1756,7 @@ export default function App() {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-blue-100 transition-colors duration-300"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -1765,16 +1765,16 @@ export default function App() {
     >
       <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
         {/* Desktop Sidebar */}
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          user={user} 
-          onLogout={handleLogout} 
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          onLogout={handleLogout}
           onSwitchAccount={handleSwitchAccount}
         />
 
         {/* Main Content Area */}
-        <main 
+        <main
           ref={mainScrollRef}
           className="flex-1 relative flex flex-col min-h-screen md:max-h-screen overflow-y-auto w-full md:bg-white dark:md:bg-slate-900 md:shadow-2xl md:shadow-slate-200/50 dark:md:shadow-none"
         >
@@ -1801,25 +1801,25 @@ export default function App() {
             // Reset filter to ALL when nav-bar Files is tapped directly
             setFileFilter('all');
             setCurrentFolderId('root');
-            setBreadcrumb([{id: 'root', name: 'My Drive'}]);
+            setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
             fetchFiles('root');
           }
           setActiveTab(tab);
         }} />
 
-        
+
         {showTransferOverlay && (
-          <TransferManager 
-            transfers={transfers} 
+          <TransferManager
+            transfers={transfers}
             onDismiss={(id) => setTransfers(prev => prev.filter(t => t.id !== id))}
-            onCloseAll={() => setShowTransferOverlay(false)} 
+            onCloseAll={() => setShowTransferOverlay(false)}
             onCancel={handleCancelTransfer}
             onPause={handlePauseTransfer}
             onResume={handleResumeTransfer}
           />
         )}
-        
-        <MoveDialog 
+
+        <MoveDialog
           isOpen={isMoveOpen}
           onClose={() => {
             setIsMoveOpen(false);
@@ -1868,7 +1868,7 @@ export default function App() {
       {/* ── BLOCKING FORCE-UPDATE POPUP ── */}
       <AnimatePresence>
         {Capacitor.isNativePlatform() && showUpdatePopup && updateInfo && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1891,7 +1891,7 @@ export default function App() {
                   A new version of DriveVault is available. Please update to continue.
                 </p>
               </div>
-              
+
               <button
                 onClick={() => {
                   if (updateInfo && updateInfo.apkUrl) {
@@ -1916,10 +1916,10 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Toaster 
-        theme="dark" 
-        position="top-center" 
-        richColors 
+      <Toaster
+        theme="dark"
+        position="top-center"
+        richColors
         closeButton
         toastOptions={{
           style: {
