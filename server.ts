@@ -58,7 +58,7 @@ app.use(session({
 }));
 
 // Helper to get OAuth client
-const getOAuth2Client = (req: express.Request) => {
+function getOAuth2Client(req: express.Request, res?: express.Response) {
   // Use APP_URL if available (injected by AI Studio), otherwise fallback to dynamic detection
   // The OAuth skill recommends using APP_URL as it's more reliable behind proxies
   let baseUrl = process.env.APP_URL;
@@ -75,12 +75,35 @@ const getOAuth2Client = (req: express.Request) => {
   
   console.log('Constructed Redirect URI:', redirectUri);
   
-  return new google.auth.OAuth2(
+  const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     redirectUri
   );
-};
+
+  if (res) {
+    client.on('tokens', (newTokens) => {
+      console.log('[OAuth2] Tokens event fired! Refreshed access token successfully.');
+      const headerTokens = req.headers['x-goog-tokens'] || req.query.tokens;
+      let requestTokens: any = {};
+      if (headerTokens) {
+        try {
+          requestTokens = JSON.parse(headerTokens as string);
+        } catch (e) {}
+      }
+      const mergedTokens = { ...requestTokens, ...newTokens };
+      res.setHeader('x-refreshed-tokens', JSON.stringify(mergedTokens));
+      
+      const email = (req as any).session?.user?.email;
+      if (email) {
+        upsertTokens(email, mergedTokens.refresh_token || null, mergedTokens.access_token, mergedTokens.expiry_date)
+          .catch(e => console.error('[DB] Failed to update refreshed tokens:', e));
+      }
+    });
+  }
+
+  return client;
+}
 
 // Help to get or create folder path
 const folderCreationLocks = new Map<string, Promise<string>>();
@@ -448,7 +471,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 
   try {
-    const client = getOAuth2Client(req);
+    const client = getOAuth2Client(req, res);
     client.setCredentials(tokens);
     
     // Trigger automatic refresh using refresh_token if the access_token is expired
@@ -599,7 +622,7 @@ app.get('/api/drive/files', async (req, res) => {
   }
 
   try {
-    const client = getOAuth2Client(req);
+    const client = getOAuth2Client(req, res);
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
     const folderId = req.query.folderId as string;

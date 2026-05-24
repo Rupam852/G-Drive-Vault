@@ -30,7 +30,28 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.4.1';
+const CURRENT_VERSION = '1.4.2';
+
+// Global fetch interceptor to automatically save refreshed OAuth tokens sent by the backend
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async function(...args) {
+    const res = await originalFetch.apply(this, args);
+    const refreshed = res.headers.get('x-refreshed-tokens');
+    if (refreshed) {
+      try {
+        const newTokens = JSON.parse(refreshed);
+        console.log('[Fetch Interceptor] Auto-saved refreshed OAuth tokens from server.');
+        localStorage.setItem('drive_vault_tokens', JSON.stringify(newTokens));
+        // Dispatch event so active components (like App.tsx state) can update if they need to
+        window.dispatchEvent(new CustomEvent('vault-tokens-refreshed', { detail: newTokens }));
+      } catch (e) {
+        console.error('Error parsing refreshed tokens header:', e);
+      }
+    }
+    return res;
+  };
+}
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -108,6 +129,16 @@ export default function App() {
     sessionStorage.setItem('drive_vault_file_filter', fileFilter);
     fileFilterRef.current = fileFilter;
   }, [fileFilter]);
+
+  useEffect(() => {
+    const handleTokensRefreshed = (e: any) => {
+      const newTokens = e.detail;
+      console.log('[App] React state updating with refreshed tokens:', !!newTokens);
+      setTokens(newTokens);
+    };
+    window.addEventListener('vault-tokens-refreshed', handleTokensRefreshed);
+    return () => window.removeEventListener('vault-tokens-refreshed', handleTokensRefreshed);
+  }, []);
 
 
   const [isMoveOpen, setIsMoveOpen] = useState(false);
@@ -494,7 +525,9 @@ export default function App() {
 
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.folderId) {
-        navigateToFolder(event.state.folderId, event.state.folderName, true);
+        if (event.state.folderId !== currentFolderIdRef.current) {
+          navigateToFolder(event.state.folderId, event.state.folderName, true);
+        }
       }
       // Ignore null states. If the file picker or OS triggers a spurious popstate,
       // we don't want to forcefully throw the user out to 'root'.

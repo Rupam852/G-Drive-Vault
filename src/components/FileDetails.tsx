@@ -118,28 +118,33 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
           }
         })();
       } else if (file.type === 'document') {
-        setIsLoading(true);
-        (async () => {
-          try {
-            const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tokens }),
-            });
-            if (ticketRes.ok && active) {
-              const { ticketId } = await ticketRes.json();
-              const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
-              const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
-              setPreviewUrl(viewerUrl);
-            } else if (active) {
-              setPreviewError(true);
+        if (file.sizeBytes && file.sizeBytes > 25 * 1024 * 1024) {
+          setPreviewError(true);
+          setIsLoading(false);
+        } else {
+          setIsLoading(true);
+          (async () => {
+            try {
+              const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tokens }),
+              });
+              if (ticketRes.ok && active) {
+                const { ticketId } = await ticketRes.json();
+                const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
+                const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
+                setPreviewUrl(viewerUrl);
+              } else if (active) {
+                setPreviewError(true);
+              }
+            } catch {
+              if (active) setPreviewError(true);
+            } finally {
+              if (active) setIsLoading(false);
             }
-          } catch {
-            if (active) setPreviewError(true);
-          } finally {
-            if (active) setIsLoading(false);
-          }
-        })();
+          })();
+        }
       } else {
         // Others: no preview, show "Open with Google Drive"
         setIsLoading(false);
@@ -189,25 +194,40 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     }
 
     if (previewError) {
+      const isLargeDoc = file.type === 'document' && file.sizeBytes && file.sizeBytes > 25 * 1024 * 1024;
       return (
         <div className="flex flex-col items-center gap-4 text-slate-400 py-10 px-4">
-          <Icon size={56} className="opacity-20" />
-          <div className="text-center">
-            <p className="text-sm font-bold text-slate-300">Preview failed</p>
-            <p className="text-xs text-slate-500 mt-1">Try opening in Google Drive</p>
+          <Icon size={56} className="opacity-20 animate-pulse text-blue-500" />
+          <div className="text-center space-y-1">
+            <p className="text-sm font-bold text-slate-300">
+              {isLargeDoc ? 'Document is too large (>25MB)' : 'Preview failed'}
+            </p>
+            <p className="text-xs text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+              {isLargeDoc 
+                ? 'Google secure viewer is limited to 25MB. Open it natively or download to view.' 
+                : 'Try opening the document securely in Google Drive or download it directly.'}
+            </p>
           </div>
-          <div className="flex gap-3 flex-wrap justify-center">
-            <button
-              onClick={handleRetry}
-              className="flex items-center gap-2 text-xs font-bold text-blue-400 border border-blue-400/30 px-4 py-2 rounded-full hover:bg-blue-400/10 transition-colors"
-            >
-              <RefreshCw size={12} /> Retry
-            </button>
+          <div className="flex gap-2 flex-wrap justify-center pt-2">
+            {!isLargeDoc && (
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 text-xs font-bold text-blue-400 border border-blue-400/30 px-4 py-2 rounded-full hover:bg-blue-400/10 active:scale-95 transition-all"
+              >
+                <RefreshCw size={12} /> Retry
+              </button>
+            )}
             <button
               onClick={handleOpenInDrive}
-              className="flex items-center gap-2 text-xs font-bold text-slate-300 border border-slate-600 px-4 py-2 rounded-full hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 text-xs font-bold text-slate-300 border border-slate-700 px-4 py-2 rounded-full hover:bg-slate-800 active:scale-95 transition-all"
             >
-              <ExternalLink size={12} /> Open in Drive
+              <ExternalLink size={12} /> View in Drive
+            </button>
+            <button
+              onClick={() => onDownload(file)}
+              className="flex items-center gap-2 text-xs font-bold text-white bg-blue-600 px-4 py-2 rounded-full hover:bg-blue-500 active:scale-95 transition-all shadow-md shadow-blue-500/10"
+            >
+              <Download size={12} /> Download File
             </button>
           </div>
         </div>

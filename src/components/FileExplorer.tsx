@@ -106,6 +106,31 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     }
   }, [autoOpenFile, files]);
 
+  // Push/pop history state for selectedFile preview modal to handle Android back key safely
+  useEffect(() => {
+    if (selectedFile) {
+      const curState = window.history.state;
+      if (!curState || curState.modalType !== 'file-details' || curState.fileId !== selectedFile.id) {
+        window.history.pushState({ modalType: 'file-details', fileId: selectedFile.id }, '', '');
+      }
+    } else {
+      if (window.history.state && window.history.state.modalType === 'file-details') {
+        window.history.back();
+      }
+    }
+  }, [selectedFile]);
+
+  // Popstate event handler for closing the selectedFile modal when back navigation occurs
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (selectedFile && (!e.state || e.state.modalType !== 'file-details')) {
+        setSelectedFile(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedFile]);
+
   // Set webkitdirectory via setAttribute — React JSX does NOT pass unknown attrs to DOM
   // This makes the folder picker show a FOLDER chooser (not individual files) on Android
   useEffect(() => {
