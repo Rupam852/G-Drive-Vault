@@ -107,6 +107,7 @@ export default function App() {
   })();
   const [currentFolderId, setCurrentFolderId] = useState<string>(initialFolderId);
   const currentFolderIdRef = useRef<string>(initialFolderId); // always latest, no stale closure
+  const folderCacheRef = useRef<Record<string, FileItem[]>>({});
   const [breadcrumb, setBreadcrumb] = useState<{ id: string, name: string }[]>(() => {
     const saved = sessionStorage.getItem('drive_vault_breadcrumb');
     return saved ? JSON.parse(saved) : [{ id: 'root', name: 'My Drive' }];
@@ -461,7 +462,13 @@ export default function App() {
 
   const fetchFiles = async (folderId: string = 'root', currentTokens?: any, filter?: string) => {
     const activeTokens = currentTokens || tokens;
-    console.log(`[App] Fetching Drive files for folder: ${folderId}, filter: ${filter}`);
+    const cacheKey = `${folderId}_${filter || 'all'}`;
+
+    // Stale-While-Revalidate: render instantly from cache if available (0ms lag!)
+    if (folderCacheRef.current[cacheKey]) {
+      setFiles(folderCacheRef.current[cacheKey]);
+    }
+
     try {
       const headers: any = {};
       if (activeTokens) {
@@ -479,6 +486,9 @@ export default function App() {
       if (res.ok) {
         const driveFiles = await res.json();
         const mappedFiles = mapDriveFiles(driveFiles);
+        
+        // Update both the cache and the UI state with the fresh server data
+        folderCacheRef.current[cacheKey] = mappedFiles;
         setFiles(mappedFiles);
       } else {
         console.error('[App] Failed to fetch files:', res.status);

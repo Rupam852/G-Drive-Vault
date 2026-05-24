@@ -462,6 +462,33 @@ const getTokensFromRequest = (req: express.Request) => {
   return null;
 };
 
+// Memory cache for read operations (User-scoped and transient)
+const filesCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL_MS = 8000; // 8 seconds cache lifetime
+
+// Clear user cache when mutation occurs
+function invalidateUserCache(accessToken?: string) {
+  if (!accessToken) return;
+  const prefix = accessToken.substring(0, 20);
+  for (const key of filesCache.keys()) {
+    if (key.startsWith(prefix)) {
+      filesCache.delete(key);
+    }
+  }
+}
+
+// Central Cache Invalidation Middleware for Mutating Actions
+app.use('/api/drive', (req, res, next) => {
+  const method = req.method;
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const tokens = getTokensFromRequest(req);
+    if (tokens && tokens.access_token) {
+      invalidateUserCache(tokens.access_token);
+    }
+  }
+  next();
+});
+
 app.get('/api/auth/me', async (req, res) => {
   const tokens = getTokensFromRequest(req);
   console.log('Checking auth in /api/auth/me, has tokens:', !!tokens);
@@ -621,12 +648,20 @@ app.get('/api/drive/files', async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
+  const folderId = req.query.folderId as string;
+  const filter = req.query.filter as string;
+  const cacheKey = `${tokens.access_token.substring(0, 20)}_${folderId || 'root'}_${filter || 'all'}`;
+
+  // Serve from memory cache if fresh
+  const cached = filesCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return res.json(cached.data);
+  }
+
   try {
     const client = getOAuth2Client(req, res);
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
-    const folderId = req.query.folderId as string;
-    const filter = req.query.filter as string;
     
     let q = "trashed = false and not properties has { key='isHidden' and value='true' }";
     if (filter === 'starred') {
@@ -676,6 +711,9 @@ app.get('/api/drive/files', async (req, res) => {
       pagesFetched++;
     } while (pageToken && pagesFetched < MAX_PAGES);
     
+    // Save to memory cache
+    filesCache.set(cacheKey, { data: allFiles, timestamp: Date.now() });
+
     res.json(allFiles);
   } catch (error) {
     console.error('Error fetching drive files:', error);
