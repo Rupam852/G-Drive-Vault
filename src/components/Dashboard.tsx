@@ -331,7 +331,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
       const writeAccumulatedToNative = async () => {
         if (accumulatedChunks.length === 0) return;
-        const blob = new Blob(accumulatedChunks);
+        const blob = new Blob(accumulatedChunks as BlobPart[]);
         const base64 = await new Promise<string>((resolve, reject) => {
           const fr = new FileReader();
           fr.onloadend = () => {
@@ -434,7 +434,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         }
       } else {
         setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
-        const blob = new Blob(webChunks);
+        const blob = new Blob(webChunks as BlobPart[]);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
