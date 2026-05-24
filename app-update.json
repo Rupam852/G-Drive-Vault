@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.4.8",
+  "latestVersion": "1.4.9",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "Resolved notification tray override and custom logo rendering across all native Android download & upload services! 🚀🛡"
+  "releaseNotes": "Clean production build with full resource refresh, ensuring the new cloud-hexagon icon renders correctly across all background notifications! 🚀🛡️"
 }
