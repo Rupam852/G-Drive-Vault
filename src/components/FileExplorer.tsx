@@ -15,6 +15,20 @@ import { toast } from 'sonner';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
+const truncateFilename = (name: string, maxLen = 30): string => {
+  if (!name || name.length <= maxLen) return name;
+  const extIndex = name.lastIndexOf('.');
+  if (extIndex !== -1 && name.length - extIndex <= 8) {
+    const ext = name.substring(extIndex);
+    const base = name.substring(0, extIndex);
+    const charsToShow = maxLen - ext.length - 3;
+    if (charsToShow > 5) {
+      return base.substring(0, charsToShow) + '...' + ext;
+    }
+  }
+  return name.substring(0, maxLen - 3) + '...';
+};
+
 
 interface FileExplorerProps {
   files: FileItem[];
@@ -311,15 +325,18 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           }).then(() => {
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
             if (progressListener) progressListener.remove();
-            toast.success(`🎉 Download Completed: ${finalFilename}`);
+            toast.success('Download Completed', { description: truncateFilename(finalFilename, 35) });
           }).catch((e: any) => {
             console.error('Native download failed asynchronously:', e);
             setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
             if (progressListener) progressListener.remove();
-            toast.error(`❌ Download Failed: ${e.message || e}`);
+            toast.error('Download Failed', { description: `${truncateFilename(finalFilename, 30)} • ${e.message || e}` });
           });
 
-          toast.success(`⬇️ Download Started: ${finalFilename}\nCheck notifications for progress!`);
+          toast.success('Download Started', { 
+            description: `${truncateFilename(finalFilename, 35)} • Check notifications for progress!`,
+            duration: 5000
+          });
           return;
         } catch (e: any) {
           console.warn('Native download failed, falling back to chunked downloader...', e);
@@ -503,9 +520,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         }
 
         if (isFallbackUsed) {
-          toast.success(`✅ Saved to App Private folder:\nAndroid/data/com.rupam.drivevault/files/${finalFilename}`, { duration: 6000 });
+          toast.success('Saved to App Private folder', { description: truncateFilename(finalFilename, 35), duration: 6000 });
         } else {
-          toast.success(`✅ Saved to Downloads: ${finalFilename}`);
+          toast.success('Saved to Downloads', { description: truncateFilename(finalFilename, 35) });
         }
       } else {
         setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
@@ -514,11 +531,11 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         const a = document.createElement('a');
         a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        toast.success(`Downloaded: ${finalFilename}`);
+        toast.success('Downloaded successfully', { description: truncateFilename(finalFilename, 35) });
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        toast.info(`Cancelled: ${file.name}`);
+        toast.info('Download cancelled', { description: truncateFilename(file.name, 35) });
       } else {
         console.error('Download error:', err);
         toast.error(`Error: ${err.message || 'Failed to download file'}`);
