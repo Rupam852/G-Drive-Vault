@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.4.7",
+  "latestVersion": "1.4.8",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "Premium high-resolution custom logo.svg integration across all devices, launchers, notifications, and native update dialogs! 🚀🛡️"
+  "releaseNotes": "Resolved notification tray override and custom logo rendering across all native Android download & upload services! 🚀🛡"
 }
