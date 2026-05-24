@@ -310,6 +310,16 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         try {
           const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
           
+          // Request POST_NOTIFICATIONS permission first to show progress in Android Status Bar!
+          try {
+            const permStatus = await UploadNotification.checkPermissions();
+            if (permStatus.notifications !== 'granted') {
+              await UploadNotification.requestPermissions();
+            }
+          } catch (e) {
+            console.warn('Notification permission check/request failed:', e);
+          }
+          
           let progressListener: any;
           UploadNotification.addListener('onDownloadProgress', (data: any) => {
             if (data.id === dlId) {

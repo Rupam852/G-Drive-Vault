@@ -274,20 +274,8 @@ public class UploadNotificationPlugin extends Plugin {
         String filename = call.getString("filename");
         String id = call.getString("id");
         
-        long tempSize = -1L;
-        try {
-            if (call.hasOption("size")) {
-                Object sizeObj = call.getData().get("size");
-                if (sizeObj instanceof Number) {
-                    tempSize = ((Number) sizeObj).longValue();
-                } else if (sizeObj instanceof String) {
-                    tempSize = Long.parseLong((String) sizeObj);
-                }
-            }
-        } catch (Exception e) {
-            tempSize = -1L;
-        }
-        final long totalSizeBytes = tempSize;
+        Long sizeVal = call.getLong("size");
+        final long totalSizeBytes = sizeVal != null ? sizeVal : -1L;
 
         if (urlString == null || filename == null || id == null) {
             call.reject("Missing required parameters: url, filename, or id");
