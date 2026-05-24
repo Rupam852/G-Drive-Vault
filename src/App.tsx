@@ -299,9 +299,16 @@ export default function App() {
         fetchFiles(currentFolderIdRef.current || 'root', activeTokens, fileFilterRef.current === 'all' ? undefined : fileFilterRef.current);
         fetchRecentFiles(activeTokens);
         fetchStorage(activeTokens);
-        fetchStorageBreakdown(activeTokens);
-        fetchTrash(activeTokens);
-        fetchHiddenFiles(activeTokens);
+
+        // Defer CPU/Network intensive fetches to eliminate post-login micro-stutter
+        setTimeout(() => {
+          fetchStorageBreakdown(activeTokens);
+        }, 1200);
+
+        setTimeout(() => {
+          fetchTrash(activeTokens);
+          fetchHiddenFiles(activeTokens);
+        }, 2500);
       } else if (res.status === 401) {
         // Explicitly unauthorized - server is awake, but tokens missing/invalid
         console.log('[App] User not authenticated (401)');
