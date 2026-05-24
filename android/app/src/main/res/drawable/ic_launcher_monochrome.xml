@@ -5,36 +5,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Outer Futuristic Vault Shield -->
+    <!-- Outer Futuristic Vault Shield & Hexagon -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#000000"
-        android:strokeWidth="5.5"
+        android:strokeWidth="5"
         android:strokeLineJoin="round"
         android:strokeLineCap="round"
-        android:pathData="M54,16 L82,24 C82,53 69,79 54,92 C39,79 26,53 26,24 Z" />
+        android:pathData="M54,20 L84,37 L84,71 L54,88 L24,71 L24,37 Z" />
         
-    <!-- Minimalist Cloud Core -->
+    <!-- Inner Minimalist Cloud Storage Core -->
     <path
         android:fillColor="#000000"
-        android:pathData="M38,56 C35,56 33,53.5 33,50.5 C33,47.5 35.5,45 38.5,45 C39,45 40,45.2 40.5,45.5 C41.5,40.5 46,37 51,37 C55,37 59,40.5 60,45.5 C60.5,45.2 61,45 61.5,45 C64.5,45 67,47.5 67,50.5 C67,53.5 64.5,56 61.5,56 Z" />
+        android:pathData="M39,63 C36,63 34,61 34,58 C34,55 36,53 39,53 C40,53 41,53 42,54 C43,49 48,46 53,46 C57,46 61,49 62,53 C62.5,53 63,53 63.5,53 C66.5,53 69,55.5 69,58.5 C69,61.5 66.5,64 63.5,64 L39,64 Z" />
 
-    <!-- Sleek Center Padlock (Tala) -->
-    <!-- Shackle -->
+    <!-- Center Tech Dot / Node -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#000000"
-        android:strokeWidth="3"
-        android:strokeLineCap="round"
-        android:pathData="M48,56 V51 A6,6 0 0,1 60,51 V56" />
-    <!-- Lock Body -->
-    <path
-        android:fillColor="#000000"
-        android:pathData="M43,56 H65 V72 H43 Z" />
-    <!-- Keyhole Cutout (White reveals background shape when tinted) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.5"
-        android:pathData="M54,61 A1.8,1.8 0 1,0 54,64.6 V68" />
+        android:fillColor="#80000000"
+        android:pathData="M54,34 A3,3 0 1,1 54,28 A3,3 0 1,1 54,34" />
 </vector>
