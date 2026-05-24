@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.3.9';
+const CURRENT_VERSION = '1.4.0';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -109,39 +109,7 @@ export default function App() {
     fileFilterRef.current = fileFilter;
   }, [fileFilter]);
 
-  // Premium auto-hiding scrollbar observer (only shows scrollbar during active scrolling)
-  useEffect(() => {
-    let scrollTimeouts = new Map<HTMLElement, NodeJS.Timeout>();
 
-    const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (!target || !target.classList) return;
-
-      // Add scrolling class to visual display
-      target.classList.add('is-scrolling');
-
-      // Clear existing timeout for this element
-      const existingTimeout = scrollTimeouts.get(target);
-      if (existingTimeout) {
-        clearTimeout(existingTimeout);
-      }
-
-      // Hide scrollbar after 800ms of scroll inactivity
-      const timeout = setTimeout(() => {
-        target.classList.remove('is-scrolling');
-        scrollTimeouts.delete(target);
-      }, 800);
-
-      scrollTimeouts.set(target, timeout);
-    };
-
-    window.addEventListener('scroll', handleScroll, true);
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true);
-      scrollTimeouts.forEach((timeout) => clearTimeout(timeout));
-      scrollTimeouts.clear();
-    };
-  }, []);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
 
@@ -801,22 +769,25 @@ export default function App() {
 
 
 
-  useEffect(() => {
-    // Check for updates
-    const checkUpdates = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/app/update-info?t=${Date.now()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setUpdateInfo(data);
-          if (isVersionOlder(CURRENT_VERSION, data.latestVersion)) {
-            setShowUpdatePopup(true);
-          }
+  const checkUpdates = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/app/update-info?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateInfo(data);
+        if (isVersionOlder(CURRENT_VERSION, data.latestVersion)) {
+          setShowUpdatePopup(true);
+        } else {
+          setShowUpdatePopup(false);
         }
-      } catch (err) {
-        console.error('Failed to check for updates on startup:', err);
       }
-    };
+    } catch (err) {
+      console.error('Failed to check for updates:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check for updates on mount
     checkUpdates();
 
     // Request notification permission if native platform
@@ -850,13 +821,14 @@ export default function App() {
     };
     checkLaunchIntent();
 
-    // Re-check intent when app comes to foreground
+    // Re-check intent and updates when app comes to foreground
     let appStateListener: any;
     if (Capacitor.isNativePlatform()) {
       CapApp.addListener('appStateChange', ({ isActive }) => {
         setIsAppActive(isActive);
         if (isActive) {
           checkLaunchIntent();
+          checkUpdates();
         }
       }).then(l => appStateListener = l);
     }
