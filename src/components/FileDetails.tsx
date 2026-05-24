@@ -118,35 +118,28 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
           }
         })();
       } else if (file.type === 'document') {
-        const isPdf = file.mimeType?.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
-        
-        if (isPdf) {
-          setIsLoading(false);
-          setPreviewUrl(`https://drive.google.com/file/d/${file.id}/preview`);
-        } else {
-          setIsLoading(true);
-          (async () => {
-            try {
-              const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tokens }),
-              });
-              if (ticketRes.ok && active) {
-                const { ticketId } = await ticketRes.json();
-                const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
-                const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
-                setPreviewUrl(viewerUrl);
-              } else if (active) {
-                setPreviewError(true);
-              }
-            } catch {
-              if (active) setPreviewError(true);
-            } finally {
-              if (active) setIsLoading(false);
+        setIsLoading(true);
+        (async () => {
+          try {
+            const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tokens }),
+            });
+            if (ticketRes.ok && active) {
+              const { ticketId } = await ticketRes.json();
+              const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
+              const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
+              setPreviewUrl(viewerUrl);
+            } else if (active) {
+              setPreviewError(true);
             }
-          })();
-        }
+          } catch {
+            if (active) setPreviewError(true);
+          } finally {
+            if (active) setIsLoading(false);
+          }
+        })();
       } else {
         // Others: no preview, show "Open with Google Drive"
         setIsLoading(false);
