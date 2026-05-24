@@ -476,6 +476,12 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 app.get('/api/app/update-info', (req, res) => {
+  // Set strict, aggressive cache-control headers to bypass local caching on all older client versions
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+
   try {
     const filePath = path.join(__dirname, 'app-update.json');
     if (fs.existsSync(filePath)) {
