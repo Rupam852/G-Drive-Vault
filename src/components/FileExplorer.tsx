@@ -381,7 +381,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       const writeAccumulatedToNative = async () => {
         if (accumulatedChunks.length === 0) return;
-        const blob = new Blob(accumulatedChunks);
+        const blob = new Blob(accumulatedChunks as any);
         const base64 = await new Promise<string>((resolve, reject) => {
           const fr = new FileReader();
           fr.onloadend = () => {
@@ -484,7 +484,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         }
       } else {
         setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
-        const blob = new Blob(webChunks);
+        const blob = new Blob(webChunks as any);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl; a.download = finalFilename; a.click();
