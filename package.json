@@ -16,6 +16,7 @@
     "@base-ui/react": "^1.4.0",
     "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^8.1.0",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/core": "^8.3.0",
     "@capacitor/filesystem": "^8.1.2",
     "@capawesome/capacitor-google-sign-in": "^0.1.2",

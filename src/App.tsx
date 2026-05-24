@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.4.5';
+const CURRENT_VERSION = '1.4.6';
 
 // Global fetch interceptor to automatically save refreshed OAuth tokens sent by the backend
 if (typeof window !== 'undefined') {
