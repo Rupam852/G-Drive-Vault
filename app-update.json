@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.4.2",
+  "latestVersion": "1.4.3",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1CAlz6VuVyVoDZfsiaHaF7HIRhoCurgaa&confirm=t",
-  "releaseNotes": "Dynamic token refresh interceptors (2x faster browsing), robust popstate Android back integration, and elegant 25MB+ large PDF preview fallbacks! 🚀🛡️"
+  "releaseNotes": "Premium Android 12+ translucent splash screen, lag-free boot sequence, dynamic token rotation, and robust popstate back gesture! 🚀🛡️"
 }
