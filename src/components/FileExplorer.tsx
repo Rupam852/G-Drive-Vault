@@ -274,8 +274,24 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     }
   };
 
+  const cancelDownload = async (dlId: string, controller: AbortController) => {
+    controller.abort();
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+      try {
+        const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
+        await UploadNotification.cancelNotification({ id: dlId });
+      } catch (e) {
+        console.warn('Failed to cancel native download:', e);
+      }
+    }
+    setActiveDownloads(prev => prev.filter(d => d.id !== dlId));
+    toast.info('Download cancelled');
+  };
+
   const handleDownload = async (file: FileItem) => {
     if (!file || !tokens) return;
+    
+    let keepActive = false;
     
     if (isDownloadEnabled === false) {
       toast.error('Download Error: File Permission is disabled in Settings.');
@@ -307,6 +323,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       const isAndroid = isNative && Capacitor.getPlatform() === 'android';
 
       if (isAndroid) {
+        keepActive = true;
         try {
           const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
           
@@ -559,7 +576,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         } catch (e) {}
       }
     } finally {
-      setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
+      if (!keepActive) {
+        setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
+      }
     }
   };
 
@@ -1162,7 +1181,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 {dl.progress >= 0 ? `${dl.progress}%` : ''}
               </span>
               <button
-                onClick={() => dl.controller.abort()}
+                onClick={() => cancelDownload(dl.id, dl.controller)}
                 className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0"
               >
                 <X size={14} />
