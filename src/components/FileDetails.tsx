@@ -249,6 +249,19 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       );
     }
 
+    const isPdf = file.mimeType?.includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
+
+    if (file.type === 'document' && isPdf && previewUrl) {
+      return (
+        <iframe
+          src={previewUrl}
+          className="w-full h-full min-h-[400px] border-0 rounded-2xl bg-white"
+          title={file.name}
+          allow="autoplay"
+        />
+      );
+    }
+
     if (file.type === 'document') {
       return (
         <div className="flex flex-col items-center gap-5 p-8 w-full min-w-0">

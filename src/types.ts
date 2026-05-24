@@ -14,6 +14,7 @@ export interface FileItem {
   createdTime?: string;
   modifiedTime?: string;
   parents?: string[];
+  mimeType?: string;
 }
 
 export interface StorageStats {

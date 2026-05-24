@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.3.3';
+const CURRENT_VERSION = '1.3.4';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -443,7 +443,8 @@ export default function App() {
         isHidden: f.properties?.isHidden === 'true',
         createdTime: f.createdTime,
         modifiedTime: f.modifiedTime,
-        parents: f.parents
+        parents: f.parents,
+        mimeType: f.mimeType
       };
     });
   };
