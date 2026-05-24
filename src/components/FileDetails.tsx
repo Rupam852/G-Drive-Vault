@@ -249,14 +249,40 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       );
     }
 
-    if (file.type === 'document' && previewUrl) {
+    if (file.type === 'document') {
       return (
-        <iframe
-          src={previewUrl}
-          className="w-full h-full min-h-[400px] border-0 rounded-2xl bg-white"
-          title={file.name}
-          allow="autoplay"
-        />
+        <div className="flex flex-col items-center gap-5 p-8 w-full min-w-0">
+          {/* Document icon with soft gradient glow */}
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-xl" />
+            <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 flex items-center justify-center text-blue-400 animate-pulse">
+              <FileText size={48} />
+            </div>
+          </div>
+
+          <div className="text-center space-y-1 w-full max-w-full px-4 min-w-0">
+            <p className="text-white font-bold text-base break-words break-all leading-tight">{file.name}</p>
+            <p className="text-slate-500 text-xs uppercase tracking-widest font-extrabold mt-1">Confidential Document</p>
+          </div>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleOpenInDrive(); }}
+            className="flex items-center gap-3 bg-white text-slate-800 font-extrabold px-6 py-4 rounded-2xl shadow-xl hover:shadow-2xl active:scale-95 transition-all text-sm shrink-0"
+          >
+            <img
+              src="https://www.google.com/favicon.ico"
+              alt="Google"
+              className="w-5 h-5 shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            View Secure Preview
+            <ExternalLink size={14} className="text-slate-500 shrink-0" />
+          </button>
+
+          <p className="text-slate-500 text-[10px] text-center max-w-[260px] px-4 leading-relaxed">
+            Opens instantly in your secure Google client app or system browser using your active device credentials.
+          </p>
+        </div>
       );
     }
 
