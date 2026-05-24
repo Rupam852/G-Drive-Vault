@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.2.8';
+const CURRENT_VERSION = '1.2.9';
 
 function isVersionOlder(current: string, latest: string): boolean {
   const cParts = current.split('.').map(Number);
@@ -1865,40 +1865,50 @@ export default function App() {
       </div>
 
       {/* ── BLOCKING FORCE-UPDATE POPUP ── */}
-      {Capacitor.isNativePlatform() && showUpdatePopup && updateInfo && (
-        <div className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-2xl flex items-center justify-center p-4">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-[2.5rem] shadow-2xl p-6 md:p-8 max-w-sm w-full text-center space-y-6"
+      <AnimatePresence>
+        {Capacitor.isNativePlatform() && showUpdatePopup && updateInfo && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="fixed inset-0 z-[10000] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-6"
           >
-            <div className="w-20 h-20 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 mx-auto animate-[pulse_2s_infinite]">
-              <Cloud size={40} className="animate-[bounce_2s_infinite]" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Update Required</h2>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                A new version of DriveVault is available. Please update to continue.
-              </p>
-            </div>
-            
-            <button
-              onClick={() => {
-                if (updateInfo && updateInfo.apkUrl) {
-                  window.open(updateInfo.apkUrl, '_blank');
-                }
-              }}
-              className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-[2.5rem] shadow-2xl p-6 md:p-8 max-w-sm w-full text-center space-y-6"
             >
-              Update Now
-            </button>
+              <div className="w-20 h-20 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 mx-auto animate-[pulse_2s_infinite]">
+                <Cloud size={40} className="animate-[bounce_2s_infinite]" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Update Required</h2>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  A new version of DriveVault is available. Please update to continue.
+                </p>
+              </div>
+              
+              <button
+                onClick={() => {
+                  if (updateInfo && updateInfo.apkUrl) {
+                    window.open(updateInfo.apkUrl, '_blank');
+                  }
+                }}
+                className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-95 transition-all text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 text-md flex items-center justify-center gap-2"
+              >
+                Update Now
+              </button>
 
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              v{CURRENT_VERSION} ➔ v{updateInfo.latestVersion}
-            </div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                v{CURRENT_VERSION} ➔ v{updateInfo.latestVersion}
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       <Toaster 
         theme="dark" 
