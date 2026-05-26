@@ -1,7 +1,7 @@
 # 🌌 DriveVault
 
 <p align="center">
-  <img src="public/favicon.ico" width="80" height="80" alt="DriveVault Logo" />
+  <img src="./public/logo.svg" width="80" height="80" alt="DriveVault Logo" />
 </p>
 
 <p align="center">
