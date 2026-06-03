@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
-    healthCheckPath: /api/auth/me
+    healthCheckPath: /api/auth/health
     envVars:
       - key: NODE_ENV
         value: production

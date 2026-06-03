@@ -126,6 +126,12 @@ const pgPool = process.env.DATABASE_URL
     })
   : null;
 
+if (pgPool) {
+  pgPool.on('error', (err) => {
+    console.error('[DB] Unexpected error on idle client:', err);
+  });
+}
+
 const memRefreshTokenStore = new Map<string, string>(); // fallback if no DB
 
 async function initDb() {

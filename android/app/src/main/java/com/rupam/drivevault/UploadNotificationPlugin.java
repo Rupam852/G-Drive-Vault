@@ -34,26 +34,20 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 
-@CapacitorPlugin(
-        name = "UploadNotification",
-        permissions = {
-                @Permission(
-                        alias = "notifications",
-                        strings = { "android.permission.POST_NOTIFICATIONS" }
-                )
-        }
-)
+@CapacitorPlugin(name = "UploadNotification", permissions = {
+        @Permission(alias = "notifications", strings = { "android.permission.POST_NOTIFICATIONS" })
+})
 public class UploadNotificationPlugin extends Plugin {
 
     private final java.util.Map<String, Boolean> activeDownloads = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final String CHANNEL_ID = "upload_channel";
     private static final String CHANNEL_NAME = "File Uploads";
-    
+
     private static final String ACTION_PAUSE = "com.rupam.drivevault.ACTION_PAUSE";
     private static final String ACTION_RESUME = "com.rupam.drivevault.ACTION_RESUME";
     private static final String ACTION_CANCEL = "com.rupam.drivevault.ACTION_CANCEL";
-    
+
     private BroadcastReceiver actionReceiver;
 
     @Override
@@ -68,8 +62,7 @@ public class UploadNotificationPlugin extends Plugin {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW
-            );
+                    NotificationManager.IMPORTANCE_LOW);
             channel.setDescription("Shows active file upload progress and actions");
             NotificationManager manager = getContext().getSystemService(NotificationManager.class);
             if (manager != null) {
@@ -84,7 +77,8 @@ public class UploadNotificationPlugin extends Plugin {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 String id = intent.getStringExtra("id");
-                if (id == null) return;
+                if (id == null)
+                    return;
 
                 JSObject ret = new JSObject();
                 ret.put("id", id);
@@ -107,7 +101,7 @@ public class UploadNotificationPlugin extends Plugin {
         filter.addAction(ACTION_PAUSE);
         filter.addAction(ACTION_RESUME);
         filter.addAction(ACTION_CANCEL);
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getContext().registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED);
         } else {
@@ -165,8 +159,7 @@ public class UploadNotificationPlugin extends Plugin {
                 context,
                 notificationId,
                 contentIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // 2. Build NotificationBuilder
         Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
@@ -182,15 +175,15 @@ public class UploadNotificationPlugin extends Plugin {
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
-        // 3. Cancel Action Button (Works on all OS versions by passing 0 as icon resource)
+        // 3. Cancel Action Button (Works on all OS versions by passing 0 as icon
+        // resource)
         Intent cancelIntent = new Intent(ACTION_CANCEL);
         cancelIntent.putExtra("id", id);
         PendingIntent cancelPendingIntent = PendingIntent.getBroadcast(
                 context,
                 notificationId + 3,
                 cancelIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         builder.addAction(0, "Cancel", cancelPendingIntent);
 
         // 5. Fire Notification
@@ -223,8 +216,7 @@ public class UploadNotificationPlugin extends Plugin {
                 context,
                 notificationId,
                 contentIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
@@ -262,7 +254,8 @@ public class UploadNotificationPlugin extends Plugin {
     }
 
     private String formatBytesJava(long bytes) {
-        if (bytes <= 0) return "0 Bytes";
+        if (bytes <= 0)
+            return "0 Bytes";
         final String[] units = new String[] { "Bytes", "KB", "MB", "GB", "TB" };
         int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
         return String.format(Locale.US, "%.1f %s", bytes / Math.pow(1024, digitGroups), units[digitGroups]);
@@ -273,9 +266,21 @@ public class UploadNotificationPlugin extends Plugin {
         String urlString = call.getString("url");
         String filename = call.getString("filename");
         String id = call.getString("id");
-        
-        Long sizeVal = call.getLong("size");
-        final long totalSizeBytes = sizeVal != null ? sizeVal : -1L;
+
+        long tempSize = -1L;
+        try {
+            if (call.hasOption("size")) {
+                Object sizeObj = call.getData().get("size");
+                if (sizeObj instanceof Number) {
+                    tempSize = ((Number) sizeObj).longValue();
+                } else if (sizeObj instanceof String) {
+                    tempSize = Long.parseLong((String) sizeObj);
+                }
+            }
+        } catch (Exception e) {
+            tempSize = -1L;
+        }
+        final long totalSizeBytes = tempSize;
 
         if (urlString == null || filename == null || id == null) {
             call.reject("Missing required parameters: url, filename, or id");
@@ -302,11 +307,12 @@ public class UploadNotificationPlugin extends Plugin {
 
                     int responseCode = connection.getResponseCode();
                     int redirectCount = 0;
-                    while ((responseCode == HttpURLConnection.HTTP_MOVED_TEMP || 
-                            responseCode == HttpURLConnection.HTTP_MOVED_PERM || 
+                    while ((responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+                            responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
                             responseCode == 307 || responseCode == 308) && redirectCount < 5) {
                         String newUrl = connection.getHeaderField("Location");
-                        if (newUrl == null) break;
+                        if (newUrl == null)
+                            break;
                         connection.disconnect();
                         url = new URL(newUrl);
                         connection = (HttpURLConnection) url.openConnection();
@@ -329,15 +335,17 @@ public class UploadNotificationPlugin extends Plugin {
                         if (contentLengthHeader != null) {
                             try {
                                 fileLength = Long.parseLong(contentLengthHeader);
-                            } catch (NumberFormatException ignored) {}
+                            } catch (NumberFormatException ignored) {
+                            }
                         }
                     }
                     if (fileLength <= 0) {
                         fileLength = connection.getContentLength();
                     }
-                    
+
                     // Destination file (Try public Download directory first, fallback to private)
-                    File publicDownloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File publicDownloadDir = Environment
+                            .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                     boolean usingPublicStorage = false;
                     try {
                         if (publicDownloadDir != null && (publicDownloadDir.exists() || publicDownloadDir.mkdirs())) {
@@ -380,8 +388,7 @@ public class UploadNotificationPlugin extends Plugin {
                             context,
                             notificationId,
                             contentIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                    );
+                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
                     // Builder
                     Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
@@ -402,8 +409,7 @@ public class UploadNotificationPlugin extends Plugin {
                             context,
                             notificationId + 3,
                             cancelIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                    );
+                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     builder.addAction(0, "Cancel", cancelPendingIntent);
 
                     while ((count = input.read(data)) != -1) {
@@ -425,21 +431,27 @@ public class UploadNotificationPlugin extends Plugin {
                         long now = System.currentTimeMillis();
                         if (now - lastNotificationTime > 300) {
                             int progress = fileLength > 0 ? (int) ((total * 100) / fileLength) : -1;
-                            
+
                             double elapsedSeconds = (now - startTime) / 1000.0;
                             double speed = elapsedSeconds > 0 ? total / elapsedSeconds : 0.0;
                             double remainingBytes = fileLength > 0 ? Math.max(0, fileLength - total) : 0.0;
                             double remainingSeconds = speed > 0 ? remainingBytes / speed : 0.0;
 
-                            String progressSizeText = fileLength > 0 ? formatBytesJava(total) + " / " + formatBytesJava(fileLength) : formatBytesJava(total);
-                            String speedText = speed > 1048576 ? String.format(Locale.US, "%.1f MB/s", speed / 1048576) : String.format(Locale.US, "%.0f KB/s", speed / 1024);
-                            String etaText = remainingSeconds > 60 ? ((int) (remainingSeconds / 60)) + "m left" : ((int) remainingSeconds) + "s left";
-                            
-                            String speedDetails = fileLength > 0 ? progressSizeText + " • " + speedText + " • " + etaText : progressSizeText + " • " + speedText;
+                            String progressSizeText = fileLength > 0
+                                    ? formatBytesJava(total) + " / " + formatBytesJava(fileLength)
+                                    : formatBytesJava(total);
+                            String speedText = speed > 1048576 ? String.format(Locale.US, "%.1f MB/s", speed / 1048576)
+                                    : String.format(Locale.US, "%.0f KB/s", speed / 1024);
+                            String etaText = remainingSeconds > 60 ? ((int) (remainingSeconds / 60)) + "m left"
+                                    : ((int) remainingSeconds) + "s left";
+
+                            String speedDetails = fileLength > 0
+                                    ? progressSizeText + " • " + speedText + " • " + etaText
+                                    : progressSizeText + " • " + speedText;
 
                             builder.setProgress(100, progress, false);
                             builder.setContentText(speedDetails);
-                            
+
                             JSObject progressRet = new JSObject();
                             progressRet.put("id", id);
                             progressRet.put("progress", progress);
@@ -450,7 +462,7 @@ public class UploadNotificationPlugin extends Plugin {
                             } catch (SecurityException e) {
                                 // ignore
                             }
-                            
+
                             lastNotificationTime = now;
                         }
                     }
@@ -459,28 +471,33 @@ public class UploadNotificationPlugin extends Plugin {
                     output.close();
                     input.close();
 
-                    // Emit a guaranteed 100% complete event to complete React app progress bars immediately
+                    // Emit a guaranteed 100% complete event to complete React app progress bars
+                    // immediately
                     try {
                         JSObject progressRet = new JSObject();
                         progressRet.put("id", id);
                         progressRet.put("progress", 100);
                         notifyListeners("onDownloadProgress", progressRet);
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
 
-                    // Notify media scanner so file appears in standard Android Downloads app instantly
+                    // Notify media scanner so file appears in standard Android Downloads app
+                    // instantly
                     try {
                         android.media.MediaScannerConnection.scanFile(context,
-                            new String[] { outputFile.getAbsolutePath() },
-                            null,
-                            new android.media.MediaScannerConnection.OnScanCompletedListener() {
-                                public void onScanCompleted(String path, android.net.Uri uri) {
-                                    // Scan completed successfully
-                                }
-                            });
-                    } catch (Exception ignored) {}
+                                new String[] { outputFile.getAbsolutePath() },
+                                null,
+                                new android.media.MediaScannerConnection.OnScanCompletedListener() {
+                                    public void onScanCompleted(String path, android.net.Uri uri) {
+                                        // Scan completed successfully
+                                    }
+                                });
+                    } catch (Exception ignored) {
+                    }
 
                     // Complete success notification
-                    Bitmap successLargeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
+                    Bitmap successLargeIcon = BitmapFactory.decodeResource(context.getResources(),
+                            R.mipmap.ic_launcher);
                     NotificationCompat.Builder successBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
                             .setSmallIcon(R.drawable.ic_launcher_foreground)
                             .setLargeIcon(successLargeIcon)
@@ -509,10 +526,14 @@ public class UploadNotificationPlugin extends Plugin {
                     call.reject("Download failed: " + e.getMessage());
                 } finally {
                     try {
-                        if (output != null) output.close();
-                        if (input != null) input.close();
-                    } catch (IOException ignored) {}
-                    if (connection != null) connection.disconnect();
+                        if (output != null)
+                            output.close();
+                        if (input != null)
+                            input.close();
+                    } catch (IOException ignored) {
+                    }
+                    if (connection != null)
+                        connection.disconnect();
                     activeDownloads.remove(id);
                 }
             }
@@ -541,8 +562,7 @@ public class UploadNotificationPlugin extends Plugin {
                 fileUri = androidx.core.content.FileProvider.getUriForFile(
                         context,
                         context.getPackageName() + ".fileprovider",
-                        file
-                );
+                        file);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             } else {
                 fileUri = Uri.fromFile(file);
