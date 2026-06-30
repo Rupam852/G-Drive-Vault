@@ -103,7 +103,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     try {
       const popup = window.open('', 'google_oauth', 'width=600,height=700');
       if (!popup) {
-        toast.error('Popup was blocked. Please allow popups for this site.');
+        toast.error('Popup was blocked. Please allow popups or disable your adblocker/shield for this site.');
         return;
       }
 
