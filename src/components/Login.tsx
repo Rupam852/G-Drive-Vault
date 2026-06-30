@@ -52,6 +52,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
 
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleGoogleLogin = async () => {
     // ── NATIVE (Android / iOS) ────────────────────────────────────────────
     if (Capacitor.isNativePlatform()) {
@@ -282,9 +289,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <div className="flex items-center gap-6">
             {/* Navigation Links */}
             <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-slate-400">
-              <a href="#features" className="hover:text-white transition-colors duration-200">Key Features</a>
-              <a href="#architecture" className="hover:text-white transition-colors duration-200">Architecture</a>
-              <a href="#faq" className="hover:text-white transition-colors duration-200">FAQ</a>
+              <button onClick={() => scrollToSection('features')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none outline-none">Key Features</button>
+              <button onClick={() => scrollToSection('architecture')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none outline-none">Architecture</button>
+              <button onClick={() => scrollToSection('faq')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none outline-none">FAQ</button>
             </nav>
 
             {/* Header Action Button */}
@@ -311,11 +318,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-slate-900 bg-[#030712] px-6 py-5 space-y-3">
-            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-400 hover:text-white text-sm font-medium">Key Features</a>
-            <a href="#architecture" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-400 hover:text-white text-sm font-medium">Architecture</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-400 hover:text-white text-sm font-medium">FAQ</a>
-            <div className="border-t border-slate-900 my-3 pt-3 flex flex-col gap-2">
+          <div className="md:hidden border-b border-slate-900 bg-[#030712] px-6 py-5 space-y-3 flex flex-col items-start">
+            <button onClick={() => { scrollToSection('features'); setMobileMenuOpen(false); }} className="w-full text-left py-2 text-slate-400 hover:text-white text-sm font-medium bg-transparent border-none outline-none cursor-pointer">Key Features</button>
+            <button onClick={() => { scrollToSection('architecture'); setMobileMenuOpen(false); }} className="w-full text-left py-2 text-slate-400 hover:text-white text-sm font-medium bg-transparent border-none outline-none cursor-pointer">Architecture</button>
+            <button onClick={() => { scrollToSection('faq'); setMobileMenuOpen(false); }} className="w-full text-left py-2 text-slate-400 hover:text-white text-sm font-medium bg-transparent border-none outline-none cursor-pointer">FAQ</button>
+            <div className="w-full border-t border-slate-900 my-3 pt-3 flex flex-col gap-2">
               <a href="/privacy-policy" target="_blank" className="text-slate-500 hover:text-white text-xs">Privacy Policy</a>
               <a href="/terms-of-service" target="_blank" className="text-slate-500 hover:text-white text-xs">Terms of Service</a>
             </div>
