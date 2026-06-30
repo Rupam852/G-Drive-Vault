@@ -75,7 +75,7 @@ Create a `.env` file in the root directory to run DriveVault:
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID | `your-google-oauth-client-id.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | `GOCSPX-your-secret` |
 | `SESSION_SECRET` | Secret key used to encrypt sessions and signed download tickets | `your-secure-custom-secret-string` |
-| `APP_URL` | Production host URL | `https://g-drive-vault.onrender.com` |
+| `APP_URL` | Production host URL | `https://yourbackendhostdomain.onrender.com` |
 
 ---
 
@@ -118,3 +118,4 @@ The application's auto-update system is configured dynamically through [app-upda
 
 ## 📄 License
 This project is proprietary and custom-tailored for personal secure cloud explorer operations. All rights reserved.
+

@@ -38,7 +38,6 @@ import android.provider.OpenableColumns;
 import android.database.Cursor;
 import com.getcapacitor.annotation.ActivityCallback;
 import androidx.activity.result.ActivityResult;
-
 @CapacitorPlugin(name = "UploadNotification", permissions = {
         @Permission(alias = "notifications", strings = { "android.permission.POST_NOTIFICATIONS" })
 })
@@ -547,6 +546,7 @@ public class UploadNotificationPlugin extends Plugin {
                             String speedDetails = fileLength > 0
                                     ? progressSizeText + " • " + speedText + " • " + etaText
                                     : progressSizeText + " • " + speedText;
+
 
                             JSObject progressRet = new JSObject();
                             progressRet.put("id", id);
