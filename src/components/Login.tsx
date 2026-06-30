@@ -52,18 +52,21 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }, []);
 
   const checkAdBlocker = async () => {
-    try {
-      const url = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-      await fetch(new Request(url), {
-        method: 'HEAD',
-        mode: 'no-cors',
-        cache: 'no-store'
-      });
-      setAdBlockDetected(false);
-    } catch (error) {
-      console.warn('[Security check] Google scripts are blocked. Likely an active Adblocker.');
-      setAdBlockDetected(true);
-    }
+    const isBlocked = await new Promise<boolean>((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+      script.async = true;
+      script.onload = () => {
+        script.remove();
+        resolve(false);
+      };
+      script.onerror = () => {
+        script.remove();
+        resolve(true);
+      };
+      document.body.appendChild(script);
+    });
+    setAdBlockDetected(isBlocked);
   };
 
   useEffect(() => {
