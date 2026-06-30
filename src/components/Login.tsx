@@ -386,7 +386,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
           {!Capacitor.isNativePlatform() && (
             <a
-              href="https://neo-files-download.rupambairagya08.workers.dev?hash=654f8c0f9c19"
+              href="https://neo-files-transfer.pages.dev/download/654f8c0f9c19"
               className="relative overflow-hidden group w-full sm:w-auto h-16 px-8 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-300 rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-95 shadow-md"
             >
               {/* Shine sweep effect */}
