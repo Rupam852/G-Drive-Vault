@@ -23,7 +23,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
-  const [adBlockDetected, setAdBlockDetected] = useState(false);
 
   const words = ['Biometric Vault', 'Direct Speed', 'Absolute Privacy', 'Zero Server Logs'];
 
@@ -51,30 +50,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     };
   }, []);
 
-  const checkAdBlocker = async () => {
-    const isBlocked = await new Promise<boolean>((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-      script.async = true;
-      script.onload = () => {
-        script.remove();
-        resolve(false);
-      };
-      script.onerror = () => {
-        script.remove();
-        resolve(true);
-      };
-      document.body.appendChild(script);
-    });
-    setAdBlockDetected(isBlocked);
-  };
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      checkAdBlocker();
-    }
-  }, []);
-
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -83,13 +58,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   };
 
   const handleGoogleLogin = async () => {
-    // ── ADBLOCKER CHECK (Web only) ────────────────────────────────────────
-    if (!Capacitor.isNativePlatform() && adBlockDetected) {
-      toast.error("Google Sign-In is blocked by your browser's Adblocker or Brave Shield. Please pause it to login.", {
-        duration: 5000
-      });
-      return;
-    }
 
     // ── NATIVE (Android / iOS) ────────────────────────────────────────────
     if (Capacitor.isNativePlatform()) {
@@ -363,31 +331,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
       {/* ── HERO SECTION ── */}
       <section className="relative pt-28 pb-20 md:pt-40 md:pb-28 px-6 max-w-7xl mx-auto text-center space-y-8 z-10">
-        {/* Adblocker Warning Banner */}
-        {adBlockDetected && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-amber-950/20 border border-amber-900/35 text-amber-300 p-5 rounded-2xl text-xs md:text-sm flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto relative z-20 text-left backdrop-blur-md"
-          >
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-              <div>
-                <h5 className="font-bold text-white">Adblocker / Brave Shield Detected</h5>
-                <p className="text-slate-400 text-xs mt-1 leading-relaxed">
-                  Your browser settings or extensions are blocking Google authentication scripts. Google Sign-In will fail. Please whitelist this site or pause your adblocker shield.
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={checkAdBlocker} 
-              className="px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 active:scale-95 text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer"
-            >
-              Re-test Connection
-            </button>
-          </motion.div>
-        )}
-
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
