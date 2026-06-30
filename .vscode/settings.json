@@ -13,5 +13,6 @@
         "**/android/**",
         "**/node_modules/**",
         "**/.git/**"
-    ]
+    ],
+    "css.lint.unknownAtRules": "ignore"
 }
