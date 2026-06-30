@@ -497,6 +497,74 @@ export default function App() {
     }
   };
 
+  const syncCompletedTransfers = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const res = await UploadNotification.getCompletedTransfers();
+        if (res) {
+          const { completedUploads, completedDownloads } = res;
+          let historyUpdated = false;
+
+          // 1. Process completed uploads
+          if (completedUploads && completedUploads.length > 0) {
+            const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
+            let addedCount = 0;
+            for (const item of completedUploads) {
+              if (!hist.some((h: any) => h.id === item.id)) {
+                hist.unshift({
+                  id: item.id,
+                  name: item.name,
+                  folderId: item.folderId,
+                  folderName: item.folderName,
+                  date: item.date,
+                  size: item.size
+                });
+                addedCount++;
+              }
+            }
+            if (addedCount > 0) {
+              localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
+              historyUpdated = true;
+            }
+          }
+
+          // 2. Process completed downloads
+          if (completedDownloads && completedDownloads.length > 0) {
+            const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+            let addedCount = 0;
+            for (const item of completedDownloads) {
+              if (!hist.some((h: any) => h.id === item.id)) {
+                hist.unshift({
+                  id: item.id,
+                  name: item.name,
+                  date: item.date,
+                  size: item.size,
+                  status: 'completed'
+                });
+                addedCount++;
+              }
+            }
+            if (addedCount > 0) {
+              localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+              historyUpdated = true;
+            }
+          }
+
+          if (historyUpdated) {
+            fetchFiles(currentFolderIdRef.current ?? 'root');
+            fetchStorage();
+            fetchStorageBreakdown();
+            fetchRecentFiles();
+            // Dispatch a global event to let components (like Settings history) re-load their list
+            window.dispatchEvent(new CustomEvent('vault-transfers-synced'));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Sync] Failed to sync completed transfers from native plugin:', err);
+    }
+  };
+
   const mapDriveFiles = (driveFiles: any[]): FileItem[] => {
     return driveFiles.map((f: any) => {
       let type: FileItem['type'] = 'other';
@@ -951,6 +1019,7 @@ export default function App() {
       }
     };
     checkLaunchIntent();
+    syncCompletedTransfers();
 
     // Re-check intent and updates when app comes to foreground
     let appStateListener: any;
@@ -961,6 +1030,7 @@ export default function App() {
           lastResumeTimeRef.current = Date.now();
           checkLaunchIntent();
           checkUpdates();
+          syncCompletedTransfers();
         }
       }).then(l => appStateListener = l);
     }
@@ -975,6 +1045,8 @@ export default function App() {
     // Register active notification callbacks
     let notifListener: any;
     let uploadProgressListener: any;
+    let uploadCompleteListener: any;
+    let downloadCompleteListener: any;
     try {
       if (Capacitor.isNativePlatform()) {
         UploadNotification.addListener('onNotificationAction', (data: any) => {
@@ -998,6 +1070,14 @@ export default function App() {
             status: progress === 100 ? 'completed' : 'uploading'
           } : t));
         }).then(l => uploadProgressListener = l);
+
+        UploadNotification.addListener('onUploadComplete', () => {
+          syncCompletedTransfers();
+        }).then(l => uploadCompleteListener = l);
+
+        UploadNotification.addListener('onDownloadComplete', () => {
+          syncCompletedTransfers();
+        }).then(l => downloadCompleteListener = l);
       }
     } catch (err) {
       console.error('Error registering native notification action listeners:', err);
@@ -1007,6 +1087,8 @@ export default function App() {
       if (appStateListener) appStateListener.remove();
       if (notifListener) notifListener.remove();
       if (uploadProgressListener) uploadProgressListener.remove();
+      if (uploadCompleteListener) uploadCompleteListener.remove();
+      if (downloadCompleteListener) downloadCompleteListener.remove();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
@@ -1250,12 +1332,16 @@ export default function App() {
       const uploadUrl = sessionRes.headers.get('Location');
       if (!uploadUrl) throw new Error('No upload URL returned from Google');
 
+      const folderLabel = uploadToFolder === 'root' ? 'My Drive' : (breadcrumb.find(b => b.id === uploadToFolder)?.name || breadcrumb[breadcrumb.length - 1]?.name || 'Folder');
+
       UploadNotification.uploadFileNatively({
         id: transferId,
         url: uploadUrl,
         uri: uri,
         filename: name,
-        size: size
+        size: size,
+        folderId: uploadToFolder,
+        folderName: folderLabel
       }).then(() => {
         setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
         

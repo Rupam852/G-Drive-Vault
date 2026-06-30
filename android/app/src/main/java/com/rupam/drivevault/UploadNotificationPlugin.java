@@ -239,6 +239,114 @@ public class UploadNotificationPlugin extends Plugin {
         }
     }
 
+    private void saveCompletedUpload(String id, String filename, String folderId, String folderName, long size) {
+        Context context = getContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("drive_vault_transfers", Context.MODE_PRIVATE);
+        String completedJson = prefs.getString("completed_uploads", "[]");
+        try {
+            org.json.JSONArray array = new org.json.JSONArray(completedJson);
+            
+            // Check if already exists to avoid duplicates
+            boolean exists = false;
+            for (int i = 0; i < array.length(); i++) {
+                org.json.JSONObject obj = array.getJSONObject(i);
+                if (id.equals(obj.optString("id"))) {
+                    exists = true;
+                    break;
+                }
+            }
+            
+            if (!exists) {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("id", id);
+                obj.put("name", filename);
+                obj.put("folderId", folderId);
+                obj.put("folderName", folderName);
+                obj.put("size", size);
+                obj.put("date", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).format(new java.util.Date()));
+                array.put(obj);
+                prefs.edit().putString("completed_uploads", array.toString()).apply();
+                
+                // Trigger real-time event
+                JSObject eventData = new JSObject();
+                eventData.put("id", id);
+                eventData.put("name", filename);
+                eventData.put("folderId", folderId);
+                eventData.put("folderName", folderName);
+                eventData.put("size", size);
+                eventData.put("date", obj.getString("date"));
+                notifyListeners("onUploadComplete", eventData);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("UploadPlugin", "Error saving completed upload", e);
+        }
+    }
+
+    private void saveCompletedDownload(String id, String filename, long size) {
+        Context context = getContext();
+        if (context == null) return;
+        android.content.SharedPreferences prefs = context.getSharedPreferences("drive_vault_transfers", Context.MODE_PRIVATE);
+        String completedJson = prefs.getString("completed_downloads", "[]");
+        try {
+            org.json.JSONArray array = new org.json.JSONArray(completedJson);
+            
+            // Check if already exists to avoid duplicates
+            boolean exists = false;
+            for (int i = 0; i < array.length(); i++) {
+                org.json.JSONObject obj = array.getJSONObject(i);
+                if (id.equals(obj.optString("id"))) {
+                    exists = true;
+                    break;
+                }
+            }
+            
+            if (!exists) {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("id", id);
+                obj.put("name", filename);
+                obj.put("size", size);
+                obj.put("date", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).format(new java.util.Date()));
+                array.put(obj);
+                prefs.edit().putString("completed_downloads", array.toString()).apply();
+                
+                // Trigger real-time event
+                JSObject eventData = new JSObject();
+                eventData.put("id", id);
+                eventData.put("name", filename);
+                eventData.put("size", size);
+                eventData.put("date", obj.getString("date"));
+                notifyListeners("onDownloadComplete", eventData);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("UploadPlugin", "Error saving completed download", e);
+        }
+    }
+
+    @PluginMethod
+    public void getCompletedTransfers(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.reject("Context is null");
+            return;
+        }
+        android.content.SharedPreferences prefs = context.getSharedPreferences("drive_vault_transfers", Context.MODE_PRIVATE);
+        String completedUploads = prefs.getString("completed_uploads", "[]");
+        String completedDownloads = prefs.getString("completed_downloads", "[]");
+        
+        // Clear them after retrieving
+        prefs.edit().remove("completed_uploads").remove("completed_downloads").apply();
+        
+        try {
+            JSObject ret = new JSObject();
+            ret.put("completedUploads", new org.json.JSONArray(completedUploads));
+            ret.put("completedDownloads", new org.json.JSONArray(completedDownloads));
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("Error parsing completed transfers: " + e.getMessage());
+        }
+    }
+
     @PluginMethod
     public void startForegroundService(PluginCall call) {
         String id = call.getString("id");
@@ -614,6 +722,7 @@ public class UploadNotificationPlugin extends Plugin {
 
                     JSObject ret = new JSObject();
                     ret.put("path", outputFile.getAbsolutePath());
+                    saveCompletedDownload(id, filename, totalSizeBytes > 0 ? totalSizeBytes : outputFile.length());
                     call.resolve(ret);
 
                 } catch (Exception e) {
@@ -745,6 +854,8 @@ public class UploadNotificationPlugin extends Plugin {
             tempSize = -1L;
         }
         final long fileSize = tempSize;
+        final String folderId = call.getString("folderId", "root");
+        final String folderName = call.getString("folderName", "My Drive");
 
         if (urlString == null || fileUriString == null || id == null || filename == null) {
             call.reject("Missing required parameters: url, uri, id, or filename");
@@ -904,6 +1015,7 @@ public class UploadNotificationPlugin extends Plugin {
 
                     JSObject ret = new JSObject();
                     ret.put("success", true);
+                    saveCompletedUpload(id, filename, folderId, folderName, fileSize > 0 ? fileSize : total);
                     call.resolve(ret);
 
                 } catch (Exception e) {

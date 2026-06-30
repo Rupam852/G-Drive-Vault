@@ -95,6 +95,18 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
     } catch {}
   }, [activeDownloads]);
 
+  // Sync completion event listener
+  React.useEffect(() => {
+    const handleSync = () => {
+      try {
+        setUploadHistory(JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]'));
+        setDownloadHistory(JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]'));
+      } catch {}
+    };
+    window.addEventListener('vault-transfers-synced', handleSync);
+    return () => window.removeEventListener('vault-transfers-synced', handleSync);
+  }, []);
+
   const clearDownloadHistory = () => {
     localStorage.removeItem('drive_vault_download_history');
     setDownloadHistory([]);

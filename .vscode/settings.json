@@ -1,3 +1,11 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.gradle.java.home": "C:\\Users\\rupam\\AppData\\Local\\Programs\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Users\\rupam\\AppData\\Local\\Programs\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot",
+            "default": true
+        }
+    ]
 }
