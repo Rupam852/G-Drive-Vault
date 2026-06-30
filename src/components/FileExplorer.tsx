@@ -39,6 +39,7 @@ interface FileExplorerProps {
   onNavigate: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onUpload: (file: File, relativePath?: string) => void;
+  onNativeUpload?: (targetFolderId?: string) => void;
   onCreateFolder: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onShare: (id: string) => void;
@@ -68,7 +69,7 @@ const iconMap = {
   other: FileQuestion,
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
@@ -1018,7 +1019,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
               {/* Upload Photos & Files */}
               <button
-                onClick={() => { fileInputRef.current?.click(); setShowUploadSheet(false); }}
+                onClick={() => {
+                  if (Capacitor.isNativePlatform() && onNativeUpload) {
+                    onNativeUpload();
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                  setShowUploadSheet(false);
+                }}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
               >
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">

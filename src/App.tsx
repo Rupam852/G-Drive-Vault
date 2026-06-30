@@ -30,7 +30,7 @@ import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const CURRENT_VERSION = '1.5.2';
+const CURRENT_VERSION = '1.5.3';
 
 // Global fetch interceptor to automatically save refreshed OAuth tokens sent by the backend
 if (typeof window !== 'undefined') {
@@ -92,6 +92,7 @@ export default function App() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState(0);
   const [isAppActive, setIsAppActive] = useState(true);
+  const lastResumeTimeRef = useRef(Date.now());
 
   const initialFileFilter = (() => {
     const saved = sessionStorage.getItem('drive_vault_file_filter');
@@ -957,14 +958,23 @@ export default function App() {
       CapApp.addListener('appStateChange', ({ isActive }) => {
         setIsAppActive(isActive);
         if (isActive) {
+          lastResumeTimeRef.current = Date.now();
           checkLaunchIntent();
           checkUpdates();
         }
       }).then(l => appStateListener = l);
     }
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        lastResumeTimeRef.current = Date.now();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Register active notification callbacks
     let notifListener: any;
+    let uploadProgressListener: any;
     try {
       if (Capacitor.isNativePlatform()) {
         UploadNotification.addListener('onNotificationAction', (data: any) => {
@@ -977,6 +987,17 @@ export default function App() {
             handleCancelTransfer(id);
           }
         }).then(l => notifListener = l);
+
+        UploadNotification.addListener('onUploadProgress', (data: any) => {
+          const { id, progress, speed, remainingSeconds } = data;
+          setTransfers(prev => prev.map(t => t.id === id ? {
+            ...t,
+            progress: progress,
+            speed: speed,
+            remainingSeconds: remainingSeconds,
+            status: progress === 100 ? 'completed' : 'uploading'
+          } : t));
+        }).then(l => uploadProgressListener = l);
       }
     } catch (err) {
       console.error('Error registering native notification action listeners:', err);
@@ -985,6 +1006,8 @@ export default function App() {
     return () => {
       if (appStateListener) appStateListener.remove();
       if (notifListener) notifListener.remove();
+      if (uploadProgressListener) uploadProgressListener.remove();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -1045,15 +1068,19 @@ export default function App() {
           const absoluteLoaded = chunkStart + event.loaded;
           const absoluteTotal = file.size;
           const bytesDiff = absoluteLoaded - (lastLoaded + chunkStart);
-          const instantSpeed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
-
-          // Smoothen the speed using Exponential Moving Average (EMA) with alpha = 0.15
+          
           const prevSpeed = uploadSpeedsRef.current[transferId] || 0;
-          const speed = prevSpeed === 0 ? instantSpeed : (0.15 * instantSpeed) + (0.85 * prevSpeed);
-          uploadSpeedsRef.current[transferId] = speed;
+          let speed = prevSpeed;
+          let remainingSeconds = speed > 0 ? (absoluteTotal - absoluteLoaded) / speed : 0;
+          
+          const isRecentlyResumed = (now - lastResumeTimeRef.current) < 3000;
+          if (!isRecentlyResumed) {
+            const instantSpeed = timeDiff > 0 ? bytesDiff / timeDiff : 0;
+            speed = prevSpeed === 0 ? instantSpeed : (0.15 * instantSpeed) + (0.85 * prevSpeed);
+            uploadSpeedsRef.current[transferId] = speed;
+            remainingSeconds = speed > 0 ? (absoluteTotal - absoluteLoaded) / speed : 0;
+          }
 
-          const remainingBytes = absoluteTotal - absoluteLoaded;
-          const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
           const progress = Math.round((absoluteLoaded / absoluteTotal) * 100);
 
           lastLoaded = event.loaded;
@@ -1118,6 +1145,11 @@ export default function App() {
           fetchStorage();
           fetchStorageBreakdown();
           fetchRecentFiles();
+          try {
+            if (Capacitor.isNativePlatform()) {
+              UploadNotification.stopForegroundService({ id: transferId }).catch(() => {});
+            }
+          } catch {}
         } else {
           // Google resumable redirect response indicates next chunk index range
           let rangeHeader = xhr.getResponseHeader('Range');
@@ -1135,6 +1167,11 @@ export default function App() {
         delete uploadSpeedsRef.current[transferId];
         setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
         toast.error(`Failed to upload ${file.name}`);
+        try {
+          if (Capacitor.isNativePlatform()) {
+            UploadNotification.stopForegroundService({ id: transferId }).catch(() => {});
+          }
+        } catch {}
       }
     };
 
@@ -1143,14 +1180,134 @@ export default function App() {
       delete uploadSpeedsRef.current[transferId];
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
       toast.error(`Error uploading ${file.name}`);
+      try {
+        if (Capacitor.isNativePlatform()) {
+          UploadNotification.stopForegroundService({ id: transferId }).catch(() => {});
+        }
+      } catch {}
     };
 
     xhr.onabort = () => {
       delete activeUploadsRef.current[transferId];
       delete uploadSpeedsRef.current[transferId];
+      try {
+        if (Capacitor.isNativePlatform()) {
+          UploadNotification.stopForegroundService({ id: transferId }).catch(() => {});
+        }
+      } catch {}
     };
 
     xhr.send(fileSlice);
+  };
+
+  const handleUploadFileNatively = async (uri: string, name: string, size: number, targetFolderId?: string) => {
+    const uploadToFolder = targetFolderId ?? currentFolderIdRef.current ?? 'root';
+    const transferId = Math.random().toString(36).substring(7);
+
+    setTransfers(prev => [...prev, {
+      id: transferId,
+      name: name,
+      progress: 0,
+      status: 'pending',
+      type: 'upload'
+    }]);
+    setShowTransferOverlay(true);
+
+    try {
+      setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
+
+      const initRes = await fetch(`${API_BASE_URL}/api/drive/upload-init`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tokens ? { 'x-goog-tokens': JSON.stringify(tokens) } : {})
+        },
+        body: JSON.stringify({
+          parentId: uploadToFolder,
+          filename: name
+        }),
+        credentials: 'include'
+      });
+
+      if (!initRes.ok) throw new Error('Failed to initialize upload');
+      const { targetFolderId: resolvedFolderId, accessToken } = await initRes.json();
+
+      const sessionRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': 'application/octet-stream',
+          'X-Upload-Content-Length': size.toString()
+        },
+        body: JSON.stringify({
+          name: name,
+          parents: [resolvedFolderId]
+        })
+      });
+
+      if (!sessionRes.ok) throw new Error('Failed to start Google Drive upload session');
+      const uploadUrl = sessionRes.headers.get('Location');
+      if (!uploadUrl) throw new Error('No upload URL returned from Google');
+
+      UploadNotification.uploadFileNatively({
+        id: transferId,
+        url: uploadUrl,
+        uri: uri,
+        filename: name,
+        size: size
+      }).then(() => {
+        setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'completed', progress: 100 } : t));
+        
+        // Save to upload history
+        const folderLabel = uploadToFolder === 'root' ? 'My Drive' : (breadcrumb.find(b => b.id === uploadToFolder)?.name || breadcrumb[breadcrumb.length - 1]?.name || 'Folder');
+        const histEntry = { id: transferId, name: name, folderId: uploadToFolder, folderName: folderLabel, date: new Date().toISOString(), size: size };
+        try {
+          const hist = JSON.parse(localStorage.getItem('drive_vault_upload_history') || '[]');
+          hist.unshift(histEntry);
+          localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
+        } catch { }
+
+        toast.success(`Uploaded ${name} successfully!`);
+        fetchFiles(currentFolderIdRef.current ?? 'root');
+        fetchStorage();
+        fetchStorageBreakdown();
+        fetchRecentFiles();
+      }).catch((err: any) => {
+        console.error('Native upload failed:', err);
+        setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
+        toast.error(`Upload failed: ${err.message || err}`);
+      });
+
+    } catch (err: any) {
+      console.error('Failed to start native upload:', err);
+      setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
+      toast.error(`Upload failed: ${err.message || err}`);
+    }
+  };
+
+  const handleNativeUploadSelection = async (targetFolderId?: string) => {
+    try {
+      try {
+        const permStatus = await UploadNotification.checkPermissions();
+        if (permStatus.notifications !== 'granted') {
+          await UploadNotification.requestPermissions();
+        }
+      } catch (e) {
+        console.warn('Notification permission check/request failed:', e);
+      }
+
+      const selected = await UploadNotification.selectFileNatively();
+      if (!selected || !selected.uri) {
+        throw new Error('No file selected');
+      }
+      handleUploadFileNatively(selected.uri, selected.name, selected.size, targetFolderId);
+    } catch (err: any) {
+      console.error('Native file selection failed:', err);
+      if (err.message && err.message !== 'File selection cancelled') {
+        toast.error('File selection failed: ' + err.message);
+      }
+    }
   };
 
   const handleUploadFile = async (file: File, relativePath?: string, targetFolderId?: string) => {
@@ -1204,11 +1361,24 @@ export default function App() {
       const uploadUrl = sessionRes.headers.get('Location');
       if (!uploadUrl) throw new Error('No upload URL returned from Google');
 
+      try {
+        if (Capacitor.isNativePlatform()) {
+          await UploadNotification.startForegroundService({ id: transferId });
+        }
+      } catch (err) {
+        console.warn('Failed to start native foreground service for upload:', err);
+      }
+
       performResumableUpload(transferId, uploadUrl, file, 0, uploadToFolder);
     } catch (err) {
       console.error('Error initiating upload:', err);
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'error' } : t));
       toast.error(`Error uploading ${file.name}`);
+      try {
+        if (Capacitor.isNativePlatform()) {
+          await UploadNotification.stopForegroundService({ id: transferId });
+        }
+      } catch {}
     }
   };
 
@@ -1243,6 +1413,14 @@ export default function App() {
     setTransfers(prev => prev.map(t => t.id === id ? { ...t, status: 'uploading' } : t));
 
     try {
+      if (Capacitor.isNativePlatform()) {
+        await UploadNotification.startForegroundService({ id });
+      }
+    } catch (err) {
+      console.warn('Failed to start native foreground service for resume:', err);
+    }
+
+    try {
       if (Capacitor.isNativePlatform() && isNotificationEnabled) {
         UploadNotification.showProgressNotification({
           id,
@@ -1266,6 +1444,11 @@ export default function App() {
         setTransfers(prev => prev.map(t => t.id === id ? { ...t, status: 'completed', progress: 100 } : t));
         delete uploadSessionsRef.current[id];
         toast.success(`Uploaded ${session.file.name}`);
+        try {
+          if (Capacitor.isNativePlatform()) {
+            await UploadNotification.stopForegroundService({ id });
+          }
+        } catch {}
         return;
       }
 
@@ -1287,6 +1470,11 @@ export default function App() {
       console.error('Error resuming transfer:', err);
       setTransfers(prev => prev.map(t => t.id === id ? { ...t, status: 'error' } : t));
       toast.error(`Error resuming upload of ${session.file.name}`);
+      try {
+        if (Capacitor.isNativePlatform()) {
+          await UploadNotification.stopForegroundService({ id });
+        }
+      } catch {}
     }
   };
 
@@ -1720,6 +1908,7 @@ export default function App() {
             storageInfo={storageInfo}
             storageBreakdown={storageBreakdown}
             onUpload={handleUploadFile}
+            onNativeUpload={handleNativeUploadSelection}
             setActiveTab={setActiveTab}
             onRefreshStorage={() => {
               fetchStorage();
@@ -1766,6 +1955,7 @@ export default function App() {
             onNavigate={navigateToFolder}
             onDelete={handleDeleteFile}
             onUpload={handleUploadFile}
+            onNativeUpload={handleNativeUploadSelection}
             onCreateFolder={handleCreateFolder}
             onRename={handleRenameFile}
             onShare={handleShareFile}
@@ -1839,6 +2029,7 @@ export default function App() {
           storageInfo={storageInfo}
           storageBreakdown={storageBreakdown}
           onUpload={handleUploadFile}
+          onNativeUpload={handleNativeUploadSelection}
           setActiveTab={setActiveTab}
           onRefreshStorage={() => {
             fetchStorage();

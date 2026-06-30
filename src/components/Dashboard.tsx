@@ -26,6 +26,7 @@ interface DashboardProps {
   storageInfo: any;
   storageBreakdown?: any;
   onUpload: (file: File, relativePath?: string, targetFolderId?: string) => void;
+  onNativeUpload?: (targetFolderId?: string) => void;
   setActiveTab: (tab: string) => void;
   onRefreshStorage?: () => void;
   onCategoryClick?: (type: string) => void;
@@ -41,7 +42,7 @@ interface DashboardProps {
   onShowInfo?: (file: FileItem) => void;
 }
 
-export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
+export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -226,7 +227,13 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
           let progressListener: any;
           UploadNotification.addListener('onDownloadProgress', (data: any) => {
             if (data.id === dlId) {
-              setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: data.progress } : d));
+              setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+                ...d,
+                progress: data.progress,
+                speed: data.speedText,
+                eta: data.etaText,
+                sizeText: data.sizeText
+              } : d));
             }
           }).then(l => progressListener = l);
 
@@ -716,7 +723,14 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
               {/* Upload Photos & Files */}
               <button
-                onClick={() => { fileInputRef.current?.click(); setShowDashUploadSheet(false); }}
+                onClick={() => {
+                  if (Capacitor.isNativePlatform() && onNativeUpload) {
+                    onNativeUpload();
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                  setShowDashUploadSheet(false);
+                }}
                 className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
               >
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">
