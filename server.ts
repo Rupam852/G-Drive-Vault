@@ -677,17 +677,17 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'recent') {
       q = "trashed = false and not properties has { key='isHidden' and value='true' }";
     } else if (filter === 'image') {
-      q += " and mimeType contains 'image/'";
+      q += " and mimeType contains 'image/' and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'video') {
-      q += " and mimeType contains 'video/'";
+      q += " and mimeType contains 'video/' and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'audio') {
-      q += " and (mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg')";
+      q += " and (mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'document') {
-      q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')";
+      q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'apk') {
-      q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk')";
+      q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'archive') {
-      q += " and (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z')";
+      q += " and (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'folder') {
       q += " and mimeType = 'application/vnd.google-apps.folder'";
     } else if (filter === 'other') {

@@ -32,6 +32,11 @@ import com.rupam.drivevault.repository.DriveRepository
 import com.rupam.drivevault.ui.components.getCategoryColor
 import com.rupam.drivevault.ui.components.getCategoryIcon
 import com.rupam.drivevault.ui.theme.BluePrimary
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -48,8 +53,12 @@ fun TrashScreen(
     var isLoading by remember { mutableStateOf(true) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showEmptyTrashConfirmDialog by remember { mutableStateOf(false) }
     var itemToPermanentDelete by remember { mutableStateOf<DriveFile?>(null) }
     var isProcessingAction by remember { mutableStateOf(false) }
+    var processingTitle by remember { mutableStateOf("") }
+    var processingCurrent by remember { mutableIntStateOf(0) }
+    var processingTotal by remember { mutableIntStateOf(0) }
 
     fun loadTrash() {
         isLoading = true
@@ -71,7 +80,7 @@ fun TrashScreen(
     val isSelectionMode = selectedIds.isNotEmpty()
 
     // Back Handler: Exit selection mode first, then exit screen
-    BackHandler {
+    BackHandler(enabled = !isProcessingAction) {
         if (isSelectionMode) {
             selectedIds = emptySet()
         } else {
@@ -82,34 +91,95 @@ fun TrashScreen(
     // ── Batch Restore Selected ──
     fun restoreSelected() {
         if (selectedIds.isEmpty()) return
-        isProcessingAction = true
         val idsToRestore = selectedIds.toList()
+        processingTitle = "Restoring Items..."
+        processingTotal = idsToRestore.size
+        processingCurrent = 0
+        isProcessingAction = true
+
         scope.launch {
             var successCount = 0
-            for (id in idsToRestore) {
-                repository.restoreFile(id).onSuccess { successCount++ }
+            val chunks = idsToRestore.chunked(4)
+            for (chunk in chunks) {
+                val results = chunk.map { id ->
+                    async { repository.restoreFile(id) }
+                }.awaitAll()
+                results.forEach { res ->
+                    if (res.isSuccess) successCount++
+                    processingCurrent++
+                }
             }
             isProcessingAction = false
             selectedIds = emptySet()
-            Toast.makeText(context, "Restored $successCount item(s)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Restored $successCount of ${idsToRestore.size} item(s)", Toast.LENGTH_SHORT).show()
             loadTrash()
         }
     }
 
     // ── Batch Permanent Delete Selected ──
-    fun deleteSelectedPermanently() {
-        if (selectedIds.isEmpty()) return
+    fun deleteSelectedPermanently(itemsToDelete: List<String> = selectedIds.toList()) {
+        if (itemsToDelete.isEmpty()) return
+        processingTitle = "Permanently Deleting..."
+        processingTotal = itemsToDelete.size
+        processingCurrent = 0
         isProcessingAction = true
-        val idsToDelete = selectedIds.toList()
+
         scope.launch {
             var deleteCount = 0
-            for (id in idsToDelete) {
-                repository.deletePermanently(id).onSuccess { deleteCount++ }
+            val chunks = itemsToDelete.chunked(4)
+            for (chunk in chunks) {
+                val results = chunk.map { id ->
+                    async { repository.deletePermanently(id) }
+                }.awaitAll()
+                results.forEach { res ->
+                    if (res.isSuccess) deleteCount++
+                    processingCurrent++
+                }
             }
             isProcessingAction = false
             selectedIds = emptySet()
             Toast.makeText(context, "Permanently deleted $deleteCount item(s)", Toast.LENGTH_SHORT).show()
             loadTrash()
+        }
+    }
+
+    // ── Single Restore ──
+    fun restoreSingleItem(file: DriveFile) {
+        processingTitle = "Restoring \"${file.name}\"..."
+        processingTotal = 1
+        processingCurrent = 0
+        isProcessingAction = true
+
+        scope.launch {
+            repository.restoreFile(file.id).onSuccess {
+                processingCurrent = 1
+                isProcessingAction = false
+                Toast.makeText(context, "Restored ${file.name}", Toast.LENGTH_SHORT).show()
+                loadTrash()
+            }.onFailure { err ->
+                isProcessingAction = false
+                Toast.makeText(context, "Restore failed: ${err.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ── Single Delete Forever ──
+    fun deleteSingleItem(file: DriveFile) {
+        processingTitle = "Deleting \"${file.name}\"..."
+        processingTotal = 1
+        processingCurrent = 0
+        isProcessingAction = true
+
+        scope.launch {
+            repository.deletePermanently(file.id).onSuccess {
+                processingCurrent = 1
+                isProcessingAction = false
+                Toast.makeText(context, "Permanently deleted ${file.name}", Toast.LENGTH_SHORT).show()
+                loadTrash()
+            }.onFailure { err ->
+                isProcessingAction = false
+                Toast.makeText(context, "Delete failed: ${err.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -134,9 +204,12 @@ fun TrashScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (isSelectionMode) selectedIds = emptySet() else onBack()
-                    }) {
+                    IconButton(
+                        onClick = {
+                            if (isSelectionMode) selectedIds = emptySet() else onBack()
+                        },
+                        enabled = !isProcessingAction
+                    ) {
                         Icon(
                             imageVector = if (isSelectionMode) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
@@ -145,14 +218,35 @@ fun TrashScreen(
                     }
                 },
                 actions = {
-                    if (trashFiles.isNotEmpty()) {
+                    if (trashFiles.isNotEmpty() && !isSelectionMode) {
+                        TextButton(
+                            onClick = { showEmptyTrashConfirmDialog = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Empty", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        TextButton(onClick = {
+                            selectedIds = trashFiles.map { it.id }.toSet()
+                        }) {
+                            Text(
+                                text = "Select All",
+                                color = BluePrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else if (trashFiles.isNotEmpty() && isSelectionMode) {
                         TextButton(onClick = {
                             selectedIds = if (selectedIds.size == trashFiles.size) emptySet() else trashFiles.map { it.id }.toSet()
                         }) {
                             Text(
                                 text = if (selectedIds.size == trashFiles.size) "Deselect All" else "Select All",
                                 color = BluePrimary,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
                             )
                         }
                     }
@@ -353,16 +447,8 @@ fun TrashScreen(
                                 if (!isSelectionMode) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    repository.restoreFile(file.id).onSuccess {
-                                                        Toast.makeText(context, "Restored ${file.name}", Toast.LENGTH_SHORT).show()
-                                                        loadTrash()
-                                                    }.onFailure {
-                                                        Toast.makeText(context, "Restore failed", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
-                                            },
+                                            onClick = { restoreSingleItem(file) },
+                                            enabled = !isProcessingAction,
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
@@ -374,9 +460,8 @@ fun TrashScreen(
                                         }
 
                                         IconButton(
-                                            onClick = {
-                                                itemToPermanentDelete = file
-                                            },
+                                            onClick = { itemToPermanentDelete = file },
+                                            enabled = !isProcessingAction,
                                             modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
@@ -422,6 +507,32 @@ fun TrashScreen(
         )
     }
 
+    // ── Empty Entire Trash Confirmation Dialog ──
+    if (showEmptyTrashConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmptyTrashConfirmDialog = false },
+            icon = { Icon(Icons.Rounded.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("Empty Entire Trash?") },
+            text = { Text("Permanently delete all ${trashFiles.size} items in trash? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showEmptyTrashConfirmDialog = false
+                        deleteSelectedPermanently(trashFiles.map { it.id })
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Empty Trash", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmptyTrashConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // ── Single Item Permanent Delete Dialog ──
     if (itemToPermanentDelete != null) {
         val file = itemToPermanentDelete!!
@@ -433,16 +544,8 @@ fun TrashScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val id = file.id
                         itemToPermanentDelete = null
-                        scope.launch {
-                            repository.deletePermanently(id).onSuccess {
-                                Toast.makeText(context, "Permanently deleted ${file.name}", Toast.LENGTH_SHORT).show()
-                                loadTrash()
-                            }.onFailure {
-                                Toast.makeText(context, "Delete failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        deleteSingleItem(file)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -455,5 +558,68 @@ fun TrashScreen(
                 }
             }
         )
+    }
+
+    // ── Live Processing & Progress Dialog Modal ──
+    if (isProcessingAction) {
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color = BluePrimary,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(46.dp)
+                    )
+
+                    Text(
+                        text = processingTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (processingTotal > 1) {
+                        val progress = if (processingTotal > 0) processingCurrent.toFloat() / processingTotal.toFloat() else 0f
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = BluePrimary,
+                            trackColor = BluePrimary.copy(alpha = 0.15f)
+                        )
+
+                        Text(
+                            text = "$processingCurrent of $processingTotal items processed",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "Please wait a moment...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }

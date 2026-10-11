@@ -57,11 +57,15 @@ class DriveRepository(private val authManager: AuthManager) {
 
     fun getCachedStorageStats(): StorageStats? = cachedStorageStats
 
-    fun clearCache() {
+    fun clearCache(folderId: String? = null) {
+        if (folderId != null) {
+            folderCache.remove(folderId)
+        } else {
+            folderCache.clear()
+        }
+        categoryCache.clear()
         cachedStorageStats = null
         lastBreakdownTime = 0L
-        folderCache.clear()
-        categoryCache.clear()
     }
 
     suspend fun getStorageStats(forceRefreshBreakdown: Boolean = false): Result<StorageStats> = withContext(Dispatchers.IO) {
@@ -183,34 +187,36 @@ class DriveRepository(private val authManager: AuthManager) {
         return categoryCache[filter]
     }
 
+    fun mapDtoToDriveFile(dto: com.rupam.drivevault.network.DriveFileDto): DriveFile {
+        val isFolder = dto.mimeType == "application/vnd.google-apps.folder" || dto.name.endsWith("/")
+        val parsedBytes = dto.size?.toLongOrNull() ?: dto.sizeBytes ?: 0L
+        val displaySize = if (isFolder) "Folder" else formatBytes(parsedBytes)
+        val displayDate = formatDate(dto.modifiedTime ?: dto.createdTime)
+
+        return DriveFile(
+            id = dto.id,
+            name = dto.name,
+            type = FileCategoryType.fromMimeOrExtension(dto.name, dto.mimeType),
+            size = displaySize,
+            sizeBytes = parsedBytes,
+            date = displayDate,
+            thumbnail = dto.thumbnailLink,
+            webViewLink = dto.webViewLink,
+            starred = dto.starred ?: false,
+            shared = dto.shared ?: false,
+            isHidden = dto.isHidden ?: false,
+            mimeType = dto.mimeType,
+            parents = dto.parents ?: emptyList()
+        )
+    }
+
     suspend fun getFiles(folderId: String? = null, filter: String? = null): Result<List<DriveFile>> = withContext(Dispatchers.IO) {
         try {
             val tokensHeader = authManager.getTokensHeader()
             val response = api.getFiles(tokensHeader, folderId, filter)
             if (response.isSuccessful) {
                 val dtoList = response.body() ?: emptyList()
-                val files = dtoList.map { dto ->
-                    val isFolder = dto.mimeType == "application/vnd.google-apps.folder" || dto.name.endsWith("/")
-                    val parsedBytes = dto.size?.toLongOrNull() ?: dto.sizeBytes ?: 0L
-                    val displaySize = if (isFolder) "Folder" else formatBytes(parsedBytes)
-                    val displayDate = formatDate(dto.modifiedTime ?: dto.createdTime)
-
-                    DriveFile(
-                        id = dto.id,
-                        name = dto.name,
-                        type = FileCategoryType.fromMimeOrExtension(dto.name, dto.mimeType),
-                        size = displaySize,
-                        sizeBytes = parsedBytes,
-                        date = displayDate,
-                        thumbnail = dto.thumbnailLink,
-                        webViewLink = dto.webViewLink,
-                        starred = dto.starred ?: false,
-                        shared = dto.shared ?: false,
-                        isHidden = dto.isHidden ?: false,
-                        mimeType = dto.mimeType,
-                        parents = dto.parents ?: emptyList()
-                    )
-                }
+                val files = dtoList.map { mapDtoToDriveFile(it) }
                 if (filter == null) {
                     folderCache[folderId ?: "root"] = files
                 } else {

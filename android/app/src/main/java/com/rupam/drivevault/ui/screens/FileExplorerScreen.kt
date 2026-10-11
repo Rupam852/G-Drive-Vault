@@ -114,7 +114,11 @@ fun FileExplorerScreen(
     val filteredFiles = remember(files, searchQuery, selectedCategory, currentSort) {
         files.filter { file ->
             val matchesQuery = searchQuery.isBlank() || file.name.contains(searchQuery, ignoreCase = true)
-            val matchesCat = selectedCategory == null || file.type == selectedCategory || file.type == FileCategoryType.FOLDER
+            val matchesCat = if (selectedCategory == null) {
+                true
+            } else {
+                file.type == selectedCategory
+            }
             matchesQuery && matchesCat
         }.sortedWith { a, b ->
             // Folders always first

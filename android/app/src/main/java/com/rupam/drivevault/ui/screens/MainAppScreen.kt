@@ -195,25 +195,57 @@ fun MainAppScreen(
     }
 
     // Refresh Data function: Parallel execution with instant cache check
-    fun refreshData(skipStats: Boolean = false) {
+    fun refreshData(skipStats: Boolean = false, forceNetwork: Boolean = false) {
         isFilesLoading = true
-        val cached = repository.getCachedFiles(currentFolderId)
-        if (cached != null) {
-            currentFiles = cached
+        if (forceNetwork) {
+            repository.clearCache(currentFolderId)
         }
 
-        // 1. Fetch files in parallel immediately (<300ms)
-        scope.launch {
-            repository.getFiles(currentFolderId).onSuccess { files ->
-                currentFiles = files
-                if (currentFolderId == null) {
-                    recentFiles = files.take(6)
+        if (filterCategory != null) {
+            val apiFilter = when (filterCategory) {
+                FileCategoryType.IMAGE -> "image"
+                FileCategoryType.VIDEO -> "video"
+                FileCategoryType.DOCUMENT -> "document"
+                FileCategoryType.AUDIO -> "audio"
+                FileCategoryType.APK -> "apk"
+                FileCategoryType.ARCHIVE -> "archive"
+                FileCategoryType.FOLDER -> "folder"
+                FileCategoryType.OTHER -> "other"
+                null -> null
+            }
+            if (!forceNetwork) {
+                apiFilter?.let { repository.getCachedCategoryFiles(it) }?.let { currentFiles = it }
+            }
+            scope.launch {
+                repository.getFiles(folderId = null, filter = apiFilter).onSuccess { files ->
+                    currentFiles = files
+                    isFilesLoading = false
+                }.onFailure {
+                    isFilesLoading = false
                 }
-                isFilesLoading = false
-            }.onFailure {
-                isFilesLoading = false
+            }
+        } else {
+            if (!forceNetwork) {
+                val cached = repository.getCachedFiles(currentFolderId)
+                if (cached != null) {
+                    currentFiles = cached
+                }
+            }
+
+            // 1. Fetch files in parallel immediately (<300ms)
+            scope.launch {
+                repository.getFiles(currentFolderId).onSuccess { files ->
+                    currentFiles = files
+                    if (currentFolderId == null) {
+                        recentFiles = files.take(6)
+                    }
+                    isFilesLoading = false
+                }.onFailure {
+                    isFilesLoading = false
+                }
             }
         }
+
         // 2. Fetch fast storage quota in parallel (<200ms), then load breakdown asynchronously
         if (!skipStats) {
             scope.launch {
@@ -302,6 +334,30 @@ fun MainAppScreen(
         }
     }
 
+    fun handleUploadSuccess(dto: com.rupam.drivevault.network.DriveFileDto?) {
+        Toast.makeText(context, "Uploaded successfully!", Toast.LENGTH_SHORT).show()
+
+        // 1. Instant optimistic UI adoption: If backend returned file metadata, immediately show in UI
+        if (dto != null) {
+            val newFile = repository.mapDtoToDriveFile(dto)
+            if (filterCategory == null || filterCategory == newFile.type) {
+                currentFiles = listOf(newFile) + currentFiles.filter { it.id != newFile.id }
+            }
+            recentFiles = listOf(newFile) + recentFiles.filter { it.id != newFile.id }.take(5)
+        }
+
+        // 2. Clear cache and perform full network refresh with storage stats
+        repository.clearCache()
+        refreshData(skipStats = false, forceNetwork = true)
+
+        // 3. Follow-up sync after 1.5 seconds to account for Google Drive search index latency
+        scope.launch {
+            kotlinx.coroutines.delay(1500)
+            repository.clearCache()
+            refreshData(skipStats = false, forceNetwork = true)
+        }
+    }
+
     // File Picker Launcher with real-time transfer tracking
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -314,10 +370,9 @@ fun MainAppScreen(
                 uri = uri,
                 targetFolderId = currentFolderId,
                 authTokensHeader = tokensHeader,
-                onComplete = { success, err ->
+                onComplete = { success, err, uploadedDto ->
                     if (success) {
-                        Toast.makeText(context, "Uploaded successfully!", Toast.LENGTH_SHORT).show()
-                        refreshData(skipStats = true)
+                        handleUploadSuccess(uploadedDto)
                     } else {
                         Toast.makeText(context, "Upload failed: $err", Toast.LENGTH_LONG).show()
                     }
@@ -408,9 +463,11 @@ fun MainAppScreen(
                         newFolderName = ""
                         scope.launch {
                             repository.createFolder(name, currentFolderId)
-                                .onSuccess {
+                                .onSuccess { newFolder ->
                                     Toast.makeText(context, "Folder created", Toast.LENGTH_SHORT).show()
-                                    refreshData()
+                                    currentFiles = listOf(newFolder) + currentFiles
+                                    repository.clearCache()
+                                    refreshData(skipStats = false, forceNetwork = true)
                                 }
                                 .onFailure { err ->
                                     Toast.makeText(context, "Failed: ${err.message}", Toast.LENGTH_SHORT).show()
@@ -745,11 +802,10 @@ fun MainAppScreen(
                     uri = uriToUpload,
                     targetFolderId = currentFolderId,
                     authTokensHeader = tokensHeader,
-                    onComplete = { success, err ->
+                    onComplete = { success, err, uploadedDto ->
                         fileToDelete?.delete()
                         if (success) {
-                            Toast.makeText(context, "Photo uploaded successfully!", Toast.LENGTH_SHORT).show()
-                            refreshData(skipStats = true)
+                            handleUploadSuccess(uploadedDto)
                         } else {
                             Toast.makeText(context, "Upload failed: $err", Toast.LENGTH_LONG).show()
                         }
@@ -856,7 +912,10 @@ fun MainAppScreen(
                             scope.launch {
                                 repository.renameFile(target.id, newName).onSuccess {
                                     Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
-                                    refreshData(skipStats = true)
+                                    currentFiles = currentFiles.map { if (it.id == target.id) it.copy(name = newName) else it }
+                                    recentFiles = recentFiles.map { if (it.id == target.id) it.copy(name = newName) else it }
+                                    repository.clearCache()
+                                    refreshData(skipStats = true, forceNetwork = true)
                                 }.onFailure {
                                     Toast.makeText(context, "Rename failed: ${it.message}", Toast.LENGTH_SHORT).show()
                                 }
@@ -890,7 +949,10 @@ fun MainAppScreen(
                         scope.launch {
                             repository.trashFile(target.id).onSuccess {
                                 Toast.makeText(context, "Moved to trash", Toast.LENGTH_SHORT).show()
-                                refreshData(skipStats = true)
+                                currentFiles = currentFiles.filter { it.id != target.id }
+                                recentFiles = recentFiles.filter { it.id != target.id }
+                                repository.clearCache()
+                                refreshData(skipStats = false, forceNetwork = true)
                             }.onFailure {
                                 Toast.makeText(context, "Delete failed: ${it.message}", Toast.LENGTH_SHORT).show()
                             }

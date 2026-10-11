@@ -586,13 +586,13 @@ app.get('/api/drive/files', async (req, res) => {
     } else {
       // Type-based filters — search globally (no folder constraint) with mimeType filter
       const mimeFilters: Record<string, string> = {
-        image:    "mimeType contains 'image/'",
-        video:    "mimeType contains 'video/'",
-        audio:    "(mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg')",
-        document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')",
+        image:    "mimeType contains 'image/' and mimeType != 'application/vnd.google-apps.folder'",
+        video:    "mimeType contains 'video/' and mimeType != 'application/vnd.google-apps.folder'",
+        audio:    "(mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg') and mimeType != 'application/vnd.google-apps.folder'",
+        document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and mimeType != 'application/vnd.google-apps.folder'",
         folder:   "mimeType = 'application/vnd.google-apps.folder'",
-        apk:      "(mimeType = 'application/vnd.android.package-archive' or name contains '.apk')",
-        archive:  "(mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z')",
+        apk:      "(mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and mimeType != 'application/vnd.google-apps.folder'",
+        archive:  "(mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z') and mimeType != 'application/vnd.google-apps.folder'",
         other:    "not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains 'gzip' or mimeType contains 'x-7z') and mimeType != 'application/vnd.google-apps.folder'"
       };
 

@@ -30,6 +30,10 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
+
 enum class ServerHealthStatus {
     NOT_TESTED,
     TESTING,
@@ -186,6 +190,7 @@ fun ServerCheckScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -263,10 +268,10 @@ fun ServerCheckScreen(
                 }
             }
 
-            // ── Information Note Card ──
+            // ── Explanation Note ──
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -327,6 +332,7 @@ private fun ServerStatusCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -345,21 +351,29 @@ private fun ServerStatusCard(
                         }
                     }
 
-                    Column {
+                    Column(
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodySmall,
                             fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(10.dp))
 
                 // ── Status Badge on Right ──
                 StatusBadge(result = result)
@@ -374,12 +388,19 @@ private fun ServerStatusCard(
             )
 
             if (result.message.isNotBlank() && result.status != ServerHealthStatus.TESTING) {
-                Text(
-                    text = "Status Detail: ${result.message}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (result.status == ServerHealthStatus.ACTIVE) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Medium
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (result.status == ServerHealthStatus.ACTIVE) Color(0xFF10B981).copy(alpha = 0.12f) else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Status Detail: ${result.message}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (result.status == ServerHealthStatus.ACTIVE) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }
@@ -399,6 +420,8 @@ private fun StatusBadge(result: ServerHealthResult) {
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
@@ -419,7 +442,9 @@ private fun StatusBadge(result: ServerHealthResult) {
                     text = "Checking...",
                     fontSize = 11.sp,
                     color = BluePrimary,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
@@ -444,7 +469,9 @@ private fun StatusBadge(result: ServerHealthResult) {
                         text = "Active",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF10B981)
+                        color = Color(0xFF10B981),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -470,10 +497,13 @@ private fun StatusBadge(result: ServerHealthResult) {
                         text = "Not Active",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
         }
     }
 }
+

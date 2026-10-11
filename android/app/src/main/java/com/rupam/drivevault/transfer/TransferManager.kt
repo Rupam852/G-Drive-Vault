@@ -119,7 +119,7 @@ object TransferManager {
         uri: Uri,
         targetFolderId: String?,
         authTokensHeader: String? = null,
-        onComplete: (Boolean, String?) -> Unit = { _, _ -> }
+        onComplete: (Boolean, String?, com.rupam.drivevault.network.DriveFileDto?) -> Unit = { _, _, _ -> }
     ): String {
         val transferId = UUID.randomUUID().toString()
 
@@ -226,7 +226,15 @@ object TransferManager {
                 val response = client.newCall(request).execute()
 
                 if (response.isSuccessful) {
+                    val rawBody = response.body?.string()
                     response.close()
+                    val uploadedDto = try {
+                        if (!rawBody.isNullOrBlank()) {
+                            com.google.gson.Gson().fromJson(rawBody, com.rupam.drivevault.network.DriveFileDto::class.java)
+                        } else null
+                    } catch (e: Exception) {
+                        null
+                    }
                     updateTransfer(transferId) { current ->
                         current.copy(
                             transferredBytes = if (fileSize > 0) fileSize else current.transferredBytes,
@@ -235,7 +243,7 @@ object TransferManager {
                             status = TransferStatus.COMPLETED
                         )
                     }
-                    withContext(Dispatchers.Main) { onComplete(true, null) }
+                    withContext(Dispatchers.Main) { onComplete(true, null, uploadedDto) }
                 } else {
                     val code = response.code
                     response.close()
@@ -243,18 +251,18 @@ object TransferManager {
                     updateTransfer(transferId) { current ->
                         current.copy(status = TransferStatus.FAILED, errorMessage = err, speedBps = 0L)
                     }
-                    withContext(Dispatchers.Main) { onComplete(false, err) }
+                    withContext(Dispatchers.Main) { onComplete(false, err, null) }
                 }
             } catch (e: CancellationException) {
                 updateTransfer(transferId) { current ->
                     current.copy(status = TransferStatus.CANCELLED, speedBps = 0L)
                 }
-                withContext(Dispatchers.Main) { onComplete(false, "Cancelled") }
+                withContext(Dispatchers.Main) { onComplete(false, "Cancelled", null) }
             } catch (e: Exception) {
                 updateTransfer(transferId) { current ->
                     current.copy(status = TransferStatus.FAILED, errorMessage = e.message, speedBps = 0L)
                 }
-                withContext(Dispatchers.Main) { onComplete(false, e.message) }
+                withContext(Dispatchers.Main) { onComplete(false, e.message, null) }
             } finally {
                 activeJobs.remove(transferId)
                 recomputeActiveCount()
