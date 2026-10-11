@@ -588,7 +588,7 @@ app.get('/api/drive/files', async (req, res) => {
       const mimeFilters: Record<string, string> = {
         image:    "mimeType contains 'image/'",
         video:    "mimeType contains 'video/'",
-        audio:    "mimeType contains 'audio/'",
+        audio:    "(mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg')",
         document: "(mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')",
         folder:   "mimeType = 'application/vnd.google-apps.folder'",
         apk:      "(mimeType = 'application/vnd.android.package-archive' or name contains '.apk')",

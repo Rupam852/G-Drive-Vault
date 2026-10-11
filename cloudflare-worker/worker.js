@@ -22,7 +22,7 @@ export default {
     try {
       // ── 1. STREAMING / DOWNLOAD ENDPOINT: /stream/:fileId or /stream?fileId=... ──
       if (path.startsWith("/stream") || path.startsWith("/api/stream")) {
-        return await handleMediaStream(request, url, ctx);
+        return await handleMediaStream(request, url, env, ctx);
       }
 
       // ── 2. DIRECT RESUMABLE UPLOAD PROXY: /upload ──
@@ -52,7 +52,7 @@ export default {
 /**
  * Handles Super-Fast Media Streaming & Chunk-by-Chunk Delivery
  */
-async function handleMediaStream(request, url, ctx) {
+async function handleMediaStream(request, url, env, ctx) {
   // Extract fileId from URL path or query params
   const segments = url.pathname.split("/").filter(Boolean);
   const fileId = url.searchParams.get("fileId") || (segments.length >= 2 ? segments[segments.length - 1] : null);
@@ -67,7 +67,8 @@ async function handleMediaStream(request, url, ctx) {
   // Extract access token from Authorization header or ticket query parameter
   const authHeader = request.headers.get("Authorization");
   const tokenParam = url.searchParams.get("token") || url.searchParams.get("access_token");
-  const accessToken = authHeader ? authHeader.replace("Bearer ", "").trim() : tokenParam;
+  const refreshToken = url.searchParams.get("refresh_token") || request.headers.get("x-goog-refresh-token");
+  let accessToken = authHeader ? authHeader.replace("Bearer ", "").trim() : tokenParam;
 
   if (!accessToken) {
     return new Response(JSON.stringify({ error: "Unauthorized: Missing Google OAuth token" }), {
@@ -79,22 +80,50 @@ async function handleMediaStream(request, url, ctx) {
   // Target Google Drive v3 API media download endpoint
   const driveApiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
 
-  // Build upstream request headers
-  const upstreamHeaders = new Headers();
-  upstreamHeaders.set("Authorization", `Bearer ${accessToken}`);
-  upstreamHeaders.set("User-Agent", "DriveVault-Cloudflare-Edge/1.0");
+  async function fetchDriveMedia(token) {
+    const upstreamHeaders = new Headers();
+    upstreamHeaders.set("Authorization", `Bearer ${token}`);
+    upstreamHeaders.set("User-Agent", "DriveVault-Cloudflare-Edge/1.0");
 
-  // Pass through Range header for video seeking (HTTP 206 Partial Content)
-  const rangeHeader = request.headers.get("Range");
-  if (rangeHeader) {
-    upstreamHeaders.set("Range", rangeHeader);
+    // Pass through Range header for video seeking (HTTP 206 Partial Content)
+    const rangeHeader = request.headers.get("Range");
+    if (rangeHeader) {
+      upstreamHeaders.set("Range", rangeHeader);
+    }
+
+    return await fetch(driveApiUrl, {
+      method: "GET",
+      headers: upstreamHeaders
+    });
   }
 
   // Fetch directly from Google Drive API
-  const googleResponse = await fetch(driveApiUrl, {
-    method: "GET",
-    headers: upstreamHeaders
-  });
+  let googleResponse = await fetchDriveMedia(accessToken);
+
+  // If Google returns 401 (token expired) and Cloudflare Worker has OAuth credentials configured:
+  if (googleResponse.status === 401 && refreshToken && env?.GOOGLE_CLIENT_ID && env?.GOOGLE_CLIENT_SECRET) {
+    try {
+      const tokenRefreshRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: env.GOOGLE_CLIENT_ID,
+          client_secret: env.GOOGLE_CLIENT_SECRET,
+          refresh_token: refreshToken,
+          grant_type: "refresh_token"
+        })
+      });
+      if (tokenRefreshRes.ok) {
+        const tokenData = await tokenRefreshRes.json();
+        if (tokenData.access_token) {
+          accessToken = tokenData.access_token;
+          googleResponse = await fetchDriveMedia(accessToken);
+        }
+      }
+    } catch (e) {
+      // Refresh error, continue with googleResponse
+    }
+  }
 
   if (!googleResponse.ok && googleResponse.status !== 206) {
     const errorText = await googleResponse.text();

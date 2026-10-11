@@ -98,6 +98,7 @@ fun MainAppScreen(
     var recentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var activePreviewFile by remember { mutableStateOf<DriveFile?>(null) }
     var previewStreamUrl by remember { mutableStateOf<String?>(null) }
+    var previewFallbackUrl by remember { mutableStateOf<String?>(null) }
     var filterCategory by remember { mutableStateOf<FileCategoryType?>(null) }
 
     // Dialog & Sheet States
@@ -117,6 +118,7 @@ fun MainAppScreen(
         breadcrumbs = listOf(FolderBreadcrumb(id = null, name = "My Drive"))
         activePreviewFile = null
         previewStreamUrl = null
+        previewFallbackUrl = null
         filterCategory = null
         currentUser = null
         isLoggedIn = false
@@ -139,6 +141,22 @@ fun MainAppScreen(
             Toast.makeText(context, "Starting download for ${file.name}...", Toast.LENGTH_SHORT).show()
             repository.getDownloadTicket().onSuccess { ticket ->
                 val streamUrl = repository.getStreamUrl(file.id, ticket)
+                val fallbackUrl = repository.getRenderDownloadUrl(file.id, ticket)
+                TransferManager.startDownload(
+                    context = context,
+                    file = file,
+                    streamUrl = streamUrl,
+                    fallbackUrl = fallbackUrl,
+                    onComplete = { success, err ->
+                        if (success) {
+                            Toast.makeText(context, "📥 Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                )
+            }.onFailure {
+                val streamUrl = repository.getFastStreamUrl(file.id)
                 TransferManager.startDownload(
                     context = context,
                     file = file,
@@ -151,8 +169,6 @@ fun MainAppScreen(
                         }
                     }
                 )
-            }.onFailure {
-                Toast.makeText(context, "Could not start download: ${it.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -214,15 +230,13 @@ fun MainAppScreen(
     fun selectCategoryFilter(category: FileCategoryType?) {
         filterCategory = category
         isFilesLoading = true
-        if (category == null || category == FileCategoryType.FOLDER) {
+        if (category == null) {
             breadcrumbs = listOf(FolderBreadcrumb(id = null, name = "My Drive"))
             val cached = repository.getCachedFiles(null)
             if (cached != null) currentFiles = cached
             scope.launch {
                 repository.getFiles(folderId = null).onSuccess {
-                    currentFiles = if (category == FileCategoryType.FOLDER) {
-                        it.filter { f -> f.type == FileCategoryType.FOLDER }
-                    } else it
+                    currentFiles = it
                     isFilesLoading = false
                 }.onFailure {
                     isFilesLoading = false
@@ -241,8 +255,8 @@ fun MainAppScreen(
                 FileCategoryType.AUDIO -> "audio"
                 FileCategoryType.APK -> "apk"
                 FileCategoryType.ARCHIVE -> "archive"
+                FileCategoryType.FOLDER -> "folder"
                 FileCategoryType.OTHER -> "other"
-                else -> null
             }
             if (apiFilter != null) {
                 val cached = repository.getCachedCategoryFiles(apiFilter)
@@ -450,27 +464,34 @@ fun MainAppScreen(
         MediaPreviewScreen(
             file = activePreviewFile!!,
             streamUrl = previewStreamUrl,
+            fallbackUrl = previewFallbackUrl,
             onClose = {
                 activePreviewFile = null
                 previewStreamUrl = null
+                previewFallbackUrl = null
             },
             onDownload = {
                 activePreviewFile?.let { file ->
                     val url = previewStreamUrl
                     if (!url.isNullOrBlank()) {
-                        TransferManager.startDownload(
-                            context = context,
-                            file = file,
-                            streamUrl = url,
-                            onComplete = { success, err ->
-                                if (success) {
-                                    Toast.makeText(context, "Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
+                        scope.launch {
+                            val ticket = repository.getDownloadTicket().getOrNull()
+                            val fallbackUrl = if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null
+                            TransferManager.startDownload(
+                                context = context,
+                                file = file,
+                                streamUrl = url,
+                                fallbackUrl = fallbackUrl,
+                                onComplete = { success, err ->
+                                    if (success) {
+                                        Toast.makeText(context, "Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
+                                    }
                                 }
-                            }
-                        )
-                        Toast.makeText(context, "Download started for ${file.name}", Toast.LENGTH_SHORT).show()
+                            )
+                            Toast.makeText(context, "Download started for ${file.name}", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             },
@@ -559,6 +580,7 @@ fun MainAppScreen(
                             scope.launch {
                                 repository.getDownloadTicket().onSuccess { ticket ->
                                     previewStreamUrl = repository.getStreamUrl(file.id, ticket)
+                                    previewFallbackUrl = repository.getRenderDownloadUrl(file.id, ticket) + "&inline=true"
                                 }
                             }
                         },
@@ -597,6 +619,7 @@ fun MainAppScreen(
                         onCategoryFilterSelected = { cat ->
                             selectCategoryFilter(cat)
                         },
+                        onTransfersClick = { showTransfersSheet = true },
                         isLoading = isFilesLoading,
                         onFolderClick = { folder ->
                             filterCategory = null
@@ -619,6 +642,7 @@ fun MainAppScreen(
                             scope.launch {
                                 repository.getDownloadTicket().onSuccess { ticket ->
                                     previewStreamUrl = repository.getStreamUrl(file.id, ticket)
+                                    previewFallbackUrl = repository.getRenderDownloadUrl(file.id, ticket) + "&inline=true"
                                 }
                             }
                         },
@@ -773,6 +797,7 @@ fun MainAppScreen(
                     scope.launch {
                         repository.getDownloadTicket().onSuccess { ticket ->
                             previewStreamUrl = repository.getStreamUrl(target.id, ticket)
+                            previewFallbackUrl = repository.getRenderDownloadUrl(target.id, ticket) + "&inline=true"
                         }
                     }
                 }

@@ -27,9 +27,12 @@ class DriveRepository(private val authManager: AuthManager) {
 
     fun getStreamUrl(fileId: String, ticket: String): String {
         val cfUrl = cloudflareWorkerUrl
-        val token = authManager.getTokens()?.accessToken
+        val tokens = authManager.getTokens()
+        val token = tokens?.accessToken
+        val refreshToken = tokens?.refreshToken
         return if (!cfUrl.isNullOrBlank() && !token.isNullOrBlank()) {
-            "$cfUrl/stream/$fileId?token=$token"
+            val base = "$cfUrl/stream/$fileId?token=$token"
+            if (!refreshToken.isNullOrBlank()) "$base&refresh_token=$refreshToken" else base
         } else {
             "https://g-drive-vault.onrender.com/api/drive/download/$fileId?ticket=$ticket&inline=true"
         }
@@ -37,12 +40,19 @@ class DriveRepository(private val authManager: AuthManager) {
 
     fun getFastStreamUrl(fileId: String): String {
         val cfUrl = cloudflareWorkerUrl
-        val token = authManager.getTokens()?.accessToken
+        val tokens = authManager.getTokens()
+        val token = tokens?.accessToken
+        val refreshToken = tokens?.refreshToken
         return if (!cfUrl.isNullOrBlank() && !token.isNullOrBlank()) {
-            "$cfUrl/stream/$fileId?token=$token"
+            val base = "$cfUrl/stream/$fileId?token=$token"
+            if (!refreshToken.isNullOrBlank()) "$base&refresh_token=$refreshToken" else base
         } else {
             "https://g-drive-vault.onrender.com/api/drive/download/$fileId?inline=true"
         }
+    }
+
+    fun getRenderDownloadUrl(fileId: String, ticket: String): String {
+        return "https://g-drive-vault.onrender.com/api/drive/download/$fileId?ticket=$ticket"
     }
 
     fun getCachedStorageStats(): StorageStats? = cachedStorageStats
@@ -116,8 +126,8 @@ class DriveRepository(private val authManager: AuthManager) {
                     CategoryStat(
                         type = FileCategoryType.FOLDER,
                         title = "Folders",
-                        count = 0,
-                        formattedSize = "Directories",
+                        count = breakdown?.folder?.count ?: 0,
+                        formattedSize = if ((breakdown?.folder?.count ?: 0) > 0) "${breakdown?.folder?.count} Folders" else "Directories",
                         accentColor = CategoryFolder,
                         badgeBgColor = CategoryFolder
                     ),

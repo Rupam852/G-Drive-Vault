@@ -681,13 +681,15 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'video') {
       q += " and mimeType contains 'video/'";
     } else if (filter === 'audio') {
-      q += " and mimeType contains 'audio/'";
+      q += " and (mimeType contains 'audio/' or name contains '.opus' or name contains '.mp3' or name contains '.wav' or name contains '.m4a' or name contains '.aac' or name contains '.flac' or name contains '.ogg')";
     } else if (filter === 'document') {
       q += " and (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/')";
     } else if (filter === 'apk') {
       q += " and (mimeType = 'application/vnd.android.package-archive' or name contains '.apk')";
     } else if (filter === 'archive') {
       q += " and (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z')";
+    } else if (filter === 'folder') {
+      q += " and mimeType = 'application/vnd.google-apps.folder'";
     } else if (filter === 'other') {
       q += " and not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (folderId) {
@@ -769,7 +771,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
 
         if (mime.includes('image')) type = 'image';
         else if (mime.includes('video')) type = 'video';
-        else if (mime.includes('audio')) type = 'audio';
+        else if (mime.includes('audio') || name.endsWith('.opus') || name.endsWith('.mp3') || name.endsWith('.wav') || name.endsWith('.m4a') || name.endsWith('.aac') || name.endsWith('.flac') || name.endsWith('.ogg')) type = 'audio';
         else if (mime.includes('pdf') || mime.includes('document') || mime.includes('spreadsheet') || mime.includes('presentation') || mime.includes('text/')) type = 'document';
         else if (mime === 'application/vnd.android.package-archive' || name.endsWith('.apk')) type = 'apk';
         else if (mime.includes('zip') || mime.includes('rar') || mime.includes('tar') || mime.includes('7z')) type = 'archive';

@@ -24,7 +24,10 @@ enum class FileCategoryType {
             return when {
                 lowerMime.startsWith("image/") || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") || lowerName.endsWith(".webp") || lowerName.endsWith(".gif") -> IMAGE
                 lowerMime.startsWith("video/") || lowerName.endsWith(".mp4") || lowerName.endsWith(".mkv") || lowerName.endsWith(".mov") || lowerName.endsWith(".webm") -> VIDEO
-                lowerMime.startsWith("audio/") || lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a") || lowerName.endsWith(".aac") -> AUDIO
+                lowerMime.startsWith("audio/") || lowerMime.contains("opus") || lowerMime.contains("ogg") ||
+                lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a") ||
+                lowerName.endsWith(".aac") || lowerName.endsWith(".opus") || lowerName.endsWith(".flac") ||
+                lowerName.endsWith(".ogg") || lowerName.endsWith(".amr") || lowerName.endsWith(".wma") -> AUDIO
                 lowerMime.contains("pdf") || lowerMime.contains("document") || lowerMime.contains("presentation") || lowerMime.contains("spreadsheet") ||
                 lowerName.endsWith(".pdf") || lowerName.endsWith(".doc") || lowerName.endsWith(".docx") || lowerName.endsWith(".txt") ||
                 lowerName.endsWith(".ppt") || lowerName.endsWith(".pptx") || lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx") || lowerName.endsWith(".csv") -> DOCUMENT

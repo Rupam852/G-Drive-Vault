@@ -108,7 +108,7 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // ── Live Transfers Manager Button (Up & Down Arrows Icon) ──
-                        val activeTransfersCount = TransferManager.activeCount
+                        val activeTransfersCount = TransferManager.activeCountState
 
                         Box {
                             Surface(

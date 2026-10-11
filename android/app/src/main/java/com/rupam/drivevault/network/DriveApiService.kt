@@ -44,6 +44,7 @@ data class StorageBreakdownDto(
     val audio: CategorySizeCount?,
     val apk: CategorySizeCount?,
     val archive: CategorySizeCount?,
+    val folder: CategorySizeCount?,
     val other: CategorySizeCount?
 )
 
@@ -201,13 +202,23 @@ object NetworkClient {
 
     val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.HEADERS
         }
         OkHttpClient.Builder()
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    val uploadOkHttpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(300, TimeUnit.SECONDS)
+            .writeTimeout(300, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
     }
 

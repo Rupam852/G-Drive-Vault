@@ -5,7 +5,10 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
 import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.network.NetworkClient
 import com.rupam.drivevault.repository.DriveRepository
@@ -83,8 +86,16 @@ object TransferManager {
     // Live state list observable by Jetpack Compose
     val transfers = mutableStateListOf<TransferItem>()
 
+    // Reactive Compose state for instant badge updates
+    var activeCountState by mutableIntStateOf(0)
+        private set
+
     val activeCount: Int
-        get() = transfers.count { it.status == TransferStatus.IN_PROGRESS || it.status == TransferStatus.QUEUED }
+        get() = activeCountState
+
+    private fun recomputeActiveCount() {
+        activeCountState = transfers.count { it.status == TransferStatus.IN_PROGRESS || it.status == TransferStatus.QUEUED }
+    }
 
     val totalActiveSpeedBps: Long
         get() = transfers.filter { it.status == TransferStatus.IN_PROGRESS }.sumOf { it.speedBps }
@@ -142,13 +153,12 @@ object TransferManager {
             status = TransferStatus.IN_PROGRESS
         )
         transfers.add(0, item)
+        recomputeActiveCount()
 
         val job = scope.launch {
             try {
                 val contentResolver = context.contentResolver
                 val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
-                val inputStream = contentResolver.openInputStream(uri)
-                    ?: throw Exception("Cannot open stream for $fileName")
 
                 var lastTime = System.currentTimeMillis()
                 var lastBytes = 0L
@@ -163,15 +173,19 @@ object TransferManager {
                         var bytesRead: Int
                         var totalWritten = 0L
 
-                        inputStream.use { stream ->
-                            while (stream.read(buffer).also { bytesRead = it } != -1) {
+                        // Open fresh InputStream per writeTo call to avoid 'stream closed' on retries or interceptors
+                        val stream = context.contentResolver.openInputStream(uri)
+                            ?: throw java.io.IOException("Cannot open input stream for $fileName")
+
+                        stream.use { input ->
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
                                 sink.write(buffer, 0, bytesRead)
                                 sink.flush()
                                 totalWritten += bytesRead
 
                                 val now = System.currentTimeMillis()
                                 val timeDelta = now - lastTime
-                                if (timeDelta >= 400 || (fileSize > 0 && totalWritten == fileSize)) {
+                                if (timeDelta >= 300 || (fileSize > 0 && totalWritten == fileSize)) {
                                     val bytesDelta = totalWritten - lastBytes
                                     val speed = if (timeDelta > 0) (bytesDelta * 1000) / timeDelta else 0L
                                     val progress = if (fileSize > 0) totalWritten.toFloat() / fileSize.toFloat() else 0.5f
@@ -191,10 +205,12 @@ object TransferManager {
                     }
                 }
 
+                val actualFolder = if (targetFolderId?.startsWith("cat_") == true) "root" else (targetFolderId ?: "root")
+
                 val multipart = MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("file", fileName, requestBody)
-                    .addFormDataPart("parentId", targetFolderId ?: "root")
+                    .addFormDataPart("parentId", actualFolder)
                     .addFormDataPart("relativePath", "")
                     .build()
 
@@ -206,10 +222,11 @@ object TransferManager {
                 }
                 val request = reqBuilder.build()
 
-                val client = NetworkClient.okHttpClient
+                val client = NetworkClient.uploadOkHttpClient
                 val response = client.newCall(request).execute()
 
                 if (response.isSuccessful) {
+                    response.close()
                     updateTransfer(transferId) { current ->
                         current.copy(
                             transferredBytes = if (fileSize > 0) fileSize else current.transferredBytes,
@@ -220,7 +237,9 @@ object TransferManager {
                     }
                     withContext(Dispatchers.Main) { onComplete(true, null) }
                 } else {
-                    val err = "Upload failed: HTTP ${response.code}"
+                    val code = response.code
+                    response.close()
+                    val err = "Upload failed: HTTP $code"
                     updateTransfer(transferId) { current ->
                         current.copy(status = TransferStatus.FAILED, errorMessage = err, speedBps = 0L)
                     }
@@ -238,6 +257,7 @@ object TransferManager {
                 withContext(Dispatchers.Main) { onComplete(false, e.message) }
             } finally {
                 activeJobs.remove(transferId)
+                recomputeActiveCount()
             }
         }
 
@@ -246,12 +266,13 @@ object TransferManager {
     }
 
     /**
-     * Start live streaming download with byte progress, speed calculation, and direct public storage saving
+     * Start live streaming download with byte progress, speed calculation, and fallback support
      */
     fun startDownload(
         context: Context,
         file: DriveFile,
         streamUrl: String,
+        fallbackUrl: String? = null,
         onComplete: (Boolean, String?) -> Unit = { _, _ -> }
     ): String {
         val transferId = UUID.randomUUID().toString()
@@ -264,18 +285,28 @@ object TransferManager {
             status = TransferStatus.IN_PROGRESS
         )
         transfers.add(0, item)
+        recomputeActiveCount()
 
         val job = scope.launch {
             try {
-                val client = NetworkClient.okHttpClient
-                val request = Request.Builder()
-                    .url(streamUrl)
-                    .get()
-                    .build()
+                val client = NetworkClient.uploadOkHttpClient
 
-                val response = client.newCall(request).execute()
+                var currentUrl = streamUrl
+                var request = Request.Builder().url(currentUrl).get().build()
+                var response = client.newCall(request).execute()
+
+                // If primary URL failed (e.g. Cloudflare Worker 401 expired token) and fallbackUrl exists, retry seamlessly
+                if (!response.isSuccessful && !fallbackUrl.isNullOrBlank() && currentUrl != fallbackUrl) {
+                    response.close()
+                    currentUrl = fallbackUrl
+                    request = Request.Builder().url(currentUrl).get().build()
+                    response = client.newCall(request).execute()
+                }
+
                 if (!response.isSuccessful) {
-                    throw Exception("Download error: HTTP ${response.code}")
+                    val code = response.code
+                    response.close()
+                    throw Exception("Download error: HTTP $code")
                 }
 
                 val body = response.body ?: throw Exception("Empty response body")
@@ -310,7 +341,7 @@ object TransferManager {
 
                             val now = System.currentTimeMillis()
                             val timeDelta = now - lastTime
-                            if (timeDelta >= 400 || (totalLength > 0 && totalDownloaded == totalLength)) {
+                            if (timeDelta >= 300 || (totalLength > 0 && totalDownloaded == totalLength)) {
                                 val bytesDelta = totalDownloaded - lastBytes
                                 val speed = if (timeDelta > 0) (bytesDelta * 1000) / timeDelta else 0L
                                 val progress = if (totalLength > 0) totalDownloaded.toFloat() / totalLength.toFloat() else 0.5f
@@ -360,6 +391,7 @@ object TransferManager {
                 withContext(Dispatchers.Main) { onComplete(false, e.message) }
             } finally {
                 activeJobs.remove(transferId)
+                recomputeActiveCount()
             }
         }
 
@@ -371,16 +403,19 @@ object TransferManager {
         activeJobs[id]?.cancel()
         activeJobs.remove(id)
         updateTransfer(id) { it.copy(status = TransferStatus.CANCELLED, speedBps = 0L) }
+        recomputeActiveCount()
     }
 
     fun clearCompleted() {
         transfers.removeAll { it.status == TransferStatus.COMPLETED || it.status == TransferStatus.CANCELLED || it.status == TransferStatus.FAILED }
+        recomputeActiveCount()
     }
 
     private fun updateTransfer(id: String, update: (TransferItem) -> TransferItem) {
         val index = transfers.indexOfFirst { it.id == id }
         if (index != -1) {
             transfers[index] = update(transfers[index])
+            recomputeActiveCount()
         }
     }
 }

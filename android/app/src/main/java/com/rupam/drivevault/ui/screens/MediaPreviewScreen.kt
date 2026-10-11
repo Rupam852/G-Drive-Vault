@@ -41,6 +41,7 @@ import com.rupam.drivevault.ui.theme.BluePrimary
 fun MediaPreviewScreen(
     file: DriveFile,
     streamUrl: String?,
+    fallbackUrl: String? = null,
     onClose: () -> Unit,
     onDownload: () -> Unit,
     onShare: () -> Unit,
@@ -50,18 +51,26 @@ fun MediaPreviewScreen(
     BackHandler { onClose() }
 
     val context = LocalContext.current
+    var activeUrl by remember(streamUrl) { mutableStateOf(streamUrl) }
+    var triedFallback by remember(streamUrl) { mutableStateOf(false) }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var playerError by remember { mutableStateOf<String?>(null) }
 
-    DisposableEffect(streamUrl) {
-        if (!streamUrl.isNullOrBlank() && (file.type == FileCategoryType.VIDEO || file.type == FileCategoryType.AUDIO)) {
+    DisposableEffect(activeUrl) {
+        val url = activeUrl
+        if (!url.isNullOrBlank() && (file.type == FileCategoryType.VIDEO || file.type == FileCategoryType.AUDIO)) {
             val player = ExoPlayer.Builder(context).build().apply {
                 addListener(object : androidx.media3.common.Player.Listener {
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        playerError = error.message ?: "Failed to stream media"
+                        if (!triedFallback && !fallbackUrl.isNullOrBlank() && fallbackUrl != url) {
+                            triedFallback = true
+                            activeUrl = fallbackUrl
+                        } else {
+                            playerError = error.message ?: "Failed to stream media"
+                        }
                     }
                 })
-                setMediaItem(MediaItem.fromUri(streamUrl))
+                setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 playWhenReady = true
             }
@@ -120,8 +129,8 @@ fun MediaPreviewScreen(
                 }
 
                 FileCategoryType.IMAGE -> {
-                    val imageModel = remember(streamUrl, file.thumbnail) {
-                        if (!streamUrl.isNullOrBlank()) streamUrl
+                    val imageModel = remember(activeUrl, file.thumbnail) {
+                        if (!activeUrl.isNullOrBlank()) activeUrl
                         else if (!file.thumbnail.isNullOrBlank()) file.thumbnail
                         else "https://drive.google.com/thumbnail?id=${file.id}&sz=w1600"
                     }
@@ -129,6 +138,12 @@ fun MediaPreviewScreen(
                         model = imageModel,
                         contentDescription = file.name,
                         contentScale = ContentScale.Fit,
+                        onError = {
+                            if (!triedFallback && !fallbackUrl.isNullOrBlank()) {
+                                triedFallback = true
+                                activeUrl = fallbackUrl
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(0.85f)

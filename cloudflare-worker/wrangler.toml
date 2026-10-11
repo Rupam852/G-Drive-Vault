@@ -2,5 +2,10 @@ name = "drivevault-edge-streamer"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
+
 # Automatically runs on Cloudflare's global edge network (300+ PoPs)
 # Free plan includes 100,000 requests/day
+
+# Variables and secrets are managed in Cloudflare Dashboard:
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
