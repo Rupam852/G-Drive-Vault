@@ -1,0 +1,329 @@
+package com.rupam.drivevault.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.rupam.drivevault.auth.AuthUser
+import com.rupam.drivevault.model.StorageStats
+import com.rupam.drivevault.ui.components.StorageGauge
+import com.rupam.drivevault.ui.theme.BluePrimary
+
+@Composable
+fun SettingsScreen(
+    user: AuthUser?,
+    storageStats: StorageStats,
+    onLogoutClick: () -> Unit,
+    onSwitchAccountClick: () -> Unit = {},
+    onStorageDetailsClick: () -> Unit = {},
+    onClearCacheClick: () -> Unit,
+    onServerCheckClick: () -> Unit = {},
+    onTrashClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    var biometricEnabled by remember { mutableStateOf(false) }
+    var highQualityStreaming by remember { mutableStateOf(true) }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // ── Title ──
+        item {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        // ── User Profile Card ──
+        item {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // ── Circular Avatar ──
+                        Surface(
+                            shape = CircleShape,
+                            border = BorderStroke(2.dp, BluePrimary.copy(alpha = 0.5f)),
+                            color = BluePrimary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            if (!user?.picture.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = user?.picture,
+                                    contentDescription = user?.name,
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Person,
+                                        contentDescription = null,
+                                        tint = BluePrimary,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = user?.name ?: "Drive User",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = user?.email ?: "user@gmail.com",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Logout Icon
+                        IconButton(onClick = onLogoutClick) {
+                            Icon(
+                                imageVector = Icons.Rounded.ExitToApp,
+                                contentDescription = "Sign Out",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // ── Switch Account Button ──
+                    FilledTonalButton(
+                        onClick = onSwitchAccountClick,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = BluePrimary.copy(alpha = 0.15f),
+                            contentColor = BluePrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Sync,
+                            contentDescription = "Switch Account",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Switch Google Account",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Storage Overview Card (Clickable to open breakdown) ──
+        item {
+            StorageGauge(
+                storageStats = storageStats,
+                onClick = onStorageDetailsClick
+            )
+        }
+
+        // ── Preferences Group ──
+        item {
+            Text(
+                text = "Preferences",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.Fingerprint,
+                        title = "Biometric Lock",
+                        subtitle = "Require fingerprint/face to unlock DriveVault",
+                        checked = biometricEnabled,
+                        onCheckedChange = { biometricEnabled = it }
+                    )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.HighQuality,
+                        title = "High Quality Streaming",
+                        subtitle = "Stream original resolution without recompression",
+                        checked = highQualityStreaming,
+                        onCheckedChange = { highQualityStreaming = it }
+                    )
+                }
+            }
+        }
+
+        // ── Storage & Maintenance Group ──
+        item {
+            Text(
+                text = "Maintenance",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    SettingsActionRow(
+                        icon = Icons.Rounded.CleaningServices,
+                        title = "Clear Download Cache",
+                        subtitle = "Free up temporary streaming & download files",
+                        onClick = onClearCacheClick
+                    )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Dns,
+                        title = "Server Diagnostics & Health",
+                        subtitle = "Test Cloudflare Edge & Render backend live status",
+                        onClick = onServerCheckClick
+                    )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    SettingsActionRow(
+                        icon = Icons.Rounded.DeleteOutline,
+                        title = "Trash / Recycle Bin",
+                        subtitle = "View, restore, or permanently delete files",
+                        onClick = onTrashClick
+                    )
+                }
+            }
+        }
+
+        // ── Sign Out Button ──
+        item {
+            Button(
+                onClick = onLogoutClick,
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Icon(Icons.Rounded.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign Out of DriveVault", fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // ── App Version ──
+        item {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "DriveVault Native Android • v1.5.3 (Build 40)",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(24.dp))
+            Column {
+                Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(24.dp))
+                Column {
+                    Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

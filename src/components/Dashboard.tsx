@@ -501,6 +501,17 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     other: FileQuestion,
   };
 
+  const categoryThemeMap: Record<string, { textColor: string; countBadge: string }> = {
+    image: { textColor: 'text-blue-500 dark:text-blue-400', countBadge: 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300' },
+    video: { textColor: 'text-purple-500 dark:text-purple-400', countBadge: 'bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-300' },
+    document: { textColor: 'text-amber-500 dark:text-amber-400', countBadge: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' },
+    audio: { textColor: 'text-emerald-500 dark:text-emerald-400', countBadge: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' },
+    apk: { textColor: 'text-teal-500 dark:text-teal-400', countBadge: 'bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-300' },
+    folder: { textColor: 'text-yellow-500 dark:text-yellow-400', countBadge: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-950/60 dark:text-yellow-300' },
+    archive: { textColor: 'text-rose-500 dark:text-rose-400', countBadge: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300' },
+    other: { textColor: 'text-slate-500 dark:text-slate-400', countBadge: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+  };
+
   return (
     <div className="flex-1 p-4 pb-6 md:pb-8 md:p-10 space-y-6 md:space-y-10 max-w-7xl mx-auto w-full">
       <header className="flex justify-between items-center mb-2">
@@ -593,30 +604,40 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
         {stats.categories.map((cat, idx) => {
-          const Icon = iconMap[cat.type];
+          const Icon = iconMap[cat.type] || File;
+          const theme = categoryThemeMap[cat.type] || categoryThemeMap.other;
           return (
             <motion.div
               key={cat.name}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
+              transition={{ delay: idx * 0.04, duration: 0.25 }}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onCategoryClick ? onCategoryClick(cat.type) : setActiveTab('files')}
+              className="group cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-lg dark:hover:shadow-slate-900/40 hover:border-slate-200 dark:hover:border-slate-600 transition-all duration-200 flex flex-col justify-between min-h-[114px]"
             >
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group bg-white dark:bg-slate-800">
-                <CardContent className="p-4 space-y-3">
-                  <div className={`w-10 h-10 ${cat.color} bg-opacity-10 rounded-xl flex items-center justify-center text-${cat.color.split('-')[1]}-600 dark:text-${cat.color.split('-')[1]}-400 group-hover:scale-110 transition-transform`}>
-                    <Icon size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800 dark:text-slate-200">{cat.name}</h3>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      {cat.count} {cat.type === 'folder' ? (cat.count === 1 ? 'folder' : 'folders') : 'files'} • {cat.size === '--' ? 'Directory' : cat.size}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Header: Clean floating icon (No inner box) + sleek count pill */}
+              <div className="flex items-start justify-between">
+                <div className="transition-transform duration-200 group-hover:scale-110 origin-left">
+                  <Icon size={28} className={`${theme.textColor} transition-colors`} />
+                </div>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${theme.countBadge}`}>
+                  {cat.count}
+                </span>
+              </div>
+
+              {/* Category Info */}
+              <div className="mt-3">
+                <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {cat.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                  {cat.size === '--' ? 'Directories' : cat.size}
+                </p>
+              </div>
             </motion.div>
           );
         })}
@@ -630,17 +651,23 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {files.slice(0, 6).map((file, idx) => {
             const Icon = iconMap[file.type] || FileText;
+            const theme = categoryThemeMap[file.type] || categoryThemeMap.other;
             return (
               <div 
                 key={idx} 
                 onClick={() => handleOpenFile(file)}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-50 dark:border-slate-800/50 hover:shadow-lg hover:border-blue-100 dark:hover:border-blue-900/30 transition-all cursor-pointer group"
+                className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all cursor-pointer group"
               >
-                <div className={`w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors`}>
-                  <Icon size={24} />
+                <div className="shrink-0 transition-transform duration-200 group-hover:scale-110">
+                  <Icon size={26} className={theme.textColor} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 truncate pr-2">{file.name}</h4>
+                  <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {file.name}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                    {file.size} {file.date ? `• ${file.date}` : ''}
+                  </p>
                 </div>
                 <button 
                   onClick={(e) => {
@@ -648,9 +675,9 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
                     e.stopPropagation();
                     setActionMenuFile(file);
                   }}
-                  className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-2"
+                  className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50"
                 >
-                  <MoreHorizontal size={20} />
+                  <MoreHorizontal size={18} />
                 </button>
               </div>
             );
