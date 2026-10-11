@@ -16,11 +16,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.rupam.drivevault.auth.AuthUser
 import com.rupam.drivevault.model.StorageStats
 import com.rupam.drivevault.ui.components.StorageGauge
 import com.rupam.drivevault.ui.theme.BluePrimary
+import com.rupam.drivevault.ui.theme.ThemeManager
+import com.rupam.drivevault.ui.theme.AppThemeMode
 
 @Composable
 fun SettingsScreen(
@@ -149,6 +152,126 @@ fun SettingsScreen(
                 storageStats = storageStats,
                 onClick = onStorageDetailsClick
             )
+        }
+
+        // ── Theme & Appearance Group ──
+        item {
+            val context = LocalContext.current
+            val currentMode = ThemeManager.currentThemeMode
+
+            Text(
+                text = "Theme & Appearance",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = BluePrimary.copy(alpha = 0.12f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Palette,
+                                    contentDescription = null,
+                                    tint = BluePrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Theme Mode",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Choose your preferred visual style",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AppThemeMode.values().forEach { mode ->
+                            val isSelected = currentMode == mode
+                            val modeIcon = when (mode) {
+                                AppThemeMode.LIGHT -> Icons.Rounded.LightMode
+                                AppThemeMode.DARK -> Icons.Rounded.DarkMode
+                                AppThemeMode.SYSTEM -> Icons.Rounded.BrightnessAuto
+                            }
+
+                            Surface(
+                                onClick = {
+                                    ThemeManager.setThemeMode(context, mode)
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) BluePrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) BluePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = modeIcon,
+                                        contentDescription = mode.title,
+                                        tint = if (isSelected) BluePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = mode.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) BluePrimary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = mode.subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = { ThemeManager.setThemeMode(context, mode) },
+                                        colors = RadioButtonDefaults.colors(
+                                            selectedColor = BluePrimary,
+                                            unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // ── Preferences Group ──

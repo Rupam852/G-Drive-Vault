@@ -12,6 +12,7 @@ import com.rupam.drivevault.auth.AuthManager
 import com.rupam.drivevault.repository.DriveRepository
 import com.rupam.drivevault.ui.screens.MainAppScreen
 import com.rupam.drivevault.ui.theme.DriveVaultTheme
+import com.rupam.drivevault.ui.theme.ThemeManager
 
 class MainActivity : ComponentActivity() {
 
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
         actionBar?.hide()
         enableEdgeToEdge()
 
+        ThemeManager.init(this)
         authManager = AuthManager(this)
         driveRepository = DriveRepository(authManager)
 

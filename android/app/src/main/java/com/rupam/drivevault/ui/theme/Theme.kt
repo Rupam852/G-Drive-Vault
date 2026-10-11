@@ -14,8 +14,8 @@ import androidx.core.view.WindowCompat
 private val DarkColorScheme = darkColorScheme(
     primary = BluePrimaryLight,
     onPrimary = DarkBackground,
-    primaryContainer = BluePrimaryDark,
-    onPrimaryContainer = DarkTextPrimary,
+    primaryContainer = DarkPrimaryContainer,
+    onPrimaryContainer = DarkOnPrimaryContainer,
     secondary = CategoryImage,
     background = DarkBackground,
     surface = DarkSurface,
@@ -29,8 +29,8 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = BluePrimary,
     onPrimary = LightSurface,
-    primaryContainer = BluePrimaryLight,
-    onPrimaryContainer = LightTextPrimary,
+    primaryContainer = LightPrimaryContainer,
+    onPrimaryContainer = LightOnPrimaryContainer,
     secondary = CategoryImage,
     background = LightBackground,
     surface = LightSurface,
@@ -43,10 +43,16 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun DriveVaultTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    themeMode: AppThemeMode = ThemeManager.currentThemeMode,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
