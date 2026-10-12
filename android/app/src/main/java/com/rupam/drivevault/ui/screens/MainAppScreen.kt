@@ -93,8 +93,9 @@ fun MainAppScreen(
 
     // Data States
     var storageStats by remember {
-        mutableStateOf(StorageStats(usedBytes = 0L, totalBytes = 15L * 1024L * 1024L * 1024L, categories = emptyList()))
+        mutableStateOf(StorageStats(usedBytes = 0L, totalBytes = 0L, categories = emptyList()))
     }
+    var isStorageQuotaSyncing by remember { mutableStateOf(true) }
     var categorySyncState by remember { mutableStateOf(CategorySyncState.SYNCING) }
     var currentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var recentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
@@ -114,7 +115,8 @@ fun MainAppScreen(
     val currentFolderId = breadcrumbs.lastOrNull()?.id?.takeIf { !it.startsWith("cat_") }
 
     fun resetAppState() {
-        storageStats = StorageStats(usedBytes = 0L, totalBytes = 15L * 1024L * 1024L * 1024L, categories = emptyList())
+        storageStats = StorageStats(usedBytes = 0L, totalBytes = 0L, categories = emptyList())
+        isStorageQuotaSyncing = true
         categorySyncState = CategorySyncState.SYNCING
         currentFiles = emptyList()
         recentFiles = emptyList()
@@ -252,16 +254,22 @@ fun MainAppScreen(
         // 2. Fetch fast storage quota in parallel (<200ms), then load breakdown asynchronously
         if (!skipStats) {
             scope.launch {
+                isStorageQuotaSyncing = true
                 categorySyncState = CategorySyncState.SYNCING
                 repository.getStorageStats().onSuccess { stats ->
                     storageStats = stats
+                    if (stats.totalBytes > 0L) {
+                        isStorageQuotaSyncing = false
+                    }
                 }
                 repository.getStorageStats(forceRefreshBreakdown = true).onSuccess { stats ->
                     storageStats = stats
+                    isStorageQuotaSyncing = false
                     categorySyncState = CategorySyncState.SYNCED
                     delay(900)
                     categorySyncState = CategorySyncState.IDLE
                 }.onFailure {
+                    isStorageQuotaSyncing = false
                     categorySyncState = CategorySyncState.IDLE
                 }
             }
@@ -635,6 +643,7 @@ fun MainAppScreen(
                         storageStats = storageStats,
                         recentFiles = recentFiles,
                         categorySyncState = categorySyncState,
+                        isStorageSyncing = isStorageQuotaSyncing,
                         userPictureUrl = currentUser?.picture,
                         onProfileClick = { showProfileDialog = true },
                         onCategoryClick = { catType ->

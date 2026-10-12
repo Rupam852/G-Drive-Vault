@@ -37,6 +37,7 @@ fun HomeScreen(
     storageStats: StorageStats,
     recentFiles: List<DriveFile>,
     categorySyncState: CategorySyncState = CategorySyncState.IDLE,
+    isStorageSyncing: Boolean = false,
     onCategoryClick: (FileCategoryType) -> Unit,
     onFileClick: (DriveFile) -> Unit,
     onFileMenuClick: (DriveFile) -> Unit,
@@ -200,6 +201,7 @@ fun HomeScreen(
             item {
                 StorageGauge(
                     storageStats = storageStats,
+                    isSyncing = isStorageSyncing,
                     onClick = onStorageDetailsClick
                 )
             }
