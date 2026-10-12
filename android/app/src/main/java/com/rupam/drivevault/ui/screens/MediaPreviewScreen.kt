@@ -65,6 +65,7 @@ import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.model.FileCategoryType
 import com.rupam.drivevault.ui.components.getCategoryIcon
 import com.rupam.drivevault.ui.components.SquigglySlider
+import com.rupam.drivevault.ui.components.NativePdfViewer
 import com.rupam.drivevault.ui.theme.BluePrimary
 import kotlinx.coroutines.delay
 
@@ -1309,46 +1310,57 @@ fun MediaPreviewScreen(
                     )
                 }
 
-                // ── DOCUMENT PREVIEW (WEBVIEW) ──
+                // ── DOCUMENT PREVIEW (NATIVE PDF OR WEBVIEW) ──
                 FileCategoryType.DOCUMENT -> {
-                    var isDocLoading by remember { mutableStateOf(true) }
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.loadWithOverviewMode = true
-                                    settings.useWideViewPort = true
-                                    settings.builtInZoomControls = true
-                                    settings.displayZoomControls = false
-                                    webViewClient = object : WebViewClient() {
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            isDocLoading = false
-                                        }
-                                    }
-                                    val previewUrl = "https://drive.google.com/file/d/${file.id}/preview"
-                                    loadUrl(previewUrl)
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 80.dp)
+                    val isPdf = file.name.endsWith(".pdf", ignoreCase = true) || file.mimeType?.contains("pdf") == true
+                    if (isPdf) {
+                        NativePdfViewer(
+                            file = file,
+                            streamUrl = activeUrl ?: streamUrl,
+                            fallbackUrl = fallbackUrl,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        if (isDocLoading) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = BluePrimary)
+                    } else {
+                        var isDocLoading by remember { mutableStateOf(true) }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    WebView(ctx).apply {
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        settings.loadWithOverviewMode = true
+                                        settings.useWideViewPort = true
+                                        settings.builtInZoomControls = true
+                                        settings.displayZoomControls = false
+                                        webViewClient = object : WebViewClient() {
+                                            override fun onPageFinished(view: WebView?, url: String?) {
+                                                isDocLoading = false
+                                            }
+                                        }
+                                        val previewUrl = "https://drive.google.com/file/d/${file.id}/preview"
+                                        loadUrl(previewUrl)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = 80.dp)
+                            )
+                            if (isDocLoading) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = BluePrimary)
+                                }
                             }
                         }
                     }
                 }
+
 
                 else -> {
                     // APK / Archive Details Card
