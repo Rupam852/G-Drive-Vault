@@ -37,6 +37,7 @@ import com.rupam.drivevault.ui.components.getCategoryColor
 import com.rupam.drivevault.ui.components.getCategoryIcon
 import com.rupam.drivevault.ui.theme.BluePrimary
 import com.rupam.drivevault.transfer.TransferManager
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 data class FolderBreadcrumb(
     val id: String?,
@@ -67,6 +68,8 @@ fun FileExplorerScreen(
     onCategoryFilterSelected: (FileCategoryType?) -> Unit = {},
     onTransfersClick: () -> Unit = {},
     isLoading: Boolean = false,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -380,84 +383,92 @@ fun FileExplorerScreen(
                 )
             }
 
-            // ── File Content List or Grid ──
-            if (isLoading && filteredFiles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = BluePrimary,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Opening folder...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            // ── File Content List or Grid with Pull-to-Refresh ──
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                if (isLoading && filteredFiles.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = BluePrimary,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = "Opening folder...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-            } else if (filteredFiles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Rounded.FolderOpen,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = if (searchQuery.isNotEmpty()) "No files match '$searchQuery'" else "This folder is empty",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                } else if (filteredFiles.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Rounded.FolderOpen,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) "No files match '$searchQuery'" else "This folder is empty",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-            } else if (isGridView) {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredFiles) { file ->
-                        GridFileCard(
-                            file = file,
-                            onClick = {
-                                if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
-                            },
-                            onMenuClick = { onFileMenuClick(file) }
-                        )
+                } else if (isGridView) {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredFiles) { file ->
+                            GridFileCard(
+                                file = file,
+                                onClick = {
+                                    if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                },
+                                onMenuClick = { onFileMenuClick(file) }
+                            )
+                        }
                     }
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredFiles) { file ->
-                        FileItemRow(
-                            file = file,
-                            onClick = {
-                                if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
-                            },
-                            onMenuClick = { onFileMenuClick(file) }
-                        )
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredFiles) { file ->
+                            FileItemRow(
+                                file = file,
+                                onClick = {
+                                    if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                },
+                                onMenuClick = { onFileMenuClick(file) }
+                            )
+                        }
                     }
                 }
             }

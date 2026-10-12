@@ -30,6 +30,8 @@ import com.rupam.drivevault.ui.components.*
 import com.rupam.drivevault.ui.theme.BluePrimary
 import androidx.compose.material.icons.rounded.SwapVert
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -38,6 +40,8 @@ fun HomeScreen(
     recentFiles: List<DriveFile>,
     categorySyncState: CategorySyncState = CategorySyncState.IDLE,
     isStorageSyncing: Boolean = false,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onCategoryClick: (FileCategoryType) -> Unit,
     onFileClick: (DriveFile) -> Unit,
     onFileMenuClick: (DriveFile) -> Unit,
@@ -77,12 +81,17 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
         ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
             // ── Header: App Brand & Welcome ──
             item {
                 Row(
@@ -298,6 +307,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(64.dp))
             }
         }
+    }
 
         Box(
             modifier = Modifier

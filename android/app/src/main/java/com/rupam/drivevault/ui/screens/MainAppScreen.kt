@@ -7,6 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.dp
 import com.rupam.drivevault.auth.AuthManager
 import com.rupam.drivevault.auth.AuthTokens
@@ -51,7 +53,10 @@ fun MainAppScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+
+    var isPullRefreshing by remember { mutableStateOf(false) }
 
     var isLoggedIn by remember { mutableStateOf(authManager.isLoggedIn()) }
     var currentUser by remember { mutableStateOf(authManager.getUser()) }
@@ -273,6 +278,16 @@ fun MainAppScreen(
                     categorySyncState = CategorySyncState.IDLE
                 }
             }
+        }
+    }
+
+    fun performPullRefresh() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        isPullRefreshing = true
+        refreshData(skipStats = false, forceNetwork = true)
+        scope.launch {
+            delay(1000)
+            isPullRefreshing = false
         }
     }
 
@@ -644,6 +659,8 @@ fun MainAppScreen(
                         recentFiles = recentFiles,
                         categorySyncState = categorySyncState,
                         isStorageSyncing = isStorageQuotaSyncing,
+                        isRefreshing = isPullRefreshing,
+                        onRefresh = { performPullRefresh() },
                         userPictureUrl = currentUser?.picture,
                         onProfileClick = { showProfileDialog = true },
                         onCategoryClick = { catType ->
@@ -698,6 +715,8 @@ fun MainAppScreen(
                         currentFolderId = currentFolderId,
                         breadcrumbs = breadcrumbs,
                         initialCategory = filterCategory,
+                        isRefreshing = isPullRefreshing,
+                        onRefresh = { performPullRefresh() },
                         onCategoryFilterSelected = { cat ->
                             selectCategoryFilter(cat)
                         },
