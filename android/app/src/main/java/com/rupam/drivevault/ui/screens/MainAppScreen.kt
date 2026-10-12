@@ -202,16 +202,13 @@ fun MainAppScreen(
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        if (authManager.isBackgroundSpeedBoostEnabled() && !TransferManager.isBatteryOptimizationIgnored(context)) {
-            delay(1200)
-            TransferManager.requestIgnoreBatteryOptimization(context)
-        }
         if (authManager.isAutoCheckUpdateEnabled()) {
             com.rupam.drivevault.update.AppUpdateManager.checkForUpdates(context, isManual = false)
         }
     }
 
     fun triggerDownload(file: DriveFile) {
+        showTransfersSheet = true
         scope.launch {
             Toast.makeText(context, "Starting download for ${file.name}...", Toast.LENGTH_SHORT).show()
             repository.getDownloadTicket().onSuccess { ticket ->
@@ -459,6 +456,7 @@ fun MainAppScreen(
     ) { uri ->
         if (uri != null) {
             Toast.makeText(context, "Upload started...", Toast.LENGTH_SHORT).show()
+            showTransfersSheet = true
             val tokensHeader = authManager.getTokensHeader()
             TransferManager.startUpload(
                 context = context,
@@ -972,6 +970,7 @@ fun MainAppScreen(
                 pendingPhotoUri = null
                 pendingPhotoFile = null
                 Toast.makeText(context, "Photo upload started...", Toast.LENGTH_SHORT).show()
+                showTransfersSheet = true
                 val tokensHeader = authManager.getTokensHeader()
                 TransferManager.startUpload(
                     context = context,
@@ -1243,6 +1242,7 @@ fun MainAppScreen(
             sharedUris = incomingShareUris,
             repository = repository,
             onUploadConfirmed = { filesToUpload, targetFolderId ->
+                showTransfersSheet = true
                 val tokensHeader = authManager.getTokensHeader()
                 filesToUpload.forEach { (uri, customName) ->
                     TransferManager.startUpload(
