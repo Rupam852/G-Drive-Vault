@@ -40,7 +40,7 @@ class AuthManager(context: Context) {
     }
 
     fun isBackgroundSpeedBoostEnabled(): Boolean {
-        return prefs.getBoolean(KEY_BACKGROUND_SPEED_BOOST, false)
+        return prefs.getBoolean(KEY_BACKGROUND_SPEED_BOOST, true)
     }
 
     fun setBackgroundSpeedBoostEnabled(enabled: Boolean) {

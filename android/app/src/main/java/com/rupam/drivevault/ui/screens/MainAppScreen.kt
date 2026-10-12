@@ -200,6 +200,10 @@ fun MainAppScreen(
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        if (authManager.isBackgroundSpeedBoostEnabled() && !TransferManager.isBatteryOptimizationIgnored(context)) {
+            delay(1200)
+            TransferManager.requestIgnoreBatteryOptimization(context)
+        }
         if (authManager.isAutoCheckUpdateEnabled()) {
             com.rupam.drivevault.update.AppUpdateManager.checkForUpdates(context, isManual = false)
         }
