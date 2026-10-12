@@ -719,7 +719,7 @@ private fun GridFileCard(
     val iconColor = getCategoryColor(file.type)
 
     val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -727,28 +727,31 @@ private fun GridFileCard(
     val borderColor = if (isSelected) {
         BluePrimary
     } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
     }
 
     val borderWidth = if (isSelected) 1.5.dp else 1.dp
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         color = backgroundColor,
         border = BorderStroke(borderWidth, borderColor),
-        shadowElevation = if (isSelected) 2.dp else 0.5.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+                .padding(14.dp)
         ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -804,4 +807,5 @@ private fun GridFileCard(
             }
         }
     }
+}
 }

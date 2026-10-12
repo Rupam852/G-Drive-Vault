@@ -45,7 +45,7 @@ fun FileItemRow(
     val iconColor = getCategoryColor(file.type)
 
     val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surface
     }
@@ -53,31 +53,32 @@ fun FileItemRow(
     val borderColor = if (isSelected) {
         BluePrimary
     } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
     }
 
     val borderWidth = if (isSelected) 1.5.dp else 1.dp
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         color = backgroundColor,
         border = BorderStroke(borderWidth, borderColor),
-        shadowElevation = if (isSelected) 2.dp else 0.5.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+        shadowElevation = 0.dp,
+        modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
             // Clean Floating Icon (No box container!)
             Icon(
                 imageVector = getCategoryIcon(file.type),
@@ -134,4 +135,5 @@ fun FileItemRow(
             }
         }
     }
+}
 }
