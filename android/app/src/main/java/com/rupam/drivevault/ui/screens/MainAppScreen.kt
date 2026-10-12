@@ -19,6 +19,8 @@ import com.rupam.drivevault.ui.components.BottomNavBar
 import com.rupam.drivevault.ui.components.NavTab
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +34,7 @@ import com.rupam.drivevault.ui.components.CameraPhotoConfirmDialog
 import com.rupam.drivevault.ui.components.FileActionBottomSheet
 import com.rupam.drivevault.ui.components.FileDetailsDialog
 import com.rupam.drivevault.ui.components.TransfersBottomSheet
+import com.rupam.drivevault.ui.components.ShareToUploadDialog
 import com.rupam.drivevault.transfer.TransferManager
 import android.content.Context
 import android.content.Intent
@@ -50,6 +53,8 @@ import androidx.core.content.ContextCompat
 fun MainAppScreen(
     authManager: AuthManager,
     repository: DriveRepository,
+    incomingShareUris: List<Uri>? = null,
+    onClearShareUris: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -870,9 +875,17 @@ fun MainAppScreen(
                             }
                         },
                         onClearCacheClick = {
-                            repository.clearCache()
-                            Toast.makeText(context, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
-                            refreshData()
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        context.cacheDir?.listFiles()?.forEach { it.deleteRecursively() }
+                                        context.externalCacheDir?.listFiles()?.forEach { it.deleteRecursively() }
+                                    } catch (ignored: Exception) {}
+                                    repository.clearCache()
+                                }
+                                Toast.makeText(context, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
+                                refreshData()
+                            }
                         },
                         onServerCheckClick = {
                             showServerCheckScreen = true
@@ -1097,6 +1110,41 @@ fun MainAppScreen(
         FileDetailsDialog(
             file = detailsTargetFile!!,
             onDismiss = { detailsTargetFile = null }
+        )
+    }
+
+    // ── Share to DriveVault Dialog (External File Share) ──
+    if (!incomingShareUris.isNullOrEmpty() && isLoggedIn && !isAppLocked) {
+        ShareToUploadDialog(
+            sharedUris = incomingShareUris,
+            repository = repository,
+            onUploadConfirmed = { filesToUpload, targetFolderId ->
+                val tokensHeader = authManager.getTokensHeader()
+                filesToUpload.forEach { (uri, customName) ->
+                    TransferManager.startUpload(
+                        context = context,
+                        uri = uri,
+                        targetFolderId = targetFolderId,
+                        authTokensHeader = tokensHeader,
+                        customFileName = customName,
+                        onComplete = { success, _, _ ->
+                            if (success) {
+                                repository.clearCache()
+                                refreshData(skipStats = false, forceNetwork = true)
+                            }
+                        }
+                    )
+                }
+                Toast.makeText(
+                    context,
+                    "Starting upload for ${filesToUpload.size} ${if (filesToUpload.size == 1) "file" else "files"}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                onClearShareUris()
+            },
+            onDismiss = {
+                onClearShareUris()
+            }
         )
     }
 }

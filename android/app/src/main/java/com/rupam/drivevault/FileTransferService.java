@@ -97,10 +97,9 @@ public class FileTransferService extends Service {
     }
 
     public static void stop(Context context) {
+        if (context == null) return;
         try {
-            Intent intent = new Intent(context, FileTransferService.class);
-            intent.setAction(ACTION_STOP);
-            context.startService(intent);
+            context.stopService(new Intent(context, FileTransferService.class));
         } catch (Exception ignored) {}
     }
 
@@ -115,8 +114,6 @@ public class FileTransferService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            releaseLocks();
-            stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -161,6 +158,16 @@ public class FileTransferService extends Service {
     @Override
     public void onDestroy() {
         releaseLocks();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
+        } catch (Exception ignored) {}
+        if (notificationManager != null) {
+            notificationManager.cancel(NOTIFICATION_ID);
+        }
         super.onDestroy();
     }
 

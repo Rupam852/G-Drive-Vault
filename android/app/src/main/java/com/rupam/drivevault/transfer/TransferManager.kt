@@ -85,7 +85,8 @@ data class TransferItem(
  */
 object TransferManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val activeJobs = mutableMapOf<String, Job>()
+    private val activeJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    private val activeCalls = java.util.concurrent.ConcurrentHashMap<String, Call>()
 
     // Live state list observable by Jetpack Compose
     val transfers = mutableStateListOf<TransferItem>()
@@ -154,6 +155,7 @@ object TransferManager {
         uri: Uri,
         targetFolderId: String?,
         authTokensHeader: String? = null,
+        customFileName: String? = null,
         onComplete: (Boolean, String?, com.rupam.drivevault.network.DriveFileDto?) -> Unit = { _, _, _ -> }
     ): String {
         val transferId = UUID.randomUUID().toString()
@@ -178,6 +180,10 @@ object TransferManager {
             }
         } catch (e: Exception) {
             fileSize = 0L
+        }
+
+        if (!customFileName.isNullOrBlank()) {
+            fileName = customFileName.trim()
         }
 
         val item = TransferItem(
@@ -216,6 +222,9 @@ object TransferManager {
 
                         stream.use { input ->
                             while (input.read(buffer).also { bytesRead = it } != -1) {
+                                if (activeJobs[transferId]?.isActive == false) {
+                                    throw java.io.IOException("Cancelled")
+                                }
                                 sink.write(buffer, 0, bytesRead)
                                 sink.flush()
                                 totalWritten += bytesRead
@@ -265,7 +274,13 @@ object TransferManager {
                 val request = reqBuilder.build()
 
                 val client = NetworkClient.uploadOkHttpClient
-                val response = client.newCall(request).execute()
+                val call = client.newCall(request)
+                activeCalls[transferId] = call
+                val response = try {
+                    call.execute()
+                } finally {
+                    activeCalls.remove(transferId)
+                }
 
                 if (response.isSuccessful) {
                     val rawBody = response.body?.string()
@@ -346,14 +361,18 @@ object TransferManager {
 
                 var currentUrl = streamUrl
                 var request = Request.Builder().url(currentUrl).get().build()
-                var response = client.newCall(request).execute()
+                var call = client.newCall(request)
+                activeCalls[transferId] = call
+                var response = call.execute()
 
                 // If primary URL failed (e.g. Cloudflare Worker 401 expired token) and fallbackUrl exists, retry seamlessly
                 if (!response.isSuccessful && !fallbackUrl.isNullOrBlank() && currentUrl != fallbackUrl) {
                     response.close()
                     currentUrl = fallbackUrl
                     request = Request.Builder().url(currentUrl).get().build()
-                    response = client.newCall(request).execute()
+                    call = client.newCall(request)
+                    activeCalls[transferId] = call
+                    response = call.execute()
                 }
 
                 if (!response.isSuccessful) {
@@ -389,6 +408,9 @@ object TransferManager {
                 inputStream.use { input ->
                     outputStream.use { output ->
                         while (input.read(buffer).also { bytesRead = it } != -1) {
+                            if (activeJobs[transferId]?.isActive == false) {
+                                throw CancellationException("Cancelled")
+                            }
                             output.write(buffer, 0, bytesRead)
                             totalDownloaded += bytesRead
 
@@ -449,6 +471,7 @@ object TransferManager {
                 }
                 withContext(Dispatchers.Main) { onComplete(false, e.message) }
             } finally {
+                activeCalls.remove(transferId)
                 activeJobs.remove(transferId)
                 recomputeActiveCount()
             }
@@ -459,8 +482,16 @@ object TransferManager {
     }
 
     fun cancelTransfer(id: String) {
-        activeJobs[id]?.cancel()
-        activeJobs.remove(id)
+        try {
+            activeCalls[id]?.cancel()
+            activeCalls.remove(id)
+        } catch (ignored: Exception) {}
+
+        try {
+            activeJobs[id]?.cancel()
+            activeJobs.remove(id)
+        } catch (ignored: Exception) {}
+
         updateTransfer(id) { it.copy(status = TransferStatus.CANCELLED, speedBps = 0L) }
         recomputeActiveCount()
     }
@@ -471,10 +502,11 @@ object TransferManager {
     }
 
     private fun updateTransfer(id: String, update: (TransferItem) -> TransferItem) {
-        val index = transfers.indexOfFirst { it.id == id }
-        if (index != -1) {
-            transfers[index] = update(transfers[index])
-            recomputeActiveCount()
-        }
+        try {
+            val index = transfers.indexOfFirst { it.id == id }
+            if (index != -1) {
+                transfers[index] = update(transfers[index])
+            }
+        } catch (ignored: Exception) {}
     }
 }

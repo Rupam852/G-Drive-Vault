@@ -48,6 +48,28 @@ fun SettingsScreen(
     val activity = context as? FragmentActivity
     var biometricEnabled by remember { mutableStateOf(authManager?.isBiometricEnabled() ?: false) }
     var highQualityStreaming by remember { mutableStateOf(authManager?.isHighQualityStreaming() ?: true) }
+    var isBackgroundSpeedBoost by remember {
+        mutableStateOf(
+            (authManager?.isBackgroundSpeedBoostEnabled() == true) || TransferManager.isBatteryOptimizationIgnored(context)
+        )
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                val systemIgnored = TransferManager.isBatteryOptimizationIgnored(context)
+                if (systemIgnored) {
+                    authManager?.setBackgroundSpeedBoostEnabled(true)
+                }
+                isBackgroundSpeedBoost = (authManager?.isBackgroundSpeedBoostEnabled() == true) || systemIgnored
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -380,17 +402,23 @@ fun SettingsScreen(
                         }
                     )
                     Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                    val isBatteryIgnored = TransferManager.isBatteryOptimizationIgnored(context)
                     SettingsSwitchRow(
                         icon = Icons.Rounded.BatteryChargingFull,
                         title = "Background Transfer Speed",
-                        subtitle = if (isBatteryIgnored)
+                        subtitle = if (isBackgroundSpeedBoost)
                             "Unrestricted • Sleep mode won't slow down transfers"
                         else
                             "Optimized by Android • Tap to prevent throttling when screen is off",
-                        checked = isBatteryIgnored,
-                        onCheckedChange = {
-                            TransferManager.requestIgnoreBatteryOptimization(context)
+                        checked = isBackgroundSpeedBoost,
+                        onCheckedChange = { enable ->
+                            isBackgroundSpeedBoost = enable
+                            authManager?.setBackgroundSpeedBoostEnabled(enable)
+                            if (enable) {
+                                TransferManager.requestIgnoreBatteryOptimization(context)
+                                Toast.makeText(context, "Background speed boost enabled", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Background speed boost disabled", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                 }

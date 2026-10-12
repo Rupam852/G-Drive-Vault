@@ -35,6 +35,15 @@ class AuthManager(context: Context) {
         private const val KEY_NOTIF_MASTER_ENABLED = "key_notif_master_enabled"
         private const val KEY_NOTIF_UPLOAD_ENABLED = "key_notif_upload_enabled"
         private const val KEY_NOTIF_DOWNLOAD_ENABLED = "key_notif_download_enabled"
+        private const val KEY_BACKGROUND_SPEED_BOOST = "key_background_speed_boost"
+    }
+
+    fun isBackgroundSpeedBoostEnabled(): Boolean {
+        return prefs.getBoolean(KEY_BACKGROUND_SPEED_BOOST, false)
+    }
+
+    fun setBackgroundSpeedBoostEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BACKGROUND_SPEED_BOOST, enabled).apply()
     }
 
     fun isMasterNotificationEnabled(): Boolean {

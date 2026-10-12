@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -34,6 +35,10 @@ fun NotificationSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler {
+        onBack()
+    }
+
     val context = LocalContext.current
 
     var masterEnabled by remember { mutableStateOf(authManager.isMasterNotificationEnabled()) }
