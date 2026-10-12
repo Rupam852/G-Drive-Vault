@@ -35,15 +35,35 @@ public class FileTransferService extends Service {
     private WifiManager.WifiLock wifiLock;
     private NotificationManager notificationManager;
 
-    public static void start(Context context) {
+    public static boolean isNotificationAllowed(Context context, boolean isUpload) {
+        if (context == null) return false;
+        try {
+            AuthManager authManager = new AuthManager(context);
+            if (!authManager.isMasterNotificationEnabled()) return false;
+            if (isUpload && !authManager.isUploadNotificationEnabled()) return false;
+            if (!isUpload && !authManager.isDownloadNotificationEnabled()) return false;
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static void start(Context context, boolean isUpload) {
+        if (!isNotificationAllowed(context, isUpload)) return;
         try {
             Intent intent = new Intent(context, FileTransferService.class);
             intent.setAction(ACTION_START);
+            intent.putExtra(EXTRA_IS_UPLOAD, isUpload);
             ContextCompat.startForegroundService(context, intent);
         } catch (Exception ignored) {}
     }
 
+    public static void start(Context context) {
+        start(context, true);
+    }
+
     public static void updateProgress(Context context, String title, int progress, String speedText, boolean isUpload) {
+        if (!isNotificationAllowed(context, isUpload)) return;
         try {
             Intent intent = new Intent(context, FileTransferService.class);
             intent.setAction(ACTION_UPDATE);
@@ -78,7 +98,7 @@ public class FileTransferService extends Service {
                 largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
             } catch (Exception ignored) {}
 
-            int iconRes = isUpload ? R.drawable.ic_upload_notification : R.drawable.ic_download_notification;
+            int iconRes = R.drawable.ic_stat_drivevault;
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                     .setContentTitle(title)
@@ -138,6 +158,31 @@ public class FileTransferService extends Service {
             }
         }
 
+        if (!isNotificationAllowed(this, isUpload)) {
+            Notification notification = buildNotification("DriveVault Transfer", 0, "", isUpload);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                } else {
+                    startForeground(NOTIFICATION_ID, notification);
+                }
+            } catch (Exception ignored) {}
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE);
+                } else {
+                    stopForeground(true);
+                }
+            } catch (Exception ignored) {}
+            if (notificationManager != null) {
+                try {
+                    notificationManager.cancel(NOTIFICATION_ID);
+                } catch (Exception ignored) {}
+            }
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         Notification notification = buildNotification(title, progress, speedText, isUpload);
 
         try {
@@ -188,7 +233,7 @@ public class FileTransferService extends Service {
 
         String contentText = (speedText != null && !speedText.isEmpty()) ? speedText : "Running in background...";
 
-        int smallIcon = isUpload ? R.drawable.ic_upload_notification : R.drawable.ic_download_notification;
+        int smallIcon = R.drawable.ic_stat_drivevault;
 
         Bitmap largeIcon = null;
         try {

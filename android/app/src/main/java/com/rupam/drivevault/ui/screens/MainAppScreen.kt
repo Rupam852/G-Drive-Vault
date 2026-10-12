@@ -134,6 +134,7 @@ fun MainAppScreen(
     }
     var isStorageQuotaSyncing by remember { mutableStateOf(true) }
     var categorySyncState by remember { mutableStateOf(CategorySyncState.SYNCING) }
+    var activeSyncCategory by remember { mutableStateOf<FileCategoryType?>(null) }
     var currentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var recentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var activePreviewFile by remember { mutableStateOf<DriveFile?>(null) }
@@ -178,6 +179,7 @@ fun MainAppScreen(
     var showServerCheckScreen by remember { mutableStateOf(false) }
     var showTrashScreen by remember { mutableStateOf(false) }
     var showNotificationSettingsScreen by remember { mutableStateOf(false) }
+    var showAboutScreen by remember { mutableStateOf(false) }
 
     // Automatic Android 13/14+ Notification Permission Request
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -255,8 +257,11 @@ fun MainAppScreen(
     }
 
     // Refresh Data function: Parallel execution with instant cache check
-    fun refreshData(skipStats: Boolean = false, forceNetwork: Boolean = false) {
+    fun refreshData(skipStats: Boolean = false, forceNetwork: Boolean = false, targetCategoryType: FileCategoryType? = null) {
         isFilesLoading = true
+        if (targetCategoryType != null) {
+            activeSyncCategory = targetCategoryType
+        }
         if (forceNetwork) {
             repository.clearCache(currentFolderId)
         }
@@ -323,9 +328,11 @@ fun MainAppScreen(
                     categorySyncState = CategorySyncState.SYNCED
                     delay(900)
                     categorySyncState = CategorySyncState.IDLE
+                    activeSyncCategory = null
                 }.onFailure {
                     isStorageQuotaSyncing = false
                     categorySyncState = CategorySyncState.IDLE
+                    activeSyncCategory = null
                 }
             }
         }
@@ -419,24 +426,24 @@ fun MainAppScreen(
     fun handleUploadSuccess(dto: com.rupam.drivevault.network.DriveFileDto?) {
         Toast.makeText(context, "Uploaded successfully!", Toast.LENGTH_SHORT).show()
 
-        // 1. Instant optimistic UI adoption: If backend returned file metadata, immediately show in UI
-        if (dto != null) {
+        val uploadedType = if (dto != null) {
             val newFile = repository.mapDtoToDriveFile(dto)
             if (filterCategory == null || filterCategory == newFile.type) {
                 currentFiles = listOf(newFile) + currentFiles.filter { it.id != newFile.id }
             }
             recentFiles = listOf(newFile) + recentFiles.filter { it.id != newFile.id }.take(5)
-        }
+            newFile.type
+        } else null
 
-        // 2. Clear cache and perform full network refresh with storage stats
+        // 2. Clear cache and perform targeted network refresh with storage stats
         repository.clearCache()
-        refreshData(skipStats = false, forceNetwork = true)
+        refreshData(skipStats = false, forceNetwork = true, targetCategoryType = uploadedType)
 
         // 3. Follow-up sync after 1.5 seconds to account for Google Drive search index latency
         scope.launch {
             kotlinx.coroutines.delay(1500)
             repository.clearCache()
-            refreshData(skipStats = false, forceNetwork = true)
+            refreshData(skipStats = false, forceNetwork = true, targetCategoryType = uploadedType)
         }
     }
 
@@ -623,6 +630,15 @@ fun MainAppScreen(
         return
     }
 
+    // ── ABOUT SCREEN ──
+    if (showAboutScreen) {
+        AboutScreen(
+            onBack = { showAboutScreen = false },
+            userEmail = currentUser?.email
+        )
+        return
+    }
+
     // ── PREVIEW OVERLAY ──
     if (activePreviewFile != null) {
         MediaPreviewScreen(
@@ -665,9 +681,13 @@ fun MainAppScreen(
             },
             onDelete = {
                 scope.launch {
-                    activePreviewFile?.let { repository.trashFile(it.id) }
-                    activePreviewFile = null
-                    refreshData()
+                    val file = activePreviewFile
+                    if (file != null) {
+                        val targetType = file.type
+                        repository.trashFile(file.id)
+                        activePreviewFile = null
+                        refreshData(targetCategoryType = targetType)
+                    }
                 }
             }
         )
@@ -734,6 +754,7 @@ fun MainAppScreen(
                         storageStats = storageStats,
                         recentFiles = recentFiles,
                         categorySyncState = categorySyncState,
+                        activeSyncCategory = activeSyncCategory,
                         isStorageSyncing = isStorageQuotaSyncing,
                         isRefreshing = isPullRefreshing,
                         onRefresh = { performPullRefresh() },
@@ -895,6 +916,9 @@ fun MainAppScreen(
                         },
                         onNotificationsClick = {
                             showNotificationSettingsScreen = true
+                        },
+                        onAboutClick = {
+                            showAboutScreen = true
                         }
                     )
                 }
@@ -1080,13 +1104,14 @@ fun MainAppScreen(
                 TextButton(
                     onClick = {
                         deleteTargetFile = null
+                        val targetType = target.type
                         scope.launch {
                             repository.trashFile(target.id).onSuccess {
                                 Toast.makeText(context, "Moved to trash", Toast.LENGTH_SHORT).show()
                                 currentFiles = currentFiles.filter { it.id != target.id }
                                 recentFiles = recentFiles.filter { it.id != target.id }
                                 repository.clearCache()
-                                refreshData(skipStats = false, forceNetwork = true)
+                                refreshData(skipStats = false, forceNetwork = true, targetCategoryType = targetType)
                             }.onFailure {
                                 Toast.makeText(context, "Delete failed: ${it.message}", Toast.LENGTH_SHORT).show()
                             }

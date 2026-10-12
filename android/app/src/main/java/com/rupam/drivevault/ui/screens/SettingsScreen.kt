@@ -1,6 +1,7 @@
 package com.rupam.drivevault.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +43,7 @@ fun SettingsScreen(
     onTrashClick: () -> Unit = {},
     authManager: AuthManager? = null,
     onNotificationsClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -462,6 +464,13 @@ fun SettingsScreen(
                         subtitle = "View, restore, or permanently delete files",
                         onClick = onTrashClick
                     )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Info,
+                        title = "About DriveVault",
+                        subtitle = "Developer info, website, support & donate",
+                        onClick = onAboutClick
+                    )
                 }
             }
         }
@@ -488,7 +497,10 @@ fun SettingsScreen(
         // ── App Version ──
         item {
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onAboutClick)
+                    .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

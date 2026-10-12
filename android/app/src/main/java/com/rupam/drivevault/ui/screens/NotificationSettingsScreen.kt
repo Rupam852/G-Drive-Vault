@@ -25,7 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.rupam.drivevault.FileTransferService
 import com.rupam.drivevault.auth.AuthManager
+import com.rupam.drivevault.transfer.TransferManager
 import com.rupam.drivevault.ui.theme.BluePrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -171,6 +173,9 @@ fun NotificationSettingsScreen(
                         onCheckedChange = { isChecked ->
                             masterEnabled = isChecked
                             authManager.setMasterNotificationEnabled(isChecked)
+                            if (!isChecked) {
+                                FileTransferService.stop(context)
+                            }
                             Toast.makeText(
                                 context,
                                 if (isChecked) "Notifications enabled" else "All transfer notifications disabled",
@@ -211,6 +216,7 @@ fun NotificationSettingsScreen(
                                 if (masterEnabled) {
                                     uploadEnabled = isChecked
                                     authManager.setUploadNotificationEnabled(isChecked)
+                                    TransferManager.checkAndStopServiceIfNotificationsDisabled(context)
                                 } else {
                                     Toast.makeText(context, "Enable master notifications first", Toast.LENGTH_SHORT).show()
                                 }
@@ -226,6 +232,7 @@ fun NotificationSettingsScreen(
                                 if (masterEnabled) {
                                     downloadEnabled = isChecked
                                     authManager.setDownloadNotificationEnabled(isChecked)
+                                    TransferManager.checkAndStopServiceIfNotificationsDisabled(context)
                                 } else {
                                     Toast.makeText(context, "Enable master notifications first", Toast.LENGTH_SHORT).show()
                                 }

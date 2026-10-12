@@ -107,6 +107,15 @@ object TransferManager {
         }
     }
 
+    fun checkAndStopServiceIfNotificationsDisabled(context: Context) {
+        val anyActiveCanNotify = transfers.any { item ->
+            item.status == TransferStatus.IN_PROGRESS && FileTransferService.isNotificationAllowed(context, item.type == TransferType.UPLOAD)
+        }
+        if (!anyActiveCanNotify) {
+            FileTransferService.stop(context)
+        }
+    }
+
     val totalActiveSpeedBps: Long
         get() = transfers.filter { it.status == TransferStatus.IN_PROGRESS }.sumOf { it.speedBps }
 
@@ -195,7 +204,9 @@ object TransferManager {
         )
         transfers.add(0, item)
         appContext = context.applicationContext
-        FileTransferService.start(context)
+        if (FileTransferService.isNotificationAllowed(context, true)) {
+            FileTransferService.start(context, true)
+        }
         recomputeActiveCount()
 
         val job = scope.launch {
@@ -244,9 +255,11 @@ object TransferManager {
                                         )
                                     }
 
-                                    val percent = if (fileSize > 0) ((totalWritten * 100) / fileSize).toInt() else 0
-                                    val speedText = "${formatSpeed(speed)} • $percent%"
-                                    FileTransferService.updateProgress(context, "Uploading: $fileName", percent, speedText, true)
+                                    if (FileTransferService.isNotificationAllowed(context, true)) {
+                                        val percent = if (fileSize > 0) ((totalWritten * 100) / fileSize).toInt() else 0
+                                        val speedText = "${formatSpeed(speed)} • $percent%"
+                                        FileTransferService.updateProgress(context, "Uploading: $fileName", percent, speedText, true)
+                                    }
 
                                     lastTime = now
                                     lastBytes = totalWritten
@@ -300,7 +313,9 @@ object TransferManager {
                             status = TransferStatus.COMPLETED
                         )
                     }
-                    FileTransferService.showCompletion(context, "Upload Complete", "$fileName uploaded to DriveVault", true)
+                    if (FileTransferService.isNotificationAllowed(context, true)) {
+                        FileTransferService.showCompletion(context, "Upload Complete", "$fileName uploaded to DriveVault", true)
+                    }
                     withContext(Dispatchers.Main) { onComplete(true, null, uploadedDto) }
                 } else {
                     val code = response.code
@@ -352,7 +367,9 @@ object TransferManager {
         )
         transfers.add(0, item)
         appContext = context.applicationContext
-        FileTransferService.start(context)
+        if (FileTransferService.isNotificationAllowed(context, false)) {
+            FileTransferService.start(context, false)
+        }
         recomputeActiveCount()
 
         val job = scope.launch {
@@ -430,9 +447,11 @@ object TransferManager {
                                     )
                                 }
 
-                                val percent = if (totalLength > 0) ((totalDownloaded * 100) / totalLength).toInt() else 0
-                                val speedText = "${formatSpeed(speed)} • $percent%"
-                                FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText, false)
+                                if (FileTransferService.isNotificationAllowed(context, false)) {
+                                    val percent = if (totalLength > 0) ((totalDownloaded * 100) / totalLength).toInt() else 0
+                                    val speedText = "${formatSpeed(speed)} • $percent%"
+                                    FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText, false)
+                                }
 
                                 lastTime = now
                                 lastBytes = totalDownloaded
@@ -458,7 +477,9 @@ object TransferManager {
                         status = TransferStatus.COMPLETED
                     )
                 }
-                FileTransferService.showCompletion(context, "Download Complete", "${file.name} saved to Downloads", false)
+                if (FileTransferService.isNotificationAllowed(context, false)) {
+                    FileTransferService.showCompletion(context, "Download Complete", "${file.name} saved to Downloads", false)
+                }
                 withContext(Dispatchers.Main) { onComplete(true, null) }
             } catch (e: CancellationException) {
                 updateTransfer(transferId) { current ->

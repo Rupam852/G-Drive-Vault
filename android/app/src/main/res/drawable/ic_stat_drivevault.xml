@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Vault Shield & Hexagon -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M54,18 L86,36 L86,72 L54,90 L22,72 L22,36 Z" />
+        
+    <!-- Inner Cloud Storage Core -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M39,64 C35.5,64 33,61.5 33,58 C33,54.5 35.5,52 39,52 C40,52 41.2,52.3 42.2,53 C43.5,47.5 48.5,44 54,44 C58.5,44 62.5,47 63.8,51.5 C64.5,51.3 65.2,51.2 66,51.2 C69.5,51.2 72.5,54 72.5,57.5 C72.5,61 69.5,64 66,64 L39,64 Z" />
+
+    <!-- Center Tech Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,34 A4,4 0 1,1 54,26 A4,4 0 1,1 54,34" />
+</vector>

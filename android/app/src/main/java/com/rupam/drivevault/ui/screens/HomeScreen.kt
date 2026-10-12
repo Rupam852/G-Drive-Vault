@@ -43,6 +43,7 @@ fun HomeScreen(
     storageStats: StorageStats,
     recentFiles: List<DriveFile>,
     categorySyncState: CategorySyncState = CategorySyncState.IDLE,
+    activeSyncCategory: FileCategoryType? = null,
     isStorageSyncing: Boolean = false,
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
@@ -257,9 +258,14 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             for (cat in row) {
+                                val cardSyncState = if (activeSyncCategory == null || activeSyncCategory == cat.type) {
+                                    categorySyncState
+                                } else {
+                                    CategorySyncState.IDLE
+                                }
                                 CategoryCard(
                                     category = cat,
-                                    syncState = categorySyncState,
+                                    syncState = cardSyncState,
                                     onClick = { onCategoryClick(cat.type) },
                                     modifier = Modifier.weight(1f)
                                 )
