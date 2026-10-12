@@ -130,10 +130,17 @@ fun FileExplorerScreen(
     var previousIndex by remember { mutableIntStateOf(0) }
     var previousScrollOffset by remember { mutableIntStateOf(0) }
 
+    // Per-folder scroll position memory (Key: folderId or "root")
+    val folderScrollMap = remember { mutableMapOf<String, Pair<Int, Int>>() }
+
     val activeIndex = if (isGridView) gridState.firstVisibleItemIndex else listState.firstVisibleItemIndex
     val activeOffset = if (isGridView) gridState.firstVisibleItemScrollOffset else listState.firstVisibleItemScrollOffset
 
+    // Save scroll position whenever user scrolls
     LaunchedEffect(activeIndex, activeOffset) {
+        val folderKey = currentFolderId ?: "root"
+        folderScrollMap[folderKey] = Pair(activeIndex, activeOffset)
+
         if (activeIndex > previousIndex || (activeIndex == previousIndex && activeOffset > previousScrollOffset + 15)) {
             // Scrolling down -> sucked into black hole
             isFabVisible = false
@@ -143,6 +150,28 @@ fun FileExplorerScreen(
         }
         previousIndex = activeIndex
         previousScrollOffset = activeOffset
+    }
+
+    // Restore scroll position whenever folder changes or files finish loading
+    LaunchedEffect(currentFolderId, files.size) {
+        val folderKey = currentFolderId ?: "root"
+        val saved = folderScrollMap[folderKey]
+        if (saved != null && files.isNotEmpty()) {
+            val (savedIndex, savedOffset) = saved
+            if (savedIndex < files.size) {
+                if (isGridView) {
+                    gridState.scrollToItem(savedIndex, savedOffset)
+                } else {
+                    listState.scrollToItem(savedIndex, savedOffset)
+                }
+            }
+        } else if (saved == null && files.isNotEmpty()) {
+            if (isGridView) {
+                gridState.scrollToItem(0, 0)
+            } else {
+                listState.scrollToItem(0, 0)
+            }
+        }
     }
 
     // Filter and Sort files

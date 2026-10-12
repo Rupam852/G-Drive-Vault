@@ -22,8 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.rupam.drivevault.model.*
 import com.rupam.drivevault.transfer.TransferManager
 import com.rupam.drivevault.ui.components.*
@@ -60,7 +62,9 @@ fun HomeScreen(
     onProfileClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
+    val listState = rememberSaveable(saver = LazyListState.Saver) {
+        LazyListState()
+    }
 
     // ── Track scroll direction for Black Hole Collapse / Emergence ──
     var isFabVisible by remember { mutableStateOf(true) }

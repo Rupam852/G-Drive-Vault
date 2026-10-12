@@ -679,114 +679,18 @@ fun MainAppScreen(
         return
     }
 
-    // ── SERVER HEALTH & DIAGNOSTICS SCREEN ──
-    if (showServerCheckScreen) {
-        ServerCheckScreen(onBack = { showServerCheckScreen = false })
-        return
-    }
-
-    // ── NOTIFICATION SETTINGS SCREEN ──
-    if (showNotificationSettingsScreen) {
-        NotificationSettingsScreen(
-            authManager = authManager,
-            onBack = { showNotificationSettingsScreen = false }
-        )
-        return
-    }
-
-    // ── TRASH / RECYCLE BIN SCREEN ──
-    if (showTrashScreen) {
-        TrashScreen(
-            repository = repository,
-            onBack = {
-                showTrashScreen = false
-                refreshData()
-            }
-        )
-        return
-    }
-
-    // ── ABOUT SCREEN ──
-    if (showAboutScreen) {
-        AboutScreen(
-            onBack = { showAboutScreen = false },
-            userEmail = currentUser?.email
-        )
-        return
-    }
-
-    // ── APP UPDATER SCREEN ──
-    if (showAppUpdaterScreen) {
-        AppUpdaterScreen(
-            onBack = { showAppUpdaterScreen = false }
-        )
-        return
-    }
-
-    // ── PREVIEW OVERLAY ──
-    if (activePreviewFile != null) {
-        MediaPreviewScreen(
-            file = activePreviewFile!!,
-            streamUrl = previewStreamUrl,
-            fallbackUrl = previewFallbackUrl,
-            isHighQuality = authManager.isHighQualityStreaming(),
-            onClose = {
-                activePreviewFile = null
-                previewStreamUrl = null
-                previewFallbackUrl = null
-            },
-            onDownload = {
-                activePreviewFile?.let { file ->
-                    val url = previewStreamUrl
-                    if (!url.isNullOrBlank()) {
-                        scope.launch {
-                            val ticket = repository.getDownloadTicket().getOrNull()
-                            val fallbackUrl = if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null
-                            TransferManager.startDownload(
-                                context = context,
-                                file = file,
-                                streamUrl = url,
-                                fallbackUrl = fallbackUrl,
-                                onComplete = { success, err ->
-                                    if (success) {
-                                        Toast.makeText(context, "Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
-                                    }
-                                }
-                            )
-                            Toast.makeText(context, "Download started for ${file.name}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            },
-            onShare = {
-                Toast.makeText(context, "Share link generated", Toast.LENGTH_SHORT).show()
-            },
-            onDelete = {
-                scope.launch {
-                    val file = activePreviewFile
-                    if (file != null) {
-                        val targetType = file.type
-                        repository.trashFile(file.id)
-                        activePreviewFile = null
-                        refreshData(targetCategoryType = targetType)
-                    }
-                }
-            }
-        )
-        return
-    }
+    val isAnyOverlayOpen = activePreviewFile != null || showServerCheckScreen || showTrashScreen ||
+            showNotificationSettingsScreen || showAboutScreen || showAppUpdaterScreen
 
     // ── SMART HIERARCHICAL BACK NAVIGATION ──
 
     // 1. When a category filter is active in Files section, back press clears it
-    BackHandler(enabled = filterCategory != null && pagerState.currentPage == 1) {
+    BackHandler(enabled = !isAnyOverlayOpen && filterCategory != null && pagerState.currentPage == 1) {
         selectCategoryFilter(null)
     }
 
     // 2. When on Files (at root) or Settings, pressing back returns to Home first before exiting
-    BackHandler(enabled = pagerState.currentPage != 0 && (pagerState.currentPage != 1 || (breadcrumbs.size <= 1 && filterCategory == null))) {
+    BackHandler(enabled = !isAnyOverlayOpen && pagerState.currentPage != 0 && (pagerState.currentPage != 1 || (breadcrumbs.size <= 1 && filterCategory == null))) {
         scope.launch {
             pagerState.animateScrollToPage(0)
         }
@@ -794,7 +698,7 @@ fun MainAppScreen(
 
     // 3. When on Home screen, require double-press to exit so user never quits by accident
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
-    BackHandler(enabled = pagerState.currentPage == 0 && activePreviewFile == null && !showServerCheckScreen && !showTrashScreen) {
+    BackHandler(enabled = !isAnyOverlayOpen && pagerState.currentPage == 0) {
         val now = System.currentTimeMillis()
         if (now - lastBackPressTime < 2000L) {
             (context as? android.app.Activity)?.finish()
@@ -804,25 +708,26 @@ fun MainAppScreen(
         }
     }
 
-    // ── MAIN APP SHELL ──
-    Scaffold(
-        bottomBar = {
-            BottomNavBar(
-                selectedTab = selectedTab,
-                hasUpdateBadge = com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable,
-                onTabSelected = { tab ->
-                    if (tab == NavTab.FILES) {
-                        filterCategory = null
+    Box(modifier = modifier.fillMaxSize()) {
+        // ── MAIN APP SHELL ──
+        Scaffold(
+            bottomBar = {
+                BottomNavBar(
+                    selectedTab = selectedTab,
+                    hasUpdateBadge = com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable,
+                    onTabSelected = { tab ->
+                        if (tab == NavTab.FILES) {
+                            filterCategory = null
+                        }
+                        scope.launch {
+                            pagerState.animateScrollToPage(tab.ordinal)
+                        }
                     }
-                    scope.launch {
-                        pagerState.animateScrollToPage(tab.ordinal)
-                    }
-                }
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier
-    ) { paddingValues ->
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize()
+        ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1029,6 +934,95 @@ fun MainAppScreen(
                 }
             }
         }
+    }
+}
+
+    // ── FULL SCREEN SCREENS & OVERLAYS (Preserves background tabs & scroll state) ──
+    if (showServerCheckScreen) {
+        ServerCheckScreen(onBack = { showServerCheckScreen = false })
+    }
+
+    if (showNotificationSettingsScreen) {
+        NotificationSettingsScreen(
+            authManager = authManager,
+            onBack = { showNotificationSettingsScreen = false }
+        )
+    }
+
+    if (showTrashScreen) {
+        TrashScreen(
+            repository = repository,
+            onBack = {
+                showTrashScreen = false
+                refreshData()
+            }
+        )
+    }
+
+    if (showAboutScreen) {
+        AboutScreen(
+            onBack = { showAboutScreen = false },
+            userEmail = currentUser?.email
+        )
+    }
+
+    if (showAppUpdaterScreen) {
+        AppUpdaterScreen(
+            onBack = { showAppUpdaterScreen = false }
+        )
+    }
+
+    if (activePreviewFile != null) {
+        MediaPreviewScreen(
+            file = activePreviewFile!!,
+            streamUrl = previewStreamUrl,
+            fallbackUrl = previewFallbackUrl,
+            isHighQuality = authManager.isHighQualityStreaming(),
+            onClose = {
+                activePreviewFile = null
+                previewStreamUrl = null
+                previewFallbackUrl = null
+            },
+            onDownload = {
+                activePreviewFile?.let { file ->
+                    val url = previewStreamUrl
+                    if (!url.isNullOrBlank()) {
+                        scope.launch {
+                            val ticket = repository.getDownloadTicket().getOrNull()
+                            val fallbackUrl = if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null
+                            TransferManager.startDownload(
+                                context = context,
+                                file = file,
+                                streamUrl = url,
+                                fallbackUrl = fallbackUrl,
+                                onComplete = { success, err ->
+                                    if (success) {
+                                        Toast.makeText(context, "Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            )
+                            Toast.makeText(context, "Download started for ${file.name}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
+            onShare = {
+                Toast.makeText(context, "Share link generated", Toast.LENGTH_SHORT).show()
+            },
+            onDelete = {
+                scope.launch {
+                    val file = activePreviewFile
+                    if (file != null) {
+                        val targetType = file.type
+                        repository.trashFile(file.id)
+                        activePreviewFile = null
+                        refreshData(targetCategoryType = targetType)
+                    }
+                }
+            }
+        )
     }
 }
 
