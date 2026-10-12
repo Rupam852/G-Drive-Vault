@@ -24,7 +24,8 @@ data class AppUpdateInfo(
     @SerializedName("description") val description: String = "",
     @SerializedName("file_name") val fileName: String? = null,
     @SerializedName("file_size") val fileSize: Long? = null,
-    @SerializedName("download_url") val downloadUrl: String? = null
+    @SerializedName("download_url") val downloadUrl: String? = null,
+    @SerializedName("web_url") val webUrl: String? = null
 )
 
 object AppUpdateManager {
@@ -143,7 +144,7 @@ object AppUpdateManager {
     }
 
     fun openDownloadUrl(context: Context) {
-        val url = updateInfo?.downloadUrl
+        val url = updateInfo?.webUrl?.takeIf { it.isNotBlank() } ?: updateInfo?.downloadUrl
         if (!url.isNullOrBlank()) {
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
