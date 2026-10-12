@@ -288,37 +288,6 @@ fun NotificationSettingsScreen(
                 }
             }
 
-            // ── Test & Quick Actions ──
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = {
-                            AppUpdateManager.sendTestNotification(context)
-                            Toast.makeText(context, "Test notification dispatched to status bar!", Toast.LENGTH_SHORT).show()
-                        },
-                        enabled = masterEnabled && updateEnabled,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BluePrimary.copy(alpha = 0.15f),
-                            contentColor = BluePrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.NotificationsActive,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Send Test Notification to Phone",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-
             // ── Info Note ──
             item {
                 Surface(

@@ -58,7 +58,6 @@ fun SettingsScreen(
     var biometricEnabled by remember { mutableStateOf(authManager?.isBiometricEnabled() ?: false) }
     var highQualityStreaming by remember { mutableStateOf(authManager?.isHighQualityStreaming() ?: true) }
     var autoCheckUpdateEnabled by remember { mutableStateOf(authManager?.isAutoCheckUpdateEnabled() ?: true) }
-    var updateNotifEnabled by remember { mutableStateOf(authManager?.isUpdateNotificationEnabled() ?: true) }
     var isBackgroundSpeedBoost by remember {
         mutableStateOf(
             (authManager?.isBackgroundSpeedBoostEnabled() == true) || TransferManager.isBatteryOptimizationIgnored(context)
@@ -591,25 +590,6 @@ fun SettingsScreen(
                         onCheckedChange = { enable ->
                             autoCheckUpdateEnabled = enable
                             authManager?.setAutoCheckUpdateEnabled(enable)
-                        }
-                    )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-
-                    // Row 3: Update Notifications
-                    SettingsSwitchRow(
-                        icon = Icons.Rounded.NotificationsActive,
-                        title = "Update Notifications",
-                        subtitle = "Alert on phone when a new version is available",
-                        checked = updateNotifEnabled,
-                        onCheckedChange = { enable ->
-                            updateNotifEnabled = enable
-                            authManager?.setUpdateNotificationEnabled(enable)
-                            Toast.makeText(
-                                context,
-                                if (enable) "Update notifications enabled" else "Update notifications muted",
-                                Toast.LENGTH_SHORT
-                            ).show()
                         }
                     )
                 }
