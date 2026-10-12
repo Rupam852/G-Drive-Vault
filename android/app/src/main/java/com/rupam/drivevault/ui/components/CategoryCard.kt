@@ -1,5 +1,7 @@
 package com.rupam.drivevault.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,11 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rupam.drivevault.model.CategoryStat
+import com.rupam.drivevault.model.CategorySyncState
 import com.rupam.drivevault.model.FileCategoryType
 
 /**
@@ -35,12 +39,13 @@ fun getCategoryIcon(type: FileCategoryType): ImageVector {
 /**
  * Ultra-premium Category Card (Box-less Floating Icon Design)
  *
- * Direct floating icon without nested inner box background container,
- * with clean typography, count badge and ripple animation.
+ * Direct floating icon with smooth Syncing -> Synced -> Count animated badge,
+ * clean typography, and ripple interaction.
  */
 @Composable
 fun CategoryCard(
     category: CategoryStat,
+    syncState: CategorySyncState = CategorySyncState.IDLE,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -60,7 +65,7 @@ fun CategoryCard(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Row: Clean Floating Icon (NO box around it!) + Sleek Count Badge
+            // Top Row: Clean Floating Icon (NO box around it!) + Sleek Count / Sync Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -74,18 +79,75 @@ fun CategoryCard(
                     modifier = Modifier.size(28.dp)
                 )
 
-                // Modern Pill Badge for Count
+                // Modern Pill Badge for Count / Syncing / Synced
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = category.badgeBgColor.copy(alpha = 0.15f)
+                    color = when (syncState) {
+                        CategorySyncState.SYNCING -> category.badgeBgColor.copy(alpha = 0.12f)
+                        CategorySyncState.SYNCED -> Color(0xFF10B981).copy(alpha = 0.15f)
+                        CategorySyncState.IDLE -> category.badgeBgColor.copy(alpha = 0.15f)
+                    }
                 ) {
-                    Text(
-                        text = "${category.count}",
-                        color = category.accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                    AnimatedContent(
+                        targetState = syncState,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
+                        },
+                        label = "CategoryBadgeTransition"
+                    ) { state ->
+                        when (state) {
+                            CategorySyncState.SYNCING -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        strokeWidth = 1.8.dp,
+                                        color = category.accentColor,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Text(
+                                        text = "Syncing",
+                                        color = category.accentColor,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+
+                            CategorySyncState.SYNCED -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = "Synced",
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "Synced",
+                                        color = Color(0xFF10B981),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            CategorySyncState.IDLE -> {
+                                Text(
+                                    text = "${category.count}",
+                                    color = category.accentColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -101,14 +163,23 @@ fun CategoryCard(
                     maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = category.formattedSize,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+                AnimatedContent(
+                    targetState = category.formattedSize,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                    },
+                    label = "CategorySizeTransition"
+                ) { sizeText ->
+                    Text(
+                        text = sizeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
 }
+

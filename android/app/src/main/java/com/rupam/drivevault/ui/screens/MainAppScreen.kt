@@ -16,6 +16,7 @@ import com.rupam.drivevault.repository.DriveRepository
 import com.rupam.drivevault.ui.components.BottomNavBar
 import com.rupam.drivevault.ui.components.NavTab
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,6 +95,7 @@ fun MainAppScreen(
     var storageStats by remember {
         mutableStateOf(StorageStats(usedBytes = 0L, totalBytes = 15L * 1024L * 1024L * 1024L, categories = emptyList()))
     }
+    var categorySyncState by remember { mutableStateOf(CategorySyncState.SYNCING) }
     var currentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var recentFiles by remember { mutableStateOf<List<DriveFile>>(emptyList()) }
     var activePreviewFile by remember { mutableStateOf<DriveFile?>(null) }
@@ -113,6 +115,7 @@ fun MainAppScreen(
 
     fun resetAppState() {
         storageStats = StorageStats(usedBytes = 0L, totalBytes = 15L * 1024L * 1024L * 1024L, categories = emptyList())
+        categorySyncState = CategorySyncState.SYNCING
         currentFiles = emptyList()
         recentFiles = emptyList()
         breadcrumbs = listOf(FolderBreadcrumb(id = null, name = "My Drive"))
@@ -249,11 +252,17 @@ fun MainAppScreen(
         // 2. Fetch fast storage quota in parallel (<200ms), then load breakdown asynchronously
         if (!skipStats) {
             scope.launch {
+                categorySyncState = CategorySyncState.SYNCING
                 repository.getStorageStats().onSuccess { stats ->
                     storageStats = stats
                 }
                 repository.getStorageStats(forceRefreshBreakdown = true).onSuccess { stats ->
                     storageStats = stats
+                    categorySyncState = CategorySyncState.SYNCED
+                    delay(900)
+                    categorySyncState = CategorySyncState.IDLE
+                }.onFailure {
+                    categorySyncState = CategorySyncState.IDLE
                 }
             }
         }
@@ -625,6 +634,7 @@ fun MainAppScreen(
                         userName = currentUser?.name?.split(" ")?.firstOrNull() ?: "User",
                         storageStats = storageStats,
                         recentFiles = recentFiles,
+                        categorySyncState = categorySyncState,
                         userPictureUrl = currentUser?.picture,
                         onProfileClick = { showProfileDialog = true },
                         onCategoryClick = { catType ->
@@ -653,8 +663,14 @@ fun MainAppScreen(
                         onStorageDetailsClick = {
                             showStorageBreakdownSheet = true
                             scope.launch {
+                                categorySyncState = CategorySyncState.SYNCING
                                 repository.getStorageStats(forceRefreshBreakdown = true).onSuccess {
                                     storageStats = it
+                                    categorySyncState = CategorySyncState.SYNCED
+                                    delay(900)
+                                    categorySyncState = CategorySyncState.IDLE
+                                }.onFailure {
+                                    categorySyncState = CategorySyncState.IDLE
                                 }
                             }
                         },

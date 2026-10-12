@@ -36,6 +36,7 @@ fun HomeScreen(
     userName: String,
     storageStats: StorageStats,
     recentFiles: List<DriveFile>,
+    categorySyncState: CategorySyncState = CategorySyncState.IDLE,
     onCategoryClick: (FileCategoryType) -> Unit,
     onFileClick: (DriveFile) -> Unit,
     onFileMenuClick: (DriveFile) -> Unit,
@@ -228,6 +229,7 @@ fun HomeScreen(
                             for (cat in row) {
                                 CategoryCard(
                                     category = cat,
+                                    syncState = categorySyncState,
                                     onClick = { onCategoryClick(cat.type) },
                                     modifier = Modifier.weight(1f)
                                 )

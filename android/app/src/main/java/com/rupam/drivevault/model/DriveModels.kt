@@ -73,6 +73,15 @@ data class CategoryStat(
 )
 
 /**
+ * Sync state for category count badges (Syncing -> Synced -> Count)
+ */
+enum class CategorySyncState {
+    SYNCING,
+    SYNCED,
+    IDLE
+}
+
+/**
  * Overall storage usage stats
  */
 data class StorageStats(
