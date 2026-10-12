@@ -148,15 +148,20 @@ fun TransfersBottomSheet(
             Spacer(modifier = Modifier.height(14.dp))
 
             val context = LocalContext.current
+            val authManager = remember { com.rupam.drivevault.auth.AuthManager(context) }
+            val isEnabledInSettings = authManager.isBackgroundSpeedBoostEnabled()
             val isBatteryIgnored = TransferManager.isBatteryOptimizationIgnored(context)
-            if (TransferManager.activeCount > 0 && !isBatteryIgnored) {
+            if (TransferManager.activeCount > 0 && !isEnabledInSettings && !isBatteryIgnored) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = BluePrimary.copy(alpha = 0.12f),
                     border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.3f)),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { TransferManager.requestIgnoreBatteryOptimization(context) }
+                        .clickable { 
+                            authManager.setBackgroundSpeedBoostEnabled(true)
+                            TransferManager.requestIgnoreBatteryOptimization(context) 
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
