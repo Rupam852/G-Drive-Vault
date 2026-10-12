@@ -98,6 +98,9 @@ dependencies {
     // Google Play Services Auth for Native Google Sign-In
     implementation 'com.google.android.gms:play-services-auth:21.3.0'
 
+    // Biometric Authentication (Android 14+ / API 34+ compatible)
+    implementation 'androidx.biometric:biometric:1.2.0-alpha05'
+
     // Keep compatibility for legacy plugins during transition
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"

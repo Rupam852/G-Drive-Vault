@@ -2,19 +2,19 @@ package com.rupam.drivevault
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import com.rupam.drivevault.auth.AuthManager
 import com.rupam.drivevault.repository.DriveRepository
 import com.rupam.drivevault.ui.screens.MainAppScreen
 import com.rupam.drivevault.ui.theme.DriveVaultTheme
 import com.rupam.drivevault.ui.theme.ThemeManager
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private lateinit var authManager: AuthManager
     private lateinit var driveRepository: DriveRepository

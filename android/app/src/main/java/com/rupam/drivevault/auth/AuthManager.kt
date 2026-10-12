@@ -30,6 +30,15 @@ class AuthManager(context: Context) {
         private const val KEY_USER = "key_user"
         private const val KEY_TOKENS = "key_tokens"
         private const val KEY_IS_LOGGED_IN = "key_is_logged_in"
+        private const val KEY_BIOMETRIC_ENABLED = "key_biometric_enabled"
+    }
+
+    fun isBiometricEnabled(): Boolean {
+        return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply()
     }
 
     fun saveSession(user: AuthUser, tokens: AuthTokens) {

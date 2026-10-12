@@ -17,8 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import androidx.fragment.app.FragmentActivity
 import coil.compose.AsyncImage
+import com.rupam.drivevault.auth.AuthManager
 import com.rupam.drivevault.auth.AuthUser
+import com.rupam.drivevault.auth.BiometricHelper
 import com.rupam.drivevault.model.StorageStats
 import com.rupam.drivevault.ui.components.StorageGauge
 import com.rupam.drivevault.ui.theme.BluePrimary
@@ -35,9 +39,12 @@ fun SettingsScreen(
     onClearCacheClick: () -> Unit,
     onServerCheckClick: () -> Unit = {},
     onTrashClick: () -> Unit = {},
+    authManager: AuthManager? = null,
     modifier: Modifier = Modifier
 ) {
-    var biometricEnabled by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    var biometricEnabled by remember { mutableStateOf(authManager?.isBiometricEnabled() ?: false) }
     var highQualityStreaming by remember { mutableStateOf(true) }
 
     LazyColumn(
@@ -296,7 +303,50 @@ fun SettingsScreen(
                         title = "Biometric Lock",
                         subtitle = "Require fingerprint/face to unlock DriveVault",
                         checked = biometricEnabled,
-                        onCheckedChange = { biometricEnabled = it }
+                        onCheckedChange = { targetState ->
+                            if (targetState) {
+                                val (isAvailable, reason) = BiometricHelper.isBiometricAvailable(context)
+                                if (!isAvailable) {
+                                    Toast.makeText(context, reason, Toast.LENGTH_LONG).show()
+                                } else if (activity != null) {
+                                    BiometricHelper.authenticate(
+                                        activity = activity,
+                                        title = "Enable Biometric Lock",
+                                        subtitle = "Verify fingerprint or screen lock to enable protection",
+                                        onSuccess = {
+                                            biometricEnabled = true
+                                            authManager?.setBiometricEnabled(true)
+                                            Toast.makeText(context, "Biometric Lock enabled", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { err ->
+                                            Toast.makeText(context, "Authentication failed: $err", Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                } else {
+                                    biometricEnabled = true
+                                    authManager?.setBiometricEnabled(true)
+                                }
+                            } else {
+                                if (activity != null) {
+                                    BiometricHelper.authenticate(
+                                        activity = activity,
+                                        title = "Disable Biometric Lock",
+                                        subtitle = "Verify identity to disable biometric protection",
+                                        onSuccess = {
+                                            biometricEnabled = false
+                                            authManager?.setBiometricEnabled(false)
+                                            Toast.makeText(context, "Biometric Lock disabled", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { err ->
+                                            Toast.makeText(context, "Authentication failed: $err", Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                } else {
+                                    biometricEnabled = false
+                                    authManager?.setBiometricEnabled(false)
+                                }
+                            }
+                        }
                     )
                     Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                     SettingsSwitchRow(

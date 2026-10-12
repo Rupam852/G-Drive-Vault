@@ -60,6 +60,33 @@ fun MainAppScreen(
 
     var isLoggedIn by remember { mutableStateOf(authManager.isLoggedIn()) }
     var currentUser by remember { mutableStateOf(authManager.getUser()) }
+    var isAppLocked by remember {
+        mutableStateOf(authManager.isLoggedIn() && authManager.isBiometricEnabled())
+    }
+    var isLaunchingExternalIntent by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var wasInBackground = false
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                if (!isLaunchingExternalIntent) {
+                    wasInBackground = true
+                }
+            } else if (event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+                if (wasInBackground && authManager.isLoggedIn() && authManager.isBiometricEnabled()) {
+                    isAppLocked = true
+                }
+                wasInBackground = false
+                isLaunchingExternalIntent = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
     val selectedTab = when (pagerState.currentPage) {
         0 -> NavTab.HOME
@@ -440,6 +467,7 @@ fun MainAppScreen(
             )
             pendingPhotoFile = photoFile
             pendingPhotoUri = photoUri
+            isLaunchingExternalIntent = true
             cameraLauncher.launch(photoUri)
         } catch (e: Exception) {
             Toast.makeText(context, "Cannot open camera: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -523,9 +551,24 @@ fun MainAppScreen(
         LoginScreen(
             onGoogleSignInClick = {
                 val intent = GoogleAuthHelper.getSignInIntent(context)
+                isLaunchingExternalIntent = true
                 googleSignInLauncher.launch(intent)
             },
             isLoading = isAuthenticating
+        )
+        return
+    }
+
+    // ── BIOMETRIC LOCK SCREEN ──
+    if (isAppLocked) {
+        BiometricLockScreen(
+            onUnlockSuccess = {
+                isAppLocked = false
+            },
+            onLogoutClick = {
+                isAppLocked = false
+                triggerSignOut()
+            }
         )
         return
     }
@@ -681,6 +724,7 @@ fun MainAppScreen(
                             menuTargetFile = file
                         },
                         onUploadClick = {
+                            isLaunchingExternalIntent = true
                             filePickerLauncher.launch("*/*")
                         },
                         onNewFolderClick = {
@@ -772,6 +816,7 @@ fun MainAppScreen(
                             }
                         },
                         onUploadClick = {
+                            isLaunchingExternalIntent = true
                             filePickerLauncher.launch("*/*")
                         },
                         onNewFolderClick = {
@@ -785,6 +830,7 @@ fun MainAppScreen(
                     SettingsScreen(
                         user = currentUser,
                         storageStats = storageStats,
+                        authManager = authManager,
                         onLogoutClick = { triggerSignOut() },
                         onSwitchAccountClick = { triggerSwitchAccount() },
                         onStorageDetailsClick = {
