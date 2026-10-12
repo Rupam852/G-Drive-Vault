@@ -29,6 +29,10 @@ import com.rupam.drivevault.transfer.TransferManager
 import com.rupam.drivevault.ui.components.*
 import com.rupam.drivevault.ui.theme.BluePrimary
 import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
@@ -153,12 +157,27 @@ fun HomeScreen(
                                         .size(18.dp)
                                         .align(Alignment.TopEnd)
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
                                         Text(
                                             text = if (activeTransfersCount > 9) "9+" else activeTransfersCount.toString(),
                                             color = Color.White,
                                             fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center,
+                                            style = TextStyle(
+                                                platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                                                    includeFontPadding = false
+                                                ),
+                                                lineHeight = 10.sp,
+                                                lineHeightStyle = LineHeightStyle(
+                                                    alignment = LineHeightStyle.Alignment.Center,
+                                                    trim = LineHeightStyle.Trim.Both
+                                                )
+                                            ),
+                                            modifier = Modifier.offset(y = (-0.5).dp)
                                         )
                                     }
                                 }

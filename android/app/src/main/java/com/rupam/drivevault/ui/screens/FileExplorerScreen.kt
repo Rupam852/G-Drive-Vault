@@ -27,6 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -214,12 +218,27 @@ fun FileExplorerScreen(
                                     .size(18.dp)
                                     .align(Alignment.TopEnd)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
                                     Text(
                                         text = if (activeTransfersCount > 9) "9+" else activeTransfersCount.toString(),
                                         color = Color.White,
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                        style = TextStyle(
+                                            platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                                                includeFontPadding = false
+                                            ),
+                                            lineHeight = 10.sp,
+                                            lineHeightStyle = LineHeightStyle(
+                                                alignment = LineHeightStyle.Alignment.Center,
+                                                trim = LineHeightStyle.Trim.Both
+                                            )
+                                        ),
+                                        modifier = Modifier.offset(y = (-0.5).dp)
                                     )
                                 }
                             }
