@@ -9,16 +9,21 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
-import androidx.annotation.OptIn
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,6 +49,8 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -56,6 +63,18 @@ import com.rupam.drivevault.ui.components.SquigglySlider
 import com.rupam.drivevault.ui.theme.BluePrimary
 import kotlinx.coroutines.delay
 
+enum class VideoSettingSection {
+    MAIN, SPEED, QUALITY, AUDIO, SUBTITLES
+}
+
+data class AvailableTrack(
+    val groupIndex: Int,
+    val trackIndex: Int,
+    val label: String,
+    val language: String,
+    val isSelected: Boolean
+)
+
 private fun formatDuration(ms: Long): String {
     if (ms <= 0L) return "00:00"
     val totalSeconds = ms / 1000
@@ -65,7 +84,7 @@ private fun formatDuration(ms: Long): String {
 }
 
 @SuppressLint("SetJavaScriptEnabled")
-@OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
 @Composable
 fun MediaPreviewScreen(
     file: DriveFile,
@@ -94,6 +113,31 @@ fun MediaPreviewScreen(
 
     val isImmersive = file.type == FileCategoryType.VIDEO && (isFullscreenMode || isDeviceLandscape)
 
+    fun exitFullscreen() {
+        isFullscreenMode = false
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    }
+
+    fun enterFullscreen() {
+        isFullscreenMode = true
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    }
+
+    fun toggleFullscreen() {
+        val isCurrentlyLandscape = isFullscreenMode || isDeviceLandscape
+        if (isCurrentlyLandscape) {
+            exitFullscreen()
+        } else {
+            enterFullscreen()
+        }
+    }
+
+    // Settings state
+    var currentTracks by remember { mutableStateOf<Tracks?>(null) }
+    var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
+    var activeSettingSection by remember { mutableStateOf(VideoSettingSection.MAIN) }
+
     // System Status & Navigation Bar immersive hiding
     DisposableEffect(isImmersive) {
         if (isImmersive) {
@@ -115,11 +159,12 @@ fun MediaPreviewScreen(
         }
     }
 
-    // Intercept back gesture: exit fullscreen landscape first if active
+    // Intercept back gesture: exit settings first, then fullscreen landscape, then close
     BackHandler {
-        if (isFullscreenMode || isDeviceLandscape) {
-            isFullscreenMode = false
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        if (showSettingsSheet) {
+            showSettingsSheet = false
+        } else if (isFullscreenMode || isDeviceLandscape) {
+            exitFullscreen()
         } else {
             onClose()
         }
@@ -197,7 +242,12 @@ fun MediaPreviewScreen(
                             isBuffering = false
                         }
                     }
+
+                    override fun onTracksChanged(tracks: Tracks) {
+                        currentTracks = tracks
+                    }
                 })
+                setPlaybackSpeed(playbackSpeed)
                 setMediaItem(MediaItem.fromUri(url))
                 prepare()
                 playWhenReady = true
@@ -208,6 +258,82 @@ fun MediaPreviewScreen(
         onDispose {
             exoPlayer?.release()
             exoPlayer = null
+        }
+    }
+
+    // Extract available audio tracks
+    val audioTracks = remember(currentTracks) {
+        val list = mutableListOf<AvailableTrack>()
+        currentTracks?.groups?.forEachIndexed { gIdx, group ->
+            if (group.type == C.TRACK_TYPE_AUDIO) {
+                for (tIdx in 0 until group.length) {
+                    val format = group.getTrackFormat(tIdx)
+                    val lang = format.language ?: "und"
+                    val label = format.label ?: if (lang != "und") lang.uppercase() else "Audio Track ${tIdx + 1}"
+                    list.add(
+                        AvailableTrack(
+                            groupIndex = gIdx,
+                            trackIndex = tIdx,
+                            label = label,
+                            language = lang,
+                            isSelected = group.isTrackSelected(tIdx)
+                        )
+                    )
+                }
+            }
+        }
+        list
+    }
+
+    // Extract available subtitle tracks
+    val subtitleTracks = remember(currentTracks) {
+        val list = mutableListOf<AvailableTrack>()
+        currentTracks?.groups?.forEachIndexed { gIdx, group ->
+            if (group.type == C.TRACK_TYPE_TEXT) {
+                for (tIdx in 0 until group.length) {
+                    val format = group.getTrackFormat(tIdx)
+                    val lang = format.language ?: "und"
+                    val label = format.label ?: if (lang != "und") lang.uppercase() else "Subtitle ${tIdx + 1}"
+                    list.add(
+                        AvailableTrack(
+                            groupIndex = gIdx,
+                            trackIndex = tIdx,
+                            label = label,
+                            language = lang,
+                            isSelected = group.isTrackSelected(tIdx)
+                        )
+                    )
+                }
+            }
+        }
+        list
+    }
+
+    fun selectAudio(track: AvailableTrack) {
+        exoPlayer?.let { player ->
+            val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
+            player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
+                .build()
+        }
+    }
+
+    fun selectSubtitle(track: AvailableTrack?) {
+        exoPlayer?.let { player ->
+            if (track == null) {
+                player.trackSelectionParameters = player.trackSelectionParameters
+                    .buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    .build()
+            } else {
+                val group = player.currentTracks.groups.getOrNull(track.groupIndex) ?: return
+                player.trackSelectionParameters = player.trackSelectionParameters
+                    .buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
+                    .build()
+            }
         }
     }
 
@@ -752,6 +878,14 @@ fun MediaPreviewScreen(
                                                     lastInteractionTime = System.currentTimeMillis()
                                                 },
                                                 valueRange = 0f..(if (durationMs > 0L) durationMs.toFloat() else 1f),
+                                                thumb = {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(if (isDraggingSlider) 18.dp else 14.dp)
+                                                            .background(BluePrimary, CircleShape)
+                                                            .border(2.dp, Color.White, CircleShape)
+                                                    )
+                                                },
                                                 colors = SliderDefaults.colors(
                                                     thumbColor = BluePrimary,
                                                     activeTrackColor = BluePrimary,
@@ -768,66 +902,242 @@ fun MediaPreviewScreen(
                                             )
                                         }
 
-                                        // Quick Actions Row (Aspect Ratio & Fullscreen)
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 4.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            // Aspect Ratio Toggle
-                                            Surface(
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = Color.White.copy(alpha = 0.12f),
-                                                onClick = {
-                                                    lastInteractionTime = System.currentTimeMillis()
-                                                    resizeMode = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
-                                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                                    } else {
-                                                        AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                        // Adaptive Quick Actions Row (Portrait vs Landscape)
+                                        if (!isDeviceLandscape && !isFullscreenMode) {
+                                            // ── PORTRAIT MODE: Clean compact layout with 3-Dot Menu ──
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                // Aspect Ratio Toggle
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = Color.White.copy(alpha = 0.12f),
+                                                    onClick = {
+                                                        lastInteractionTime = System.currentTimeMillis()
+                                                        resizeMode = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+                                                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                                        } else {
+                                                            AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                                        }
+                                                    }
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.AspectRatio,
+                                                            contentDescription = "Aspect Ratio",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                        Text(
+                                                            text = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit Screen" else "Fill Screen",
+                                                            color = Color.White,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
                                                     }
                                                 }
-                                            ) {
+
+                                                // Right: 3-Dot Settings & Fullscreen Toggle
                                                 Row(
-                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.AspectRatio,
-                                                        contentDescription = "Aspect Ratio",
-                                                        tint = Color.White,
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
-                                                    Text(
-                                                        text = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit Screen" else "Fill Screen",
-                                                        color = Color.White,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Medium
-                                                    )
+                                                    IconButton(
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.MAIN
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.MoreVert,
+                                                            contentDescription = "Video Settings",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+
+                                                    IconButton(
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            enterFullscreen()
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Fullscreen,
+                                                            contentDescription = "Enter Fullscreen",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(28.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
+                                        } else {
+                                            // ── LANDSCAPE MODE: Full Spacious Quick Actions Bar ──
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(top = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                // Horizontal scrollable pills
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    modifier = Modifier
+                                                        .weight(1f, fill = false)
+                                                        .horizontalScroll(rememberScrollState())
+                                                ) {
+                                                    // Aspect Ratio Pill
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = Color.White.copy(alpha = 0.14f),
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            resizeMode = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+                                                                AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                                            } else {
+                                                                AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Icon(Icons.Rounded.AspectRatio, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                            Text(if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit" else "Fill", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                        }
+                                                    }
 
-                                            // Fullscreen / Landscape Toggle
-                                            IconButton(
-                                                onClick = {
-                                                    lastInteractionTime = System.currentTimeMillis()
-                                                    val newMode = !(isFullscreenMode || isDeviceLandscape)
-                                                    isFullscreenMode = newMode
-                                                    if (newMode) {
-                                                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                                    } else {
-                                                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                                    // Speed Pill
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = Color.White.copy(alpha = 0.14f),
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.SPEED
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Icon(Icons.Rounded.Speed, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                            Text("${playbackSpeed}x", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                        }
+                                                    }
+
+                                                    // Audio Track Pill
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = Color.White.copy(alpha = 0.14f),
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.AUDIO
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Icon(Icons.Rounded.Audiotrack, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                            val currentAudioName = audioTracks.find { it.isSelected }?.label ?: if (audioTracks.isNotEmpty()) "Audio (${audioTracks.size})" else "Audio"
+                                                            Text(currentAudioName, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                        }
+                                                    }
+
+                                                    // Subtitles (CC) Pill
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = Color.White.copy(alpha = 0.14f),
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.SUBTITLES
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Icon(Icons.Rounded.Subtitles, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                            val isSubOn = subtitleTracks.any { it.isSelected }
+                                                            Text(if (isSubOn) "CC On" else "CC", color = if (isSubOn) Color(0xFF34D399) else Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                        }
+                                                    }
+
+                                                    // Quality Pill
+                                                    Surface(
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = Color.White.copy(alpha = 0.14f),
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.QUALITY
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            Icon(Icons.Rounded.HighQuality, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                            val isCdn = activeUrl?.contains("workers") == true || activeUrl?.contains("cloudflare") == true
+                                                            Text(if (isCdn) "Edge CDN" else "Direct", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                        }
                                                     }
                                                 }
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (isFullscreenMode || isDeviceLandscape) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
-                                                    contentDescription = if (isFullscreenMode || isDeviceLandscape) "Exit Fullscreen" else "Enter Fullscreen",
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(28.dp)
-                                                )
+
+                                                // Right: 3-Dot Menu & Exit Fullscreen Button
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            activeSettingSection = VideoSettingSection.MAIN
+                                                            showSettingsSheet = true
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.MoreVert,
+                                                            contentDescription = "Settings",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+
+                                                    IconButton(
+                                                        onClick = {
+                                                            lastInteractionTime = System.currentTimeMillis()
+                                                            exitFullscreen()
+                                                        }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.FullscreenExit,
+                                                            contentDescription = "Exit Fullscreen",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(30.dp)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1072,6 +1382,335 @@ fun MediaPreviewScreen(
                         )
                     }
                 }
+            }
+        }
+
+        // ── Video Settings Modal / Sheet ──
+        if (showSettingsSheet) {
+            VideoSettingsModal(
+                activeSection = activeSettingSection,
+                onSectionChange = { activeSettingSection = it },
+                playbackSpeed = playbackSpeed,
+                onSpeedChange = { speed ->
+                    playbackSpeed = speed
+                    exoPlayer?.setPlaybackSpeed(speed)
+                    showSettingsSheet = false
+                },
+                audioTracks = audioTracks,
+                onAudioTrackSelect = { track ->
+                    selectAudio(track)
+                    showSettingsSheet = false
+                },
+                subtitleTracks = subtitleTracks,
+                onSubtitleTrackSelect = { track ->
+                    selectSubtitle(track)
+                    showSettingsSheet = false
+                },
+                resizeMode = resizeMode,
+                onResizeModeChange = { mode ->
+                    resizeMode = mode
+                },
+                isCloudflare = activeUrl?.contains("workers") == true || activeUrl?.contains("cloudflare") == true,
+                hasFallback = !fallbackUrl.isNullOrBlank() && fallbackUrl != streamUrl,
+                onSwitchQuality = { useFallback ->
+                    val target = if (useFallback) fallbackUrl else streamUrl
+                    if (!target.isNullOrBlank() && target != activeUrl) {
+                        activeUrl = target
+                    }
+                    showSettingsSheet = false
+                },
+                onDismiss = { showSettingsSheet = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoSettingsModal(
+    activeSection: VideoSettingSection,
+    onSectionChange: (VideoSettingSection) -> Unit,
+    playbackSpeed: Float,
+    onSpeedChange: (Float) -> Unit,
+    audioTracks: List<AvailableTrack>,
+    onAudioTrackSelect: (AvailableTrack) -> Unit,
+    subtitleTracks: List<AvailableTrack>,
+    onSubtitleTrackSelect: (AvailableTrack?) -> Unit,
+    resizeMode: Int,
+    onResizeModeChange: (Int) -> Unit,
+    isCloudflare: Boolean,
+    hasFallback: Boolean,
+    onSwitchQuality: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF181724),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+            shadowElevation = 16.dp,
+            modifier = Modifier
+                .padding(20.dp)
+                .widthIn(max = 420.dp)
+                .fillMaxWidth(0.92f)
+                .clickable(enabled = false) {}
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (activeSection != VideoSettingSection.MAIN) {
+                            IconButton(onClick = { onSectionChange(VideoSettingSection.MAIN) }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                        Text(
+                            text = when (activeSection) {
+                                VideoSettingSection.MAIN -> "Video Settings"
+                                VideoSettingSection.SPEED -> "Playback Speed"
+                                VideoSettingSection.AUDIO -> "Audio Tracks"
+                                VideoSettingSection.SUBTITLES -> "Subtitles / Captions"
+                                VideoSettingSection.QUALITY -> "Streaming Quality"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Close",
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    color = Color.White.copy(alpha = 0.1f),
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+
+                when (activeSection) {
+                    VideoSettingSection.MAIN -> {
+                        // 1. Playback Speed
+                        SettingsRowItem(
+                            icon = Icons.Rounded.Speed,
+                            title = "Playback Speed",
+                            subtitle = "${playbackSpeed}x ${if (playbackSpeed == 1.0f) "(Normal)" else ""}",
+                            onClick = { onSectionChange(VideoSettingSection.SPEED) }
+                        )
+
+                        // 2. Audio Track / Language
+                        val currentAudio = audioTracks.find { it.isSelected }?.label ?: if (audioTracks.isNotEmpty()) "Audio (1)" else "Default"
+                        SettingsRowItem(
+                            icon = Icons.Rounded.Audiotrack,
+                            title = "Audio Language",
+                            subtitle = currentAudio,
+                            onClick = { onSectionChange(VideoSettingSection.AUDIO) }
+                        )
+
+                        // 3. Subtitles
+                        val currentSub = subtitleTracks.find { it.isSelected }?.label ?: "Off"
+                        SettingsRowItem(
+                            icon = Icons.Rounded.Subtitles,
+                            title = "Subtitles",
+                            subtitle = if (subtitleTracks.isEmpty()) "None in video" else currentSub,
+                            onClick = { onSectionChange(VideoSettingSection.SUBTITLES) }
+                        )
+
+                        // 4. Quality
+                        SettingsRowItem(
+                            icon = Icons.Rounded.HighQuality,
+                            title = "Quality / Server",
+                            subtitle = if (isCloudflare) "Cloudflare Edge CDN (Ultra-Fast)" else "Render Standard Server",
+                            onClick = { onSectionChange(VideoSettingSection.QUALITY) }
+                        )
+
+                        // 5. Aspect Ratio
+                        SettingsRowItem(
+                            icon = Icons.Rounded.AspectRatio,
+                            title = "Aspect Ratio",
+                            subtitle = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit to Screen" else "Fill Screen (Zoom)",
+                            onClick = {
+                                onResizeModeChange(
+                                    if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                )
+                            }
+                        )
+                    }
+
+                    VideoSettingSection.SPEED -> {
+                        val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                        speeds.forEach { sp ->
+                            val isSelected = playbackSpeed == sp
+                            SettingsOptionItem(
+                                title = "${sp}x ${if (sp == 1.0f) "(Normal)" else ""}",
+                                isSelected = isSelected,
+                                onClick = { onSpeedChange(sp) }
+                            )
+                        }
+                    }
+
+                    VideoSettingSection.AUDIO -> {
+                        if (audioTracks.isEmpty()) {
+                            Text(
+                                text = "Default single audio track in this video file.",
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        } else {
+                            audioTracks.forEach { track ->
+                                SettingsOptionItem(
+                                    title = track.label,
+                                    subtitle = if (track.language != "und") track.language.uppercase() else null,
+                                    isSelected = track.isSelected,
+                                    onClick = { onAudioTrackSelect(track) }
+                                )
+                            }
+                        }
+                    }
+
+                    VideoSettingSection.SUBTITLES -> {
+                        val isNoneSelected = subtitleTracks.none { it.isSelected }
+                        SettingsOptionItem(
+                            title = "Off",
+                            isSelected = isNoneSelected,
+                            onClick = { onSubtitleTrackSelect(null) }
+                        )
+                        if (subtitleTracks.isEmpty()) {
+                            Text(
+                                text = "No embedded subtitle streams detected in this file.",
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
+                        } else {
+                            subtitleTracks.forEach { track ->
+                                SettingsOptionItem(
+                                    title = track.label,
+                                    subtitle = if (track.language != "und") track.language.uppercase() else null,
+                                    isSelected = track.isSelected,
+                                    onClick = { onSubtitleTrackSelect(track) }
+                                )
+                            }
+                        }
+                    }
+
+                    VideoSettingSection.QUALITY -> {
+                        SettingsOptionItem(
+                            title = "Cloudflare Edge CDN (Ultra-Fast)",
+                            subtitle = "Low-latency streaming via worldwide edge caching",
+                            isSelected = isCloudflare,
+                            onClick = { onSwitchQuality(false) }
+                        )
+                        if (hasFallback) {
+                            SettingsOptionItem(
+                                title = "Render Server (Direct Stream)",
+                                subtitle = "Fallback connection direct to Drive rendering",
+                                isSelected = !isCloudflare,
+                                onClick = { onSwitchQuality(true) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRowItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Transparent,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(22.dp))
+                Column {
+                    Text(text = title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                }
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.35f),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsOptionItem(
+    title: String,
+    subtitle: String? = null,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) BluePrimary.copy(alpha = 0.15f) else Color.Transparent,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = if (isSelected) BluePrimary else Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+                if (subtitle != null) {
+                    Text(text = subtitle, color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                }
+            }
+            if (isSelected) {
+                Icon(imageVector = Icons.Rounded.Check, contentDescription = "Selected", tint = BluePrimary, modifier = Modifier.size(18.dp))
             }
         }
     }
