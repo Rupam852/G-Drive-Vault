@@ -12,6 +12,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileItem } from '../types';
 import FileDetails from './FileDetails';
 import { toast } from 'sonner';
+import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
@@ -308,10 +309,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       if (!ticketRes.ok) throw new Error('Ticket failed');
       const { ticketId } = await ticketRes.json();
 
-      const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
-
-      const isNative = Capacitor.isNativePlatform();
-      const isAndroid = isNative && Capacitor.getPlatform() === 'android';
+      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
+      const downloadUrl = (cfUrl && !isAndroid) 
+        ? cfUrl 
+        : `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
 
       if (isAndroid) {
         keepActive = true;
@@ -1355,11 +1356,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                   setActionMenuFile(null);
                 }}
                 className="flex-none flex flex-col items-center gap-2 group active:scale-95 transition-all w-[68px] sm:w-[76px] snap-start"
+                title={actionMenuFile?.type === 'folder' ? 'Download entire folder as .zip archive' : 'Download file to device'}
               >
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors shrink-0">
-                  <Download size={22} />
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${actionMenuFile?.type === 'folder' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/50' : 'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50'} flex items-center justify-center transition-colors shrink-0`}>
+                  {actionMenuFile?.type === 'folder' ? <FileArchive size={22} /> : <Download size={22} />}
                 </div>
-                <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 w-full text-center truncate">Download</span>
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 w-full text-center truncate">
+                  {actionMenuFile?.type === 'folder' ? 'ZIP Archive' : 'Download'}
+                </span>
               </button>
             </div>
 

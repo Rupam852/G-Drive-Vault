@@ -3,9 +3,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { FileItem } from '../types';
-import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, Maximize2, Minimize2, X, ExternalLink, RefreshCw, Download, Smartphone, FileArchive, FileQuestion } from 'lucide-react';
+import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, HardDrive, Maximize2, Minimize2, X, ExternalLink, RefreshCw, Download, Smartphone, FileArchive, FileQuestion, Zap, Gauge, Cloud } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { getCloudflareStreamUrl, isEdgeCdnUrl } from '../services/edgeStreamService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
 
@@ -81,10 +82,18 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
         setIsLoading(false);
         setPreviewUrl(getImageUrl(file, tokens));
       } else if (file.type === 'video' || file.type === 'audio') {
-        // Video/Audio: use backend proxy ticket for proper range-request streaming
         setIsLoading(true);
         (async () => {
           try {
+            // 1. Try Cloudflare Edge CDN first for ultra-fast 0-buffering streaming
+            const cfStreamUrl = getCloudflareStreamUrl(file.id, tokens);
+            if (cfStreamUrl && active) {
+              setPreviewUrl(cfStreamUrl);
+              setIsLoading(false);
+              return;
+            }
+
+            // 2. Fallback to Render backend signed proxy
             const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -95,7 +104,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               const url = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
               setPreviewUrl(url);
             } else if (active) {
-              // Fallback: try direct Google API URL
+              // Direct Google API fallback
               const accessToken = tokens?.access_token;
               if (accessToken) {
                 setPreviewUrl(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`);
@@ -105,7 +114,6 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             }
           } catch {
             if (active) {
-              // Fallback: try direct Google API URL
               const accessToken = tokens?.access_token;
               if (accessToken) {
                 setPreviewUrl(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${accessToken}`);
@@ -257,22 +265,92 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     }
 
     if (file.type === 'video') {
+      const isEdge = isEdgeCdnUrl(previewUrl);
       return (
-        <video
-          src={previewUrl}
-          className="w-full h-full object-contain bg-black rounded-2xl"
-          poster={file.thumbnail?.replace('=s220', '=s1000')}
-          controls
-          playsInline
-          onError={() => setPreviewError(true)}
-        />
+        <div className="flex flex-col w-full h-full">
+          {/* Edge Stream Accelerator Pill */}
+          <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] shrink-0">
+            <div className="flex items-center gap-1.5">
+              {isEdge ? (
+                <>
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-bold text-emerald-400 flex items-center gap-1">
+                    <Zap size={13} className="fill-emerald-400" /> Cloudflare Edge CDN (Ultra-Fast)
+                  </span>
+                </>
+              ) : (
+                <span className="font-semibold text-slate-400 flex items-center gap-1">
+                  <Cloud size={13} /> Render Standard Stream
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-slate-400 font-medium mr-1">Speed:</span>
+              {[0.75, 1, 1.25, 1.5, 2].map((spd) => (
+                <button
+                  key={spd}
+                  onClick={() => {
+                    const el = document.getElementById('preview-video-element') as HTMLVideoElement;
+                    if (el) el.playbackRate = spd;
+                  }}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95 transition-all"
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 relative">
+            <video
+              id="preview-video-element"
+              src={previewUrl}
+              className="w-full h-full object-contain bg-black rounded-2xl"
+              poster={file.thumbnail?.replace('=s220', '=s1000')}
+              controls
+              playsInline
+              onError={async () => {
+                if (isEdgeCdnUrl(previewUrl)) {
+                  console.warn('Edge CDN stream failed, falling back to Render...');
+                  try {
+                    const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tokens }),
+                    });
+                    if (ticketRes.ok) {
+                      const { ticketId } = await ticketRes.json();
+                      setPreviewUrl(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`);
+                      return;
+                    }
+                  } catch {}
+                }
+                setPreviewError(true);
+              }}
+            />
+          </div>
+        </div>
       );
     }
 
     if (file.type === 'audio') {
+      const isEdge = isEdgeCdnUrl(previewUrl);
       return (
-        <div className="flex flex-col items-center gap-6 p-8 w-full min-w-0">
-          <div className="w-24 h-24 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
+        <div className="flex flex-col items-center gap-5 p-6 w-full min-w-0">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-[11px]">
+            {isEdge ? (
+              <span className="font-bold text-emerald-400 flex items-center gap-1">
+                <Zap size={12} className="fill-emerald-400" /> Cloudflare Edge CDN Stream
+              </span>
+            ) : (
+              <span className="font-semibold text-slate-400 flex items-center gap-1">
+                <Cloud size={12} /> Render Standard Stream
+              </span>
+            )}
+          </div>
+          <div className="w-24 h-24 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0 shadow-lg shadow-green-500/10">
             <Music size={48} />
           </div>
           <p className="text-white font-bold text-center break-words break-all max-w-full px-4">{file.name}</p>
@@ -281,7 +359,23 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             controls
             autoPlay={fullscreen}
             className="w-full max-w-sm shrink-0"
-            onError={() => setPreviewError(true)}
+            onError={async () => {
+              if (isEdgeCdnUrl(previewUrl)) {
+                try {
+                  const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tokens }),
+                  });
+                  if (ticketRes.ok) {
+                    const { ticketId } = await ticketRes.json();
+                    setPreviewUrl(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`);
+                    return;
+                  }
+                } catch {}
+              }
+              setPreviewError(true);
+            }}
           />
         </div>
       );

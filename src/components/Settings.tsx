@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown, Download } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown, Download, Zap, Activity, Wifi, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -10,6 +10,9 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Capacitor } from '@capacitor/core';
+import { isCloudflareEdgeEnabled, setCloudflareEdgeEnabled, pingCloudflareWorker, pingRenderBackend, CLOUDFLARE_WORKER_URL } from '../services/edgeStreamService';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 import { TransferState } from './TransferManager';
 const isVersionOlder = (current: string, latest: string): boolean => {
@@ -70,6 +73,31 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [cfEdgeEnabled, setCfEdgeEnabled] = useState(isCloudflareEdgeEnabled());
+  const [cfLatency, setCfLatency] = useState<any>({ status: 'active', message: 'Ready' });
+  const [renderLatency, setRenderLatency] = useState<any>({ status: 'active', message: 'Ready' });
+  const [isTestingLatency, setIsTestingLatency] = useState(false);
+
+  const runDiagnostics = async () => {
+    setIsTestingLatency(true);
+    setCfLatency({ status: 'testing', message: 'Testing Edge latency...' });
+    setRenderLatency({ status: 'testing', message: 'Testing Server latency...' });
+    try {
+      const [cfRes, renderRes] = await Promise.all([
+        pingCloudflareWorker(),
+        pingRenderBackend(API_BASE_URL)
+      ]);
+      setCfLatency(cfRes);
+      setRenderLatency(renderRes);
+    } catch {
+      setCfLatency({ status: 'not_active', message: 'Failed' });
+      setRenderLatency({ status: 'not_active', message: 'Failed' });
+    } finally {
+      setIsTestingLatency(false);
+    }
+  };
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedHiddenIds, setSelectedHiddenIds] = useState<string[]>([]);
   
@@ -211,6 +239,7 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
 
   const menuItems = [
     { icon: History, label: 'Transfer History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
+    { icon: Zap, label: 'Edge & Server Diagnostics', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', onClick: () => { setIsDiagnosticsOpen(true); runDiagnostics(); } },
     { icon: Trash2, label: 'Trash Bin', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', onClick: () => setIsTrashOpen(true) },
     { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
     { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true), hideOnWeb: true },
@@ -228,11 +257,12 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
       if (isProfileOpen) { e.preventDefault(); setIsProfileOpen(false); return; }
       if (isNotificationsOpen) { e.preventDefault(); setIsNotificationsOpen(false); return; }
       if (isSecurityOpen) { e.preventDefault(); setIsSecurityOpen(false); return; }
+      if (isDiagnosticsOpen) { e.preventDefault(); setIsDiagnosticsOpen(false); return; }
     };
 
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
-  }, [isTrashOpen, isHiddenOpen, isTransfersOpen, isProfileOpen, isNotificationsOpen, isSecurityOpen]);
+  }, [isTrashOpen, isHiddenOpen, isTransfersOpen, isProfileOpen, isNotificationsOpen, isSecurityOpen, isDiagnosticsOpen]);
 
   return (
     <div className="p-6 pb-6 md:pb-8 space-y-8 bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -776,6 +806,101 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDiagnosticsOpen && (
+        <div className="fixed inset-0 z-[500] bg-slate-50 dark:bg-slate-950 md:bg-slate-900/50 md:backdrop-blur-sm flex flex-col md:items-center md:justify-center md:py-10 transition-all">
+          <div className="w-full h-full md:h-auto md:max-h-full md:max-w-2xl bg-slate-50 dark:bg-slate-950 md:rounded-3xl md:shadow-2xl flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <Activity size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Edge & Server Diagnostics</h2>
+                  <p className="text-xs text-slate-500">Live latency & edge acceleration status</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsDiagnosticsOpen(false)} className="rounded-full"><X size={20} /></Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4">
+              {/* Cloudflare Edge Card */}
+              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                      <Zap size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">Cloudflare Edge Streamer</h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                          {cfLatency.latencyMs ? `${cfLatency.latencyMs}ms` : cfLatency.status === 'testing' ? 'Testing...' : 'Active'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-mono truncate max-w-[260px] md:max-w-md">{CLOUDFLARE_WORKER_URL}</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={cfEdgeEnabled} 
+                    onCheckedChange={(val) => {
+                      setCfEdgeEnabled(val);
+                      setCloudflareEdgeEnabled(val);
+                      toast.success(val ? 'Cloudflare Edge CDN Enabled' : 'Cloudflare Edge CDN Disabled');
+                    }}
+                    className="data-[state=checked]:bg-amber-500"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Powers ultra-fast byte-range video/audio streaming and rapid direct file downloads through Cloudflare's global edge network (330+ cities worldwide).
+                </p>
+              </div>
+
+              {/* Render Server Card */}
+              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
+                      <Cloud size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">Render Cloud Server</h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-300 dark:border-blue-800">
+                          {renderLatency.latencyMs ? `${renderLatency.latencyMs}ms` : renderLatency.status === 'testing' ? 'Testing...' : 'Active'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 font-mono truncate max-w-[260px] md:max-w-md">{API_BASE_URL}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Main backend for Google OAuth, database storage, folder ZIP streaming generation, file metadata, and security tokens.
+                </p>
+              </div>
+
+              {/* Run Test Button */}
+              <Button 
+                onClick={runDiagnostics} 
+                disabled={isTestingLatency}
+                className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
+                {isTestingLatency ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Pinging Edge and Backend...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={16} />
+                    <span>Run Speed & Health Test</span>
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
