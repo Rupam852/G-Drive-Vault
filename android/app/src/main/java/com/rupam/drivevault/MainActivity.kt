@@ -21,6 +21,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var authManager: AuthManager
     private lateinit var driveRepository: DriveRepository
     private val incomingShareUris = mutableStateOf<List<Uri>?>(null)
+    private val openUpdaterTrigger = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +33,7 @@ class MainActivity : FragmentActivity() {
         authManager = AuthManager(this)
         driveRepository = DriveRepository(authManager)
 
-        handleShareIntent(intent)
+        handleIntent(intent)
 
         setContent {
             DriveVaultTheme {
@@ -41,7 +42,9 @@ class MainActivity : FragmentActivity() {
                         authManager = authManager,
                         repository = driveRepository,
                         incomingShareUris = incomingShareUris.value,
-                        onClearShareUris = { incomingShareUris.value = null }
+                        onClearShareUris = { incomingShareUris.value = null },
+                        openUpdaterOnLaunch = openUpdaterTrigger.value,
+                        onResetOpenUpdater = { openUpdaterTrigger.value = false }
                     )
                 }
             }
@@ -51,6 +54,14 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        if (intent.getBooleanExtra("EXTRA_OPEN_UPDATER", false)) {
+            openUpdaterTrigger.value = true
+        }
         handleShareIntent(intent)
     }
 

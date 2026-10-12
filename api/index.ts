@@ -1304,6 +1304,17 @@ app.get('/api/drive/download/:id', async (req, res) => {
   }
 });
 
+// App Version & Update metadata endpoint
+app.get('/api/app/version', (_req, res) => {
+  res.json({
+    status: 'success',
+    version: '1.0.2',
+    description: '• Fixed link access revocation (Restricted switch)\n• Real-time update notifications on phone\n• Granular notification settings control\n• Fast download & streaming improvements',
+    file_name: 'drive-vault-release.apk',
+    download_url: 'https://github.com/Rupam852/G-Drive-Vault/raw/main/drive-vault-release.apk',
+    web_url: 'https://github.com/Rupam852/G-Drive-Vault'
+  });
+});
 
 // Vercel: Static files are served from outputDirectory (dist) by Vercel CDN.
 // Express only handles /api/* and /auth/* routes.

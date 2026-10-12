@@ -29,6 +29,7 @@ import com.rupam.drivevault.FileTransferService
 import com.rupam.drivevault.auth.AuthManager
 import com.rupam.drivevault.transfer.TransferManager
 import com.rupam.drivevault.ui.theme.BluePrimary
+import com.rupam.drivevault.update.AppUpdateManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun NotificationSettingsScreen(
     var masterEnabled by remember { mutableStateOf(authManager.isMasterNotificationEnabled()) }
     var uploadEnabled by remember { mutableStateOf(authManager.isUploadNotificationEnabled()) }
     var downloadEnabled by remember { mutableStateOf(authManager.isDownloadNotificationEnabled()) }
+    var updateEnabled by remember { mutableStateOf(authManager.isUpdateNotificationEnabled()) }
 
     var hasSystemPermission by remember {
         mutableStateOf(
@@ -242,6 +244,81 @@ fun NotificationSettingsScreen(
                 }
             }
 
+            // ── App Updates Notifications ──
+            item {
+                Text(
+                    text = "App Update Alerts",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val updateAlpha = if (masterEnabled) 1f else 0.45f
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(updateAlpha)
+                ) {
+                    Column {
+                        SettingsSwitchRow(
+                            icon = Icons.Rounded.SystemUpdate,
+                            title = "New Version Notifications",
+                            subtitle = "Show notification on phone when a new Drive Vault update is released",
+                            checked = updateEnabled && masterEnabled,
+                            onCheckedChange = { isChecked ->
+                                if (masterEnabled) {
+                                    updateEnabled = isChecked
+                                    authManager.setUpdateNotificationEnabled(isChecked)
+                                    Toast.makeText(
+                                        context,
+                                        if (isChecked) "Update notifications enabled" else "Update notifications muted",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    Toast.makeText(context, "Enable master notifications first", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            // ── Test & Quick Actions ──
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            AppUpdateManager.sendTestNotification(context)
+                            Toast.makeText(context, "Test notification dispatched to status bar!", Toast.LENGTH_SHORT).show()
+                        },
+                        enabled = masterEnabled && updateEnabled,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BluePrimary.copy(alpha = 0.15f),
+                            contentColor = BluePrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.NotificationsActive,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Send Test Notification to Phone",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+
             // ── Info Note ──
             item {
                 Surface(
@@ -261,7 +338,7 @@ fun NotificationSettingsScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Status bar notifications keep background uploads and downloads running reliably at full speed even when your phone is locked.",
+                            text = "Status bar notifications alert you as soon as new features or bug fixes are available and keep background transfers uninterrupted.",
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant

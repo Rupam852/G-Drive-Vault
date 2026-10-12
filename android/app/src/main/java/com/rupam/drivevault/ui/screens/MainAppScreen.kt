@@ -58,6 +58,8 @@ fun MainAppScreen(
     repository: DriveRepository,
     incomingShareUris: List<Uri>? = null,
     onClearShareUris: () -> Unit = {},
+    openUpdaterOnLaunch: Boolean = false,
+    onResetOpenUpdater: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -190,6 +192,13 @@ fun MainAppScreen(
     var showNotificationSettingsScreen by remember { mutableStateOf(false) }
     var showAboutScreen by remember { mutableStateOf(false) }
     var showAppUpdaterScreen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(openUpdaterOnLaunch) {
+        if (openUpdaterOnLaunch) {
+            showAppUpdaterScreen = true
+            onResetOpenUpdater()
+        }
+    }
 
     // Automatic Android 13/14+ Notification Permission Request
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
