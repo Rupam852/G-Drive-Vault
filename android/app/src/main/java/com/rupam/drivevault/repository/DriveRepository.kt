@@ -498,14 +498,15 @@ class DriveRepository(private val authManager: AuthManager) {
     suspend fun setFilePublic(fileId: String, makePublic: Boolean): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val tokensHeader = authManager.getTokensHeader()
-            val role = if (makePublic) "reader" else null
+            val role = if (makePublic) "reader" else "restricted"
             val response = api.setAnyonePermission(fileId, tokensHeader, PermissionsAnyoneRequest(role))
             if (response.isSuccessful) {
                 folderCache.clear()
                 categoryCache.clear()
                 Result.success(makePublic)
             } else {
-                Result.failure(Exception("Failed to update access: ${response.code()}"))
+                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                Result.failure(Exception("Failed to update access: ${response.code()} ${errBody ?: ""}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
