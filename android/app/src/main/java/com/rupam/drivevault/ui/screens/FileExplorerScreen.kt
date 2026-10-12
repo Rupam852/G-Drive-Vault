@@ -276,39 +276,32 @@ fun FileExplorerScreen(
                             modifier = Modifier.weight(1f)
                         )
 
-                        // ── Live Transfers Manager Button (with reactive badge) ──
+                        // ── Live Transfers Manager Button (Clean Floating Icon & Badge) ──
                         val activeTransfersCount = TransferManager.activeCountState
 
-                        Box {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (activeTransfersCount > 0) BluePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                ),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onTransfersClick() }
+                        Box(
+                            modifier = Modifier.wrapContentSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            IconButton(
+                                onClick = onTransfersClick,
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.SwapVert,
-                                        contentDescription = "Transfers",
-                                        tint = if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Rounded.SwapVert,
+                                    contentDescription = "Transfers",
+                                    tint = if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(26.dp)
+                                )
                             }
 
-                            // Active Badge Indicator
+                            // Active Badge Indicator on top-right of icon
                             if (activeTransfersCount > 0) {
                                 Surface(
                                     shape = CircleShape,
                                     color = BluePrimary,
                                     modifier = Modifier
-                                        .size(18.dp)
+                                        .size(17.dp)
                                         .align(Alignment.TopEnd)
                                 ) {
                                     Box(
@@ -318,7 +311,7 @@ fun FileExplorerScreen(
                                         Text(
                                             text = if (activeTransfersCount > 9) "9+" else activeTransfersCount.toString(),
                                             color = Color.White,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center,
                                             style = TextStyle(
