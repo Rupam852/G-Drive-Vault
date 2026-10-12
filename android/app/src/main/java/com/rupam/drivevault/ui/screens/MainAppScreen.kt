@@ -597,6 +597,7 @@ fun MainAppScreen(
             file = activePreviewFile!!,
             streamUrl = previewStreamUrl,
             fallbackUrl = previewFallbackUrl,
+            isHighQuality = authManager.isHighQualityStreaming(),
             onClose = {
                 activePreviewFile = null
                 previewStreamUrl = null

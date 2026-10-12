@@ -31,6 +31,15 @@ class AuthManager(context: Context) {
         private const val KEY_TOKENS = "key_tokens"
         private const val KEY_IS_LOGGED_IN = "key_is_logged_in"
         private const val KEY_BIOMETRIC_ENABLED = "key_biometric_enabled"
+        private const val KEY_HIGH_QUALITY_STREAMING = "key_high_quality_streaming"
+    }
+
+    fun isHighQualityStreaming(): Boolean {
+        return prefs.getBoolean(KEY_HIGH_QUALITY_STREAMING, true)
+    }
+
+    fun setHighQualityStreaming(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HIGH_QUALITY_STREAMING, enabled).apply()
     }
 
     fun isBiometricEnabled(): Boolean {

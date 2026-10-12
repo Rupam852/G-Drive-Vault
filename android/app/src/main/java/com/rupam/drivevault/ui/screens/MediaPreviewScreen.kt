@@ -55,6 +55,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -98,6 +99,7 @@ fun MediaPreviewScreen(
     onDownload: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
+    isHighQuality: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -225,8 +227,18 @@ fun MediaPreviewScreen(
                 .setEnableDecoderFallback(true)
                 .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    if (isHighQuality) 50000 else 15000,
+                    if (isHighQuality) 50000 else 25000,
+                    if (isHighQuality) 2500 else 1500,
+                    if (isHighQuality) 5000 else 2500
+                )
+                .build()
+
             val player = ExoPlayer.Builder(context, renderersFactory)
                 .setAudioAttributes(audioAttributes, true)
+                .setLoadControl(loadControl)
                 .build()
                 .apply {
                 addListener(object : Player.Listener {

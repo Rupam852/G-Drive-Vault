@@ -46,7 +46,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     var biometricEnabled by remember { mutableStateOf(authManager?.isBiometricEnabled() ?: false) }
-    var highQualityStreaming by remember { mutableStateOf(true) }
+    var highQualityStreaming by remember { mutableStateOf(authManager?.isHighQualityStreaming() ?: true) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -352,10 +352,21 @@ fun SettingsScreen(
                     Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                     SettingsSwitchRow(
                         icon = Icons.Rounded.HighQuality,
-                        title = "High Quality Streaming",
-                        subtitle = "Stream original resolution without recompression",
+                        title = "Original Stream Resolution",
+                        subtitle = if (highQualityStreaming)
+                            "Streaming in full original bitstream & resolution without recompression"
+                        else
+                            "Data Saver: Limits background pre-buffering to save mobile data",
                         checked = highQualityStreaming,
-                        onCheckedChange = { highQualityStreaming = it }
+                        onCheckedChange = {
+                            highQualityStreaming = it
+                            authManager?.setHighQualityStreaming(it)
+                            Toast.makeText(
+                                context,
+                                if (it) "Original Resolution streaming active" else "Data Saver mode active",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     )
                     Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                     val isBatteryIgnored = TransferManager.isBatteryOptimizationIgnored(context)
