@@ -37,6 +37,7 @@ import com.rupam.drivevault.ui.components.TransfersBottomSheet
 import com.rupam.drivevault.ui.components.MoveFilesDialog
 import com.rupam.drivevault.ui.components.ShareToUploadDialog
 import com.rupam.drivevault.ui.components.ShareAccessDialog
+import com.rupam.drivevault.ui.components.SignOutLoadingDialog
 import com.rupam.drivevault.transfer.TransferManager
 import android.content.Context
 import android.content.Intent
@@ -147,6 +148,9 @@ fun MainAppScreen(
     // Dialog & Sheet States
     var showProfileDialog by remember { mutableStateOf(false) }
     var showStorageBreakdownSheet by remember { mutableStateOf(false) }
+    var isSigningOut by remember { mutableStateOf(false) }
+    var signOutDialogTitle by remember { mutableStateOf("Signing out...") }
+    var signOutDialogSubtitle by remember { mutableStateOf("Clearing secure session & cache...") }
 
     // Breadcrumbs folder navigation stack
     var breadcrumbs by remember {
@@ -409,20 +413,55 @@ fun MainAppScreen(
 
     fun triggerSwitchAccount() {
         showProfileDialog = false
-        GoogleAuthHelper.switchAccount(context) {
+        signOutDialogTitle = "Switching account..."
+        signOutDialogSubtitle = "Preparing Google account chooser..."
+        isSigningOut = true
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        scope.launch {
+            val startTime = System.currentTimeMillis()
+            var googleSignOutDone = false
+            GoogleAuthHelper.switchAccount(context) {
+                googleSignOutDone = true
+            }
+            while (!googleSignOutDone && (System.currentTimeMillis() - startTime) < 3000L) {
+                delay(50L)
+            }
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 800L) {
+                delay(800L - elapsed)
+            }
             authManager.clearSession()
             repository.clearCache()
             resetAppState()
+            isSigningOut = false
             googleSignInLauncher.launch(GoogleAuthHelper.getSignInIntent(context))
         }
     }
 
     fun triggerSignOut() {
         showProfileDialog = false
-        GoogleAuthHelper.signOut(context) {
+        signOutDialogTitle = "Signing out..."
+        signOutDialogSubtitle = "Clearing secure session & cache..."
+        isSigningOut = true
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        scope.launch {
+            val startTime = System.currentTimeMillis()
+            var googleSignOutDone = false
+            GoogleAuthHelper.signOut(context) {
+                googleSignOutDone = true
+            }
+            while (!googleSignOutDone && (System.currentTimeMillis() - startTime) < 3000L) {
+                delay(50L)
+            }
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 900L) {
+                delay(900L - elapsed)
+            }
             authManager.clearSession()
             repository.clearCache()
             resetAppState()
+            delay(200L)
+            isSigningOut = false
             Toast.makeText(context, "Signed out successfully", Toast.LENGTH_SHORT).show()
         }
     }
@@ -579,6 +618,13 @@ fun MainAppScreen(
             }
         )
     }
+
+    // ── SMOOTH SIGN OUT LOADING OVERLAY ──
+    SignOutLoadingDialog(
+        visible = isSigningOut,
+        title = signOutDialogTitle,
+        subtitle = signOutDialogSubtitle
+    )
 
     // ── NOT LOGGED IN: SHOW REAL GOOGLE LOGIN SCREEN ──
     if (!isLoggedIn) {
