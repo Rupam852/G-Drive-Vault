@@ -36,6 +36,7 @@ import com.rupam.drivevault.ui.components.FileDetailsDialog
 import com.rupam.drivevault.ui.components.TransfersBottomSheet
 import com.rupam.drivevault.ui.components.MoveFilesDialog
 import com.rupam.drivevault.ui.components.ShareToUploadDialog
+import com.rupam.drivevault.ui.components.ShareAccessDialog
 import com.rupam.drivevault.transfer.TransferManager
 import android.content.Context
 import android.content.Intent
@@ -176,6 +177,7 @@ fun MainAppScreen(
     var renameText by remember { mutableStateOf("") }
     var deleteTargetFile by remember { mutableStateOf<DriveFile?>(null) }
     var detailsTargetFile by remember { mutableStateOf<DriveFile?>(null) }
+    var shareTargetFile by remember { mutableStateOf<DriveFile?>(null) }
     var filesToMove by remember { mutableStateOf<List<DriveFile>?>(null) }
     var batchTrashTargets by remember { mutableStateOf<List<DriveFile>?>(null) }
     var showTransfersSheet by remember { mutableStateOf(false) }
@@ -1051,7 +1053,7 @@ fun MainAppScreen(
                 }
             },
             onShare = { target ->
-                triggerShare(target)
+                shareTargetFile = target
             },
             onMove = { target ->
                 filesToMove = listOf(target)
@@ -1220,6 +1222,18 @@ fun MainAppScreen(
         FileDetailsDialog(
             file = detailsTargetFile!!,
             onDismiss = { detailsTargetFile = null }
+        )
+    }
+
+    // ── Share & Access Dialog ──
+    if (shareTargetFile != null) {
+        ShareAccessDialog(
+            file = shareTargetFile!!,
+            repository = repository,
+            onDismiss = { shareTargetFile = null },
+            onShareToApps = { target ->
+                triggerShare(target)
+            }
         )
     }
 

@@ -470,6 +470,105 @@ class DriveRepository(private val authManager: AuthManager) {
         }
     }
 
+    suspend fun isFilePublic(fileId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val token = authManager.getTokens()?.accessToken ?: return@withContext Result.failure(Exception("Not authenticated"))
+            val request = okhttp3.Request.Builder()
+                .url("https://www.googleapis.com/drive/v3/files/$fileId/permissions?fields=permissions(id,type,role)")
+                .header("Authorization", "Bearer $token")
+                .get()
+                .build()
+            val response = NetworkClient.okHttpClient.newCall(request).execute()
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: ""
+                val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+                val perms = json.getAsJsonArray("permissions")
+                var isPublic = false
+                if (perms != null) {
+                    for (elem in perms) {
+                        val p = elem.asJsonObject
+                        if (p.has("type") && p.get("type").asString == "anyone") {
+                            isPublic = true
+                            break
+                        }
+                    }
+                }
+                Result.success(isPublic)
+            } else {
+                Result.failure(Exception("Permission check failed: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setFilePublic(fileId: String, makePublic: Boolean): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val token = authManager.getTokens()?.accessToken ?: return@withContext Result.failure(Exception("Not authenticated"))
+            if (makePublic) {
+                val jsonBody = """{"role":"reader","type":"anyone"}"""
+                val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
+                val request = okhttp3.Request.Builder()
+                    .url("https://www.googleapis.com/drive/v3/files/$fileId/permissions")
+                    .header("Authorization", "Bearer $token")
+                    .post(requestBody)
+                    .build()
+                val response = NetworkClient.okHttpClient.newCall(request).execute()
+                if (response.isSuccessful || response.code in 200..204) {
+                    folderCache.clear()
+                    categoryCache.clear()
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception("Failed to make public: ${response.code}"))
+                }
+            } else {
+                // Find permission ID with type == "anyone"
+                val getReq = okhttp3.Request.Builder()
+                    .url("https://www.googleapis.com/drive/v3/files/$fileId/permissions?fields=permissions(id,type)")
+                    .header("Authorization", "Bearer $token")
+                    .get()
+                    .build()
+                val getResp = NetworkClient.okHttpClient.newCall(getReq).execute()
+                if (getResp.isSuccessful) {
+                    val body = getResp.body?.string() ?: ""
+                    val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+                    val perms = json.getAsJsonArray("permissions")
+                    var permIdToDelete: String? = null
+                    if (perms != null) {
+                        for (elem in perms) {
+                            val p = elem.asJsonObject
+                            if (p.has("type") && p.get("type").asString == "anyone") {
+                                permIdToDelete = p.get("id").asString
+                                break
+                            }
+                        }
+                    }
+                    if (permIdToDelete != null) {
+                        val delReq = okhttp3.Request.Builder()
+                            .url("https://www.googleapis.com/drive/v3/files/$fileId/permissions/$permIdToDelete")
+                            .header("Authorization", "Bearer $token")
+                            .delete()
+                            .build()
+                        val delResp = NetworkClient.okHttpClient.newCall(delReq).execute()
+                        if (delResp.isSuccessful || delResp.code in 200..204) {
+                            folderCache.clear()
+                            categoryCache.clear()
+                            Result.success(false)
+                        } else {
+                            Result.failure(Exception("Failed to make restricted: ${delResp.code}"))
+                        }
+                    } else {
+                        Result.success(false)
+                    }
+                } else {
+                    Result.failure(Exception("Failed to inspect permissions: ${getResp.code}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun formatDate(isoString: String?): String {
         if (isoString.isNullOrBlank()) return ""
         return try {
