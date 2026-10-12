@@ -218,24 +218,6 @@ fun AppUpdaterScreen(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                     )
                                 }
-
-                                updateInfo?.fileSize?.let { sizeBytes ->
-                                    if (sizeBytes > 0) {
-                                        val mb = sizeBytes.toDouble() / (1024 * 1024)
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.surfaceVariant
-                                        ) {
-                                            Text(
-                                                text = String.format(Locale.US, "%.1f MB", mb),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
