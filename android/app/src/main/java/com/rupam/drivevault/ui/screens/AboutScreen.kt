@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import coil.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -135,8 +136,8 @@ fun AboutScreen(
                                 .background(Color(0xFF0B132B)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                painter = painterResource(id = R.mipmap.ic_launcher),
+                            AsyncImage(
+                                model = R.mipmap.ic_launcher,
                                 contentDescription = "DriveVault Logo",
                                 modifier = Modifier.size(54.dp)
                             )
@@ -174,7 +175,7 @@ fun AboutScreen(
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                             ) {
                                 Text(
-                                    text = "v1.5.3",
+                                    text = com.rupam.drivevault.update.AppUpdateManager.getInstalledVersion(context),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -359,7 +360,7 @@ fun AboutScreen(
                     appendLine(description)
                     appendLine()
                     appendLine("----------------------------------------")
-                    appendLine("App: DriveVault Android v1.5.3 (Build 40)")
+                    appendLine("App: DriveVault Android ${com.rupam.drivevault.update.AppUpdateManager.getInstalledVersion(context)}")
                     appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
                     appendLine("Android OS: Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
                     if (!userEmail.isNullOrBlank()) {

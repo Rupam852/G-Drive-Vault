@@ -1,17 +1,20 @@
 package com.rupam.drivevault.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -44,12 +47,14 @@ fun SettingsScreen(
     authManager: AuthManager? = null,
     onNotificationsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
+    onAppUpdateClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     var biometricEnabled by remember { mutableStateOf(authManager?.isBiometricEnabled() ?: false) }
     var highQualityStreaming by remember { mutableStateOf(authManager?.isHighQualityStreaming() ?: true) }
+    var autoCheckUpdateEnabled by remember { mutableStateOf(authManager?.isAutoCheckUpdateEnabled() ?: true) }
     var isBackgroundSpeedBoost by remember {
         mutableStateOf(
             (authManager?.isBackgroundSpeedBoostEnabled() == true) || TransferManager.isBatteryOptimizationIgnored(context)
@@ -475,6 +480,142 @@ fun SettingsScreen(
             }
         }
 
+        // ── APP UPDATES Group (Matches Screenshot 1) ──
+        item {
+            Text(
+                text = "APP UPDATES",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    // Row 1: Software Update
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onAppUpdateClick)
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(BluePrimary.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AutoAwesome,
+                                contentDescription = null,
+                                tint = BluePrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Software Update",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            val updateSubtitle = if (com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable) {
+                                "Update available: ${com.rupam.drivevault.update.AppUpdateManager.updateInfo?.version ?: "New"}"
+                            } else {
+                                "Installed: ${com.rupam.drivevault.update.AppUpdateManager.getInstalledVersion(context)}"
+                            }
+                            Text(
+                                text = updateSubtitle,
+                                fontSize = 12.sp,
+                                color = if (com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFEF4444))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    // Row 2: Auto-check on App Open
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.Notifications,
+                        title = "Auto-check on App Open",
+                        subtitle = "Check for updates when app launches",
+                        checked = autoCheckUpdateEnabled,
+                        onCheckedChange = { enable ->
+                            autoCheckUpdateEnabled = enable
+                            authManager?.setAutoCheckUpdateEnabled(enable)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Check for Updates Now Button
+            OutlinedButton(
+                onClick = {
+                    com.rupam.drivevault.update.AppUpdateManager.checkForUpdates(context, isManual = true) { hasUpdate ->
+                        if (hasUpdate) {
+                            onAppUpdateClick()
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                enabled = !com.rupam.drivevault.update.AppUpdateManager.isChecking,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                if (com.rupam.drivevault.update.AppUpdateManager.isChecking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = BluePrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Checking for Updates...", fontWeight = FontWeight.SemiBold)
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Sync,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Check for Updates Now", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
         // ── Sign Out Button ──
         item {
             Button(
@@ -504,7 +645,7 @@ fun SettingsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "DriveVault Native Android • v1.5.3 (Build 40)",
+                    text = "DriveVault Native Android • ${com.rupam.drivevault.update.AppUpdateManager.getInstalledVersion(context)} (Build 41)",
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)

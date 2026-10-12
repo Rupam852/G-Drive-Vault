@@ -1,8 +1,11 @@
 package com.rupam.drivevault.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,22 +77,47 @@ fun FileExplorerScreen(
     isLoading: Boolean = false,
     isRefreshing: Boolean = false,
     onRefresh: () -> Unit = {},
+    onBatchMove: (List<DriveFile>) -> Unit = {},
+    onBatchTrash: (List<DriveFile>) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
+    // Multi-Selection state
+    val selectedFiles = remember { mutableStateMapOf<String, DriveFile>() }
+    val isSelectionMode = selectedFiles.isNotEmpty()
+
+    // Reset selection when changing folders or categories
+    LaunchedEffect(currentFolderId) {
+        selectedFiles.clear()
+    }
+
+    // Intercept back gesture if in selection mode
+    BackHandler(enabled = isSelectionMode) {
+        selectedFiles.clear()
+    }
+
     // Intercept back gesture to clear search query if typing/filtering
-    BackHandler(enabled = searchQuery.isNotBlank()) {
+    BackHandler(enabled = !isSelectionMode && searchQuery.isNotBlank()) {
         searchQuery = ""
     }
 
     // Intercept physical and gesture back press to navigate to parent folder
-    BackHandler(enabled = breadcrumbs.size > 1 && searchQuery.isBlank()) {
+    BackHandler(enabled = !isSelectionMode && breadcrumbs.size > 1 && searchQuery.isBlank()) {
         val parent = breadcrumbs.dropLast(1).lastOrNull()
         if (parent != null) {
             onBreadcrumbClick(parent)
         }
     }
+
+    fun toggleSelection(file: DriveFile) {
+        if (selectedFiles.containsKey(file.id)) {
+            selectedFiles.remove(file.id)
+        } else {
+            selectedFiles[file.id] = file
+        }
+    }
+
     var selectedCategory by remember(initialCategory) { mutableStateOf(initialCategory) }
     var isGridView by remember { mutableStateOf(false) }
     var currentSort by remember { mutableStateOf(SortOption.DATE_DESC) }
@@ -148,98 +176,164 @@ fun FileExplorerScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // ── Top Header & Search Bar ──
+            // ── Top Header & Search Bar / Selection Header ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search files & folders...", fontSize = 14.sp) },
-                        leadingIcon = {
-                            Icon(Icons.Rounded.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Rounded.Close, contentDescription = "Clear")
-                                }
-                            }
-                        },
+                if (isSelectionMode) {
+                    Surface(
                         shape = RoundedCornerShape(18.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = BluePrimary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // ── Live Transfers Manager Button (with reactive badge) ──
-                    val activeTransfersCount = TransferManager.activeCountState
-
-                    Box {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (activeTransfersCount > 0) BluePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                            border = BorderStroke(
-                                1.dp,
-                                if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            ),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.4f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Row(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .clickable { onTransfersClick() }
+                                .fillMaxSize()
+                                .padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { selectedFiles.clear() },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Clear Selection",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = "${selectedFiles.size} selected",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            val allSelected = filteredFiles.isNotEmpty() && filteredFiles.all { selectedFiles.containsKey(it.id) }
+                            TextButton(
+                                onClick = {
+                                    if (allSelected) {
+                                        selectedFiles.clear()
+                                    } else {
+                                        filteredFiles.forEach { selectedFiles[it.id] = it }
+                                    }
+                                }
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.SwapVert,
-                                    contentDescription = "Transfers",
-                                    tint = if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(24.dp)
+                                    imageVector = if (allSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                                    contentDescription = null,
+                                    tint = BluePrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (allSelected) "Deselect All" else "Select All",
+                                    color = BluePrimary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search files & folders...", fontSize = 14.sp) },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Rounded.Close, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = BluePrimary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
 
-                        // Active Badge Indicator
-                        if (activeTransfersCount > 0) {
+                        // ── Live Transfers Manager Button (with reactive badge) ──
+                        val activeTransfersCount = TransferManager.activeCountState
+
+                        Box {
                             Surface(
                                 shape = CircleShape,
-                                color = BluePrimary,
+                                color = if (activeTransfersCount > 0) BluePrimary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                ),
                                 modifier = Modifier
-                                    .size(18.dp)
-                                    .align(Alignment.TopEnd)
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onTransfersClick() }
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Text(
-                                        text = if (activeTransfersCount > 9) "9+" else activeTransfersCount.toString(),
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        style = TextStyle(
-                                            platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
-                                                includeFontPadding = false
-                                            ),
-                                            lineHeight = 10.sp,
-                                            lineHeightStyle = LineHeightStyle(
-                                                alignment = LineHeightStyle.Alignment.Center,
-                                                trim = LineHeightStyle.Trim.Both
-                                            )
-                                        ),
-                                        modifier = Modifier.offset(y = (-0.5).dp)
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.SwapVert,
+                                        contentDescription = "Transfers",
+                                        tint = if (activeTransfersCount > 0) BluePrimary else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(24.dp)
                                     )
+                                }
+                            }
+
+                            // Active Badge Indicator
+                            if (activeTransfersCount > 0) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = BluePrimary,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .align(Alignment.TopEnd)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Text(
+                                            text = if (activeTransfersCount > 9) "9+" else activeTransfersCount.toString(),
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center,
+                                            style = TextStyle(
+                                                platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                                                    includeFontPadding = false
+                                                ),
+                                                lineHeight = 10.sp,
+                                                lineHeightStyle = LineHeightStyle(
+                                                    alignment = LineHeightStyle.Alignment.Center,
+                                                    trim = LineHeightStyle.Trim.Both
+                                                )
+                                            ),
+                                            modifier = Modifier.offset(y = (-0.5).dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -462,11 +556,21 @@ fun FileExplorerScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredFiles) { file ->
+                        items(filteredFiles, key = { it.id }) { file ->
+                            val isSelected = selectedFiles.containsKey(file.id)
                             GridFileCard(
                                 file = file,
+                                isSelected = isSelected,
+                                isInSelectionMode = isSelectionMode,
                                 onClick = {
-                                    if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                    if (isSelectionMode) {
+                                        toggleSelection(file)
+                                    } else {
+                                        if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                    }
+                                },
+                                onLongClick = {
+                                    toggleSelection(file)
                                 },
                                 onMenuClick = { onFileMenuClick(file) }
                             )
@@ -475,15 +579,30 @@ fun FileExplorerScreen(
                 } else {
                     LazyColumn(
                         state = listState,
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        contentPadding = PaddingValues(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = 12.dp,
+                            bottom = if (isSelectionMode) 88.dp else 12.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredFiles) { file ->
+                        items(filteredFiles, key = { it.id }) { file ->
+                            val isSelected = selectedFiles.containsKey(file.id)
                             FileItemRow(
                                 file = file,
+                                isSelected = isSelected,
+                                isInSelectionMode = isSelectionMode,
                                 onClick = {
-                                    if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                    if (isSelectionMode) {
+                                        toggleSelection(file)
+                                    } else {
+                                        if (file.type == FileCategoryType.FOLDER) onFolderClick(file) else onFileClick(file)
+                                    }
+                                },
+                                onLongClick = {
+                                    toggleSelection(file)
                                 },
                                 onMenuClick = { onFileMenuClick(file) }
                             )
@@ -493,13 +612,92 @@ fun FileExplorerScreen(
             }
         }
 
+        // Floating Bottom Multi-Selection Action Bar (Move & Trash)
+        AnimatedVisibility(
+            visible = isSelectionMode,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)),
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val targets = selectedFiles.values.toList()
+                            selectedFiles.clear()
+                            onBatchMove(targets)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BluePrimary,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DriveFileMove,
+                            contentDescription = "Move",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Move (${selectedFiles.size})",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            val targets = selectedFiles.values.toList()
+                            selectedFiles.clear()
+                            onBatchTrash(targets)
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DeleteOutline,
+                            contentDescription = "Trash",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Trash (${selectedFiles.size})",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Expandable Speed Dial FAB
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 16.dp)
         ) {
             ExpandableSpeedDialFab(
-                isVisible = isFabVisible,
+                isVisible = isFabVisible && !isSelectionMode,
                 onNewFolderClick = onNewFolderClick,
                 onUploadClick = onUploadClick,
                 onCameraClick = onCameraClick
@@ -508,20 +706,44 @@ fun FileExplorerScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GridFileCard(
     file: DriveFile,
     onClick: () -> Unit,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    isSelected: Boolean = false,
+    isInSelectionMode: Boolean = false,
+    onLongClick: (() -> Unit)? = null
 ) {
     val iconColor = getCategoryColor(file.type)
 
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    val borderColor = if (isSelected) {
+        BluePrimary
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+    }
+
+    val borderWidth = if (isSelected) 1.5.dp else 1.dp
+
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
-        modifier = Modifier.fillMaxWidth()
+        color = backgroundColor,
+        border = BorderStroke(borderWidth, borderColor),
+        shadowElevation = if (isSelected) 2.dp else 0.5.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -538,13 +760,25 @@ private fun GridFileCard(
                     tint = iconColor,
                     modifier = Modifier.size(32.dp)
                 )
-                IconButton(onClick = onMenuClick, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "Options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
+                if (isInSelectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onClick() },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = BluePrimary,
+                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        ),
+                        modifier = Modifier.size(28.dp)
                     )
+                } else {
+                    IconButton(onClick = onMenuClick, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 

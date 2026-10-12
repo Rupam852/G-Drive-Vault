@@ -297,6 +297,56 @@ class DriveRepository(private val authManager: AuthManager) {
         }
     }
 
+    suspend fun trashFiles(fileIds: List<String>): Result<Int> = withContext(Dispatchers.IO) {
+        var count = 0
+        val tokensHeader = authManager.getTokensHeader()
+        for (id in fileIds) {
+            try {
+                val res = api.trashFile(id, tokensHeader)
+                if (res.isSuccessful) count++
+            } catch (e: Exception) {
+                // continue with next
+            }
+        }
+        folderCache.clear()
+        categoryCache.clear()
+        Result.success(count)
+    }
+
+    suspend fun moveFile(fileId: String, newParentId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val tokensHeader = authManager.getTokensHeader()
+            val target = if (newParentId.startsWith("cat_")) "root" else newParentId
+            val res = api.moveFile(fileId, tokensHeader, com.rupam.drivevault.network.MoveFileRequest(target))
+            if (res.isSuccessful) {
+                folderCache.clear()
+                categoryCache.clear()
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Move failed: ${res.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun moveFiles(fileIds: List<String>, newParentId: String): Result<Int> = withContext(Dispatchers.IO) {
+        var count = 0
+        val tokensHeader = authManager.getTokensHeader()
+        val target = if (newParentId.startsWith("cat_")) "root" else newParentId
+        for (id in fileIds) {
+            try {
+                val res = api.moveFile(id, tokensHeader, com.rupam.drivevault.network.MoveFileRequest(target))
+                if (res.isSuccessful) count++
+            } catch (e: Exception) {
+                // continue with next
+            }
+        }
+        folderCache.clear()
+        categoryCache.clear()
+        Result.success(count)
+    }
+
     suspend fun getTrashFiles(): Result<List<DriveFile>> = withContext(Dispatchers.IO) {
         try {
             val tokensHeader = authManager.getTokensHeader()

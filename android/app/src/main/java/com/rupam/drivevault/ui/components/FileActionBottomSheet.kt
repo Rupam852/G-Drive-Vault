@@ -31,6 +31,7 @@ fun FileActionBottomSheet(
     onOpen: (DriveFile) -> Unit,
     onDownload: (DriveFile) -> Unit,
     onRename: (DriveFile) -> Unit,
+    onMove: (DriveFile) -> Unit = {},
     onToggleStar: (DriveFile) -> Unit,
     onShare: (DriveFile) -> Unit,
     onDelete: (DriveFile) -> Unit,
@@ -149,6 +150,17 @@ fun FileActionBottomSheet(
                     onClick = {
                         onDismiss()
                         onRename(file)
+                    }
+                )
+
+                // Move
+                ActionMenuItem(
+                    icon = Icons.Rounded.DriveFileMove,
+                    title = "Move",
+                    subtitle = "Change folder location",
+                    onClick = {
+                        onDismiss()
+                        onMove(file)
                     }
                 )
 

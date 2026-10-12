@@ -3,6 +3,7 @@ package com.rupam.drivevault.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +36,7 @@ enum class NavTab(val title: String, val icon: ImageVector) {
 fun BottomNavBar(
     selectedTab: NavTab,
     onTabSelected: (NavTab) -> Unit,
+    hasUpdateBadge: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -72,14 +75,25 @@ fun BottomNavBar(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = tab.title,
-                            tint = iconColor,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .scale(scale)
-                        )
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.title,
+                                tint = iconColor,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .scale(scale)
+                            )
+                            if (tab == NavTab.SETTINGS && hasUpdateBadge) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .offset(x = 2.dp, y = (-2).dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(androidx.compose.ui.graphics.Color(0xFFEF4444))
+                                )
+                            }
+                        }
                         if (isSelected) {
                             Text(
                                 text = tab.title,

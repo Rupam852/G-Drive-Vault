@@ -36,6 +36,7 @@ class AuthManager(context: Context) {
         private const val KEY_NOTIF_UPLOAD_ENABLED = "key_notif_upload_enabled"
         private const val KEY_NOTIF_DOWNLOAD_ENABLED = "key_notif_download_enabled"
         private const val KEY_BACKGROUND_SPEED_BOOST = "key_background_speed_boost"
+        private const val KEY_AUTO_CHECK_UPDATE = "key_auto_check_update"
     }
 
     fun isBackgroundSpeedBoostEnabled(): Boolean {
@@ -84,6 +85,14 @@ class AuthManager(context: Context) {
 
     fun setBiometricEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply()
+    }
+
+    fun isAutoCheckUpdateEnabled(): Boolean {
+        return prefs.getBoolean(KEY_AUTO_CHECK_UPDATE, true)
+    }
+
+    fun setAutoCheckUpdateEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_CHECK_UPDATE, enabled).apply()
     }
 
     fun saveSession(user: AuthUser, tokens: AuthTokens) {

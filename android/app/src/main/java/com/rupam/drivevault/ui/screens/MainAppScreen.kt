@@ -34,6 +34,7 @@ import com.rupam.drivevault.ui.components.CameraPhotoConfirmDialog
 import com.rupam.drivevault.ui.components.FileActionBottomSheet
 import com.rupam.drivevault.ui.components.FileDetailsDialog
 import com.rupam.drivevault.ui.components.TransfersBottomSheet
+import com.rupam.drivevault.ui.components.MoveFilesDialog
 import com.rupam.drivevault.ui.components.ShareToUploadDialog
 import com.rupam.drivevault.transfer.TransferManager
 import android.content.Context
@@ -175,11 +176,14 @@ fun MainAppScreen(
     var renameText by remember { mutableStateOf("") }
     var deleteTargetFile by remember { mutableStateOf<DriveFile?>(null) }
     var detailsTargetFile by remember { mutableStateOf<DriveFile?>(null) }
+    var filesToMove by remember { mutableStateOf<List<DriveFile>?>(null) }
+    var batchTrashTargets by remember { mutableStateOf<List<DriveFile>?>(null) }
     var showTransfersSheet by remember { mutableStateOf(false) }
     var showServerCheckScreen by remember { mutableStateOf(false) }
     var showTrashScreen by remember { mutableStateOf(false) }
     var showNotificationSettingsScreen by remember { mutableStateOf(false) }
     var showAboutScreen by remember { mutableStateOf(false) }
+    var showAppUpdaterScreen by remember { mutableStateOf(false) }
 
     // Automatic Android 13/14+ Notification Permission Request
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -195,6 +199,9 @@ fun MainAppScreen(
             if (!hasNotifPermission) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        if (authManager.isAutoCheckUpdateEnabled()) {
+            com.rupam.drivevault.update.AppUpdateManager.checkForUpdates(context, isManual = false)
         }
     }
 
@@ -438,13 +445,6 @@ fun MainAppScreen(
         // 2. Clear cache and perform targeted network refresh with storage stats
         repository.clearCache()
         refreshData(skipStats = false, forceNetwork = true, targetCategoryType = uploadedType)
-
-        // 3. Follow-up sync after 1.5 seconds to account for Google Drive search index latency
-        scope.launch {
-            kotlinx.coroutines.delay(1500)
-            repository.clearCache()
-            refreshData(skipStats = false, forceNetwork = true, targetCategoryType = uploadedType)
-        }
     }
 
     // File Picker Launcher with real-time transfer tracking
@@ -639,6 +639,14 @@ fun MainAppScreen(
         return
     }
 
+    // ── APP UPDATER SCREEN ──
+    if (showAppUpdaterScreen) {
+        AppUpdaterScreen(
+            onBack = { showAppUpdaterScreen = false }
+        )
+        return
+    }
+
     // ── PREVIEW OVERLAY ──
     if (activePreviewFile != null) {
         MediaPreviewScreen(
@@ -725,6 +733,7 @@ fun MainAppScreen(
         bottomBar = {
             BottomNavBar(
                 selectedTab = selectedTab,
+                hasUpdateBadge = com.rupam.drivevault.update.AppUpdateManager.isUpdateAvailable,
                 onTabSelected = { tab ->
                     if (tab == NavTab.FILES) {
                         filterCategory = null
@@ -787,14 +796,8 @@ fun MainAppScreen(
                         onStorageDetailsClick = {
                             showStorageBreakdownSheet = true
                             scope.launch {
-                                categorySyncState = CategorySyncState.SYNCING
                                 repository.getStorageStats(forceRefreshBreakdown = true).onSuccess {
                                     storageStats = it
-                                    categorySyncState = CategorySyncState.SYNCED
-                                    delay(900)
-                                    categorySyncState = CategorySyncState.IDLE
-                                }.onFailure {
-                                    categorySyncState = CategorySyncState.IDLE
                                 }
                             }
                         },
@@ -820,6 +823,12 @@ fun MainAppScreen(
                         },
                         onTransfersClick = { showTransfersSheet = true },
                         isLoading = isFilesLoading,
+                        onBatchMove = { targets ->
+                            filesToMove = targets
+                        },
+                        onBatchTrash = { targets ->
+                            batchTrashTargets = targets
+                        },
                         onFolderClick = { folder ->
                             filterCategory = null
                             breadcrumbs = breadcrumbs + FolderBreadcrumb(id = folder.id, name = folder.name)
@@ -919,6 +928,9 @@ fun MainAppScreen(
                         },
                         onAboutClick = {
                             showAboutScreen = true
+                        },
+                        onAppUpdateClick = {
+                            showAppUpdaterScreen = true
                         }
                     )
                 }
@@ -1037,6 +1049,9 @@ fun MainAppScreen(
             onShare = { target ->
                 triggerShare(target)
             },
+            onMove = { target ->
+                filesToMove = listOf(target)
+            },
             onDelete = { target ->
                 deleteTargetFile = target
             },
@@ -1124,6 +1139,72 @@ fun MainAppScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteTargetFile = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ── Move Files Dialog ──
+    if (filesToMove != null) {
+        MoveFilesDialog(
+            filesToMove = filesToMove!!,
+            repository = repository,
+            onDismiss = { filesToMove = null },
+            onMoveConfirmed = { targetFolderId ->
+                val toMove = filesToMove ?: return@MoveFilesDialog
+                filesToMove = null
+                scope.launch {
+                    val fileIds = toMove.map { it.id }
+                    val targetName = if (targetFolderId == null) "My Drive" else "destination"
+                    Toast.makeText(context, "Moving ${toMove.size} item(s)...", Toast.LENGTH_SHORT).show()
+                    val moveResult = repository.moveFiles(fileIds, targetFolderId ?: "root")
+                    moveResult.onSuccess { movedCount ->
+                        Toast.makeText(context, "Moved $movedCount item(s) to $targetName", Toast.LENGTH_SHORT).show()
+                        refreshData(forceNetwork = true)
+                    }.onFailure {
+                        Toast.makeText(context, "Move failed: ${it.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
+    }
+
+    // ── Batch Trash Confirmation Dialog ──
+    if (batchTrashTargets != null) {
+        val targets = batchTrashTargets!!
+        AlertDialog(
+            onDismissRequest = { batchTrashTargets = null },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+            title = {
+                Text("Move ${targets.size} item(s) to Trash?", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            },
+            text = {
+                Text("Selected items will be moved to Google Drive Trash. You can restore them from Trash anytime.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val toTrash = batchTrashTargets ?: return@Button
+                        batchTrashTargets = null
+                        scope.launch {
+                            Toast.makeText(context, "Trashing ${toTrash.size} item(s)...", Toast.LENGTH_SHORT).show()
+                            val result = repository.trashFiles(toTrash.map { it.id })
+                            result.onSuccess { count ->
+                                Toast.makeText(context, "Moved $count item(s) to Trash", Toast.LENGTH_SHORT).show()
+                                refreshData(forceNetwork = true)
+                            }.onFailure {
+                                Toast.makeText(context, "Trash failed: ${it.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Move to Trash")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { batchTrashTargets = null }) {
                     Text("Cancel")
                 }
             }
