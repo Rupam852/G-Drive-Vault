@@ -103,6 +103,21 @@ class AuthManager(context: Context) {
             .apply()
     }
 
+    fun updateTokens(newTokens: AuthTokens) {
+        val current = getTokens()
+        val merged = if (current != null) {
+            current.copy(
+                accessToken = if (newTokens.accessToken.isNotBlank()) newTokens.accessToken else current.accessToken,
+                refreshToken = if (!newTokens.refreshToken.isNullOrBlank()) newTokens.refreshToken else current.refreshToken,
+                expiryDate = if (newTokens.expiryDate > 0) newTokens.expiryDate else current.expiryDate
+            )
+        } else {
+            newTokens
+        }
+        prefs.edit().putString(KEY_TOKENS, gson.toJson(merged)).apply()
+    }
+
+
     fun getUser(): AuthUser? {
         val json = prefs.getString(KEY_USER, null) ?: return null
         return try {

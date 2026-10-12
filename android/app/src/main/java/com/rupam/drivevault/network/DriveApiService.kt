@@ -98,9 +98,22 @@ data class NativeAuthResponse(
     val tokens: com.rupam.drivevault.auth.AuthTokens
 )
 
+data class PermissionDto(
+    val id: String?,
+    val role: String?,
+    val type: String?,
+    val emailAddress: String? = null,
+    val displayName: String? = null
+)
+
+data class PermissionsAnyoneRequest(
+    val role: String?
+)
+
 // ── RETROFIT SERVICE INTERFACE ──
 
 interface DriveApiService {
+
 
     @POST("api/auth/native")
     suspend fun exchangeNativeAuth(
@@ -193,18 +206,49 @@ interface DriveApiService {
         @Part("parentId") parentId: RequestBody?,
         @Part("relativePath") relativePath: RequestBody?
     ): Response<DriveFileDto>
+
+    @GET("api/drive/files/{id}/permissions")
+    suspend fun getPermissions(
+        @Path("id") id: String,
+        @Header("x-goog-tokens") tokensHeader: String?
+    ): Response<List<PermissionDto>>
+
+    @POST("api/drive/files/{id}/permissions-anyone")
+    suspend fun setAnyonePermission(
+        @Path("id") id: String,
+        @Header("x-goog-tokens") tokensHeader: String?,
+        @Body request: PermissionsAnyoneRequest
+    ): Response<com.google.gson.JsonElement>
 }
+
 
 // ── RETROFIT CLIENT BUILDER ──
 
 object NetworkClient {
     const val BASE_URL = "https://g-drive-vault.onrender.com/"
 
+    var onTokenRefreshed: ((com.rupam.drivevault.auth.AuthTokens) -> Unit)? = null
+
     val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.HEADERS
         }
+        val tokenRefreshInterceptor = okhttp3.Interceptor { chain ->
+            val response = chain.proceed(chain.request())
+            val refreshedJson = response.header("x-refreshed-tokens")
+            if (!refreshedJson.isNullOrBlank()) {
+                try {
+                    val tokens = com.google.gson.Gson().fromJson(refreshedJson, com.rupam.drivevault.auth.AuthTokens::class.java)
+                    if (tokens != null) {
+                        onTokenRefreshed?.invoke(tokens)
+                    }
+                } catch (_: Exception) {}
+            }
+            response
+        }
+
         OkHttpClient.Builder()
+            .addInterceptor(tokenRefreshInterceptor)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
