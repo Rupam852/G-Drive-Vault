@@ -119,12 +119,22 @@ fun FileActionBottomSheet(
                     }
                 )
 
-                // Download (Only for files)
+                // Download (Direct for files, ZIP archive for folders)
                 if (!isFolder) {
                     ActionMenuItem(
                         icon = Icons.Rounded.Download,
                         title = "Download to Device",
                         subtitle = "High-speed edge download",
+                        onClick = {
+                            onDismiss()
+                            onDownload(file)
+                        }
+                    )
+                } else {
+                    ActionMenuItem(
+                        icon = Icons.Rounded.FolderZip,
+                        title = "Download as ZIP",
+                        subtitle = "Download all files as .zip archive",
                         onClick = {
                             onDismiss()
                             onDownload(file)

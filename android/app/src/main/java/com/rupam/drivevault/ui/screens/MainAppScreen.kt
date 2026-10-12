@@ -232,10 +232,14 @@ fun MainAppScreen(
     fun triggerDownload(file: DriveFile) {
         showTransfersSheet = true
         scope.launch {
-            Toast.makeText(context, "Starting download for ${file.name}...", Toast.LENGTH_SHORT).show()
+            val isFolder = file.type == FileCategoryType.FOLDER
+            val displayName = if (isFolder && !file.name.endsWith(".zip", ignoreCase = true)) "${file.name}.zip" else file.name
+            Toast.makeText(context, if (isFolder) "Preparing ZIP download for ${file.name}..." else "Starting download for ${file.name}...", Toast.LENGTH_SHORT).show()
             repository.getDownloadTicket().onSuccess { ticket ->
-                val streamUrl = repository.getStreamUrl(file.id, ticket)
-                val fallbackUrl = repository.getRenderDownloadUrl(file.id, ticket)
+                val renderUrl = repository.getRenderDownloadUrl(file.id, ticket)
+                // For folders, always stream from backend renderUrl since it has the live ZIP compression engine
+                val streamUrl = if (isFolder) renderUrl else repository.getStreamUrl(file.id, ticket)
+                val fallbackUrl = renderUrl
                 TransferManager.startDownload(
                     context = context,
                     file = file,
@@ -243,21 +247,25 @@ fun MainAppScreen(
                     fallbackUrl = fallbackUrl,
                     onComplete = { success, err ->
                         if (success) {
-                            Toast.makeText(context, "📥 Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "📥 Downloaded $displayName to Downloads!", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
                         }
                     }
                 )
             }.onFailure {
-                val streamUrl = repository.getFastStreamUrl(file.id)
+                val streamUrl = if (isFolder) {
+                    "https://g-drive-vault.onrender.com/api/drive/download/${file.id}"
+                } else {
+                    repository.getFastStreamUrl(file.id)
+                }
                 TransferManager.startDownload(
                     context = context,
                     file = file,
                     streamUrl = streamUrl,
                     onComplete = { success, err ->
                         if (success) {
-                            Toast.makeText(context, "📥 Downloaded ${file.name} to Downloads!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "📥 Downloaded $displayName to Downloads!", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(context, "Download failed: $err", Toast.LENGTH_LONG).show()
                         }
@@ -842,12 +850,29 @@ fun MainAppScreen(
                             scope.launch { pagerState.animateScrollToPage(1) }
                         },
                         onFileClick = { file ->
-                            activePreviewFile = file
-                            previewStreamUrl = repository.getFastStreamUrl(file.id)
-                            scope.launch {
-                                repository.getDownloadTicket().onSuccess { ticket ->
-                                    previewStreamUrl = repository.getStreamUrl(file.id, ticket)
-                                    previewFallbackUrl = repository.getRenderDownloadUrl(file.id, ticket) + "&inline=true"
+                            if (file.type == FileCategoryType.FOLDER) {
+                                filterCategory = null
+                                breadcrumbs = breadcrumbs + FolderBreadcrumb(id = file.id, name = file.name)
+                                val cached = repository.getCachedFiles(file.id)
+                                if (cached != null) currentFiles = cached else currentFiles = emptyList()
+                                scope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                    isFilesLoading = true
+                                    repository.getFiles(file.id).onSuccess {
+                                        currentFiles = it
+                                        isFilesLoading = false
+                                    }.onFailure {
+                                        isFilesLoading = false
+                                    }
+                                }
+                            } else {
+                                activePreviewFile = file
+                                previewStreamUrl = repository.getFastStreamUrl(file.id)
+                                scope.launch {
+                                    repository.getDownloadTicket().onSuccess { ticket ->
+                                        previewStreamUrl = repository.getStreamUrl(file.id, ticket)
+                                        previewFallbackUrl = repository.getRenderDownloadUrl(file.id, ticket) + "&inline=true"
+                                    }
                                 }
                             }
                         },

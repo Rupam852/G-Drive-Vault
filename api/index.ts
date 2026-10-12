@@ -1182,12 +1182,19 @@ app.get('/api/drive/download/:id', async (req, res) => {
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${file.data.name}.zip"`);
 
-      const archive = archiver('zip', { zlib: { level: 9 } });
+      const archive = archiver('zip', { zlib: { level: 6 } });
+      archive.on('error', (err) => {
+        console.error('ZIP archive stream error:', err);
+        if (!res.headersSent) res.status(500).end();
+      });
       archive.pipe(res);
 
       async function addFolderToZip(folderId: string, currentPath: string) {
         const listRes = await drive.files.list({
           q: `'${folderId}' in parents and trashed = false`,
+          pageSize: 1000,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
           fields: 'files(id, name, mimeType)',
         });
 

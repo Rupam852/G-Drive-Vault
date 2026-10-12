@@ -358,9 +358,16 @@ object TransferManager {
     ): String {
         val transferId = UUID.randomUUID().toString()
 
+        val isFolder = file.type == com.rupam.drivevault.model.FileCategoryType.FOLDER
+        val resolvedFileName = if (isFolder && !file.name.endsWith(".zip", ignoreCase = true)) {
+            "${file.name}.zip"
+        } else {
+            file.name
+        }
+
         val item = TransferItem(
             id = transferId,
-            fileName = file.name,
+            fileName = resolvedFileName,
             type = TransferType.DOWNLOAD,
             totalBytes = file.sizeBytes,
             status = TransferStatus.IN_PROGRESS
@@ -404,11 +411,11 @@ object TransferManager {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 if (!downloadsDir.exists()) downloadsDir.mkdirs()
 
-                var targetFile = File(downloadsDir, file.name)
+                var targetFile = File(downloadsDir, resolvedFileName)
                 var count = 1
                 while (targetFile.exists()) {
-                    val baseName = file.name.substringBeforeLast(".")
-                    val extension = if (file.name.contains(".")) ".${file.name.substringAfterLast(".")}" else ""
+                    val baseName = resolvedFileName.substringBeforeLast(".")
+                    val extension = if (resolvedFileName.contains(".")) ".${resolvedFileName.substringAfterLast(".")}" else ""
                     targetFile = File(downloadsDir, "$baseName ($count)$extension")
                     count++
                 }
@@ -450,7 +457,7 @@ object TransferManager {
                                 if (FileTransferService.isNotificationAllowed(context, false)) {
                                     val percent = if (totalLength > 0) ((totalDownloaded * 100) / totalLength).toInt() else 0
                                     val speedText = "${formatSpeed(speed)} • $percent%"
-                                    FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText, false)
+                                    FileTransferService.updateProgress(context, "Downloading: $resolvedFileName", percent, speedText, false)
                                 }
 
                                 lastTime = now
@@ -462,10 +469,11 @@ object TransferManager {
                 }
 
                 // Notify Android Media Scanner so file immediately shows in Gallery / Files
+                val mediaMime = if (isFolder) "application/zip" else (file.mimeType ?: "*/*")
                 MediaScannerConnection.scanFile(
                     context,
                     arrayOf(targetFile.absolutePath),
-                    arrayOf(file.mimeType ?: "*/*"),
+                    arrayOf(mediaMime),
                     null
                 )
 
@@ -478,7 +486,7 @@ object TransferManager {
                     )
                 }
                 if (FileTransferService.isNotificationAllowed(context, false)) {
-                    FileTransferService.showCompletion(context, "Download Complete", "${file.name} saved to Downloads", false)
+                    FileTransferService.showCompletion(context, "Download Complete", "$resolvedFileName saved to Downloads", false)
                 }
                 withContext(Dispatchers.Main) { onComplete(true, null) }
             } catch (e: CancellationException) {
