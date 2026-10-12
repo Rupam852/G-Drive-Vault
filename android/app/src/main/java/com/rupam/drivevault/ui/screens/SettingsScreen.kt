@@ -28,6 +28,7 @@ import com.rupam.drivevault.ui.components.StorageGauge
 import com.rupam.drivevault.ui.theme.BluePrimary
 import com.rupam.drivevault.ui.theme.ThemeManager
 import com.rupam.drivevault.ui.theme.AppThemeMode
+import com.rupam.drivevault.transfer.TransferManager
 
 @Composable
 fun SettingsScreen(
@@ -355,6 +356,20 @@ fun SettingsScreen(
                         subtitle = "Stream original resolution without recompression",
                         checked = highQualityStreaming,
                         onCheckedChange = { highQualityStreaming = it }
+                    )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    val isBatteryIgnored = TransferManager.isBatteryOptimizationIgnored(context)
+                    SettingsSwitchRow(
+                        icon = Icons.Rounded.BatteryChargingFull,
+                        title = "Background Transfer Speed",
+                        subtitle = if (isBatteryIgnored)
+                            "Unrestricted • Sleep mode won't slow down transfers"
+                        else
+                            "Optimized by Android • Tap to prevent throttling when screen is off",
+                        checked = isBatteryIgnored,
+                        onCheckedChange = {
+                            TransferManager.requestIgnoreBatteryOptimization(context)
+                        }
                     )
                 }
             }

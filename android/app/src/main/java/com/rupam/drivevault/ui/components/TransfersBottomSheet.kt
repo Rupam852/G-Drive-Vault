@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
 import com.rupam.drivevault.transfer.TransferItem
 import com.rupam.drivevault.transfer.TransferManager
 import com.rupam.drivevault.transfer.TransferStatus
@@ -128,7 +130,47 @@ fun TransfersBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val context = LocalContext.current
+            val isBatteryIgnored = TransferManager.isBatteryOptimizationIgnored(context)
+            if (TransferManager.activeCount > 0 && !isBatteryIgnored) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = BluePrimary.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.3f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { TransferManager.requestIgnoreBatteryOptimization(context) }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.BatteryChargingFull,
+                            contentDescription = null,
+                            tint = BluePrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Tap to prevent phone sleep mode from slowing down background speed",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BluePrimary,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "Enable",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BluePrimary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // ── Transfer List or Empty State ──
             if (filteredList.isEmpty()) {

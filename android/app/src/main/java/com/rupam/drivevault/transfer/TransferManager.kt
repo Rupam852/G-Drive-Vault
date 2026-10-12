@@ -1,14 +1,18 @@
 package com.rupam.drivevault.transfer
 
 import android.content.Context
+import android.content.Intent
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.OpenableColumns
+import android.provider.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
+import com.rupam.drivevault.FileTransferService
 import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.network.NetworkClient
 import com.rupam.drivevault.repository.DriveRepository
@@ -93,8 +97,13 @@ object TransferManager {
     val activeCount: Int
         get() = activeCountState
 
+    private var appContext: Context? = null
+
     private fun recomputeActiveCount() {
         activeCountState = transfers.count { it.status == TransferStatus.IN_PROGRESS || it.status == TransferStatus.QUEUED }
+        if (activeCountState == 0) {
+            appContext?.let { FileTransferService.stop(it) }
+        }
     }
 
     val totalActiveSpeedBps: Long
@@ -103,13 +112,39 @@ object TransferManager {
     val formattedActiveSpeed: String
         get() {
             val total = totalActiveSpeedBps
-            return when {
-                total >= 1024 * 1024 -> String.format(Locale.US, "%.1f MB/s", total.toDouble() / (1024 * 1024))
-                total >= 1024 -> String.format(Locale.US, "%.0f KB/s", total.toDouble() / 1024)
-                total > 0 -> "$total B/s"
-                else -> "0 B/s"
-            }
+            return formatSpeed(total)
         }
+
+    fun formatSpeed(bytesPerSec: Long): String {
+        return when {
+            bytesPerSec >= 1024 * 1024 -> String.format(Locale.US, "%.1f MB/s", bytesPerSec.toDouble() / (1024 * 1024))
+            bytesPerSec >= 1024 -> String.format(Locale.US, "%.0f KB/s", bytesPerSec.toDouble() / 1024)
+            bytesPerSec > 0 -> "$bytesPerSec B/s"
+            else -> "0 B/s"
+        }
+    }
+
+    fun isBatteryOptimizationIgnored(context: Context): Boolean {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        return pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+    }
+
+    fun requestIgnoreBatteryOptimization(context: Context) {
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallbackIntent)
+            } catch (ignored: Exception) {}
+        }
+    }
 
     /**
      * Start live streaming upload to Drive with byte progress & speed calculation
@@ -153,6 +188,8 @@ object TransferManager {
             status = TransferStatus.IN_PROGRESS
         )
         transfers.add(0, item)
+        appContext = context.applicationContext
+        FileTransferService.start(context)
         recomputeActiveCount()
 
         val job = scope.launch {
@@ -197,6 +234,11 @@ object TransferManager {
                                             speedBps = speed
                                         )
                                     }
+
+                                    val percent = if (fileSize > 0) ((totalWritten * 100) / fileSize).toInt() else 0
+                                    val speedText = "${formatSpeed(speed)} • $percent%"
+                                    FileTransferService.updateProgress(context, "Uploading: $fileName", percent, speedText)
+
                                     lastTime = now
                                     lastBytes = totalWritten
                                 }
@@ -293,6 +335,8 @@ object TransferManager {
             status = TransferStatus.IN_PROGRESS
         )
         transfers.add(0, item)
+        appContext = context.applicationContext
+        FileTransferService.start(context)
         recomputeActiveCount()
 
         val job = scope.launch {
@@ -362,6 +406,11 @@ object TransferManager {
                                         speedBps = speed
                                     )
                                 }
+
+                                val percent = if (totalLength > 0) ((totalDownloaded * 100) / totalLength).toInt() else 0
+                                val speedText = "${formatSpeed(speed)} • $percent%"
+                                FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText)
+
                                 lastTime = now
                                 lastBytes = totalDownloaded
                             }
