@@ -60,6 +60,8 @@ fun MainAppScreen(
     onClearShareUris: () -> Unit = {},
     openUpdaterOnLaunch: Boolean = false,
     onResetOpenUpdater: () -> Unit = {},
+    openTransfersOnLaunch: Boolean = false,
+    onResetOpenTransfers: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -197,6 +199,13 @@ fun MainAppScreen(
         if (openUpdaterOnLaunch) {
             showAppUpdaterScreen = true
             onResetOpenUpdater()
+        }
+    }
+
+    LaunchedEffect(openTransfersOnLaunch) {
+        if (openTransfersOnLaunch) {
+            showTransfersSheet = true
+            onResetOpenTransfers()
         }
     }
 

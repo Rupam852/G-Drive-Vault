@@ -87,6 +87,7 @@ public class FileTransferService extends Service {
 
             Intent notificationIntent = new Intent(context, MainActivity.class);
             notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            notificationIntent.putExtra("EXTRA_OPEN_TRANSFERS", true);
             PendingIntent pendingIntent = PendingIntent.getActivity(
                     context,
                     (int) System.currentTimeMillis(),
@@ -224,6 +225,7 @@ public class FileTransferService extends Service {
     private Notification buildNotification(String title, int progress, String speedText, boolean isUpload) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        notificationIntent.putExtra("EXTRA_OPEN_TRANSFERS", true);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this,

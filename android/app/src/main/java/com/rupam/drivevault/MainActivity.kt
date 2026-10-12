@@ -22,6 +22,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var driveRepository: DriveRepository
     private val incomingShareUris = mutableStateOf<List<Uri>?>(null)
     private val openUpdaterTrigger = mutableStateOf(false)
+    private val openTransfersTrigger = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +45,9 @@ class MainActivity : FragmentActivity() {
                         incomingShareUris = incomingShareUris.value,
                         onClearShareUris = { incomingShareUris.value = null },
                         openUpdaterOnLaunch = openUpdaterTrigger.value,
-                        onResetOpenUpdater = { openUpdaterTrigger.value = false }
+                        onResetOpenUpdater = { openUpdaterTrigger.value = false },
+                        openTransfersOnLaunch = openTransfersTrigger.value,
+                        onResetOpenTransfers = { openTransfersTrigger.value = false }
                     )
                 }
             }
@@ -61,6 +64,9 @@ class MainActivity : FragmentActivity() {
         if (intent == null) return
         if (intent.getBooleanExtra("EXTRA_OPEN_UPDATER", false)) {
             openUpdaterTrigger.value = true
+        }
+        if (intent.getBooleanExtra("EXTRA_OPEN_TRANSFERS", false)) {
+            openTransfersTrigger.value = true
         }
         handleShareIntent(intent)
     }
