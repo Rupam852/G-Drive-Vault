@@ -44,6 +44,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -52,6 +55,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -217,8 +221,14 @@ fun MediaPreviewScreen(
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build()
 
-            val player = ExoPlayer.Builder(context).build().apply {
-                setAudioAttributes(audioAttributes, true)
+            val renderersFactory = DefaultRenderersFactory(context)
+                .setEnableDecoderFallback(true)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+
+            val player = ExoPlayer.Builder(context, renderersFactory)
+                .setAudioAttributes(audioAttributes, true)
+                .build()
+                .apply {
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         isBuffering = playbackState == Player.STATE_BUFFERING
@@ -238,7 +248,18 @@ fun MediaPreviewScreen(
                             triedFallback = true
                             activeUrl = fallbackUrl
                         } else {
-                            playerError = error.message ?: "Failed to stream media"
+                            val rawMsg = error.message ?: ""
+                            val friendlyMsg = when {
+                                rawMsg.contains("NO_EXCEEDS_CAPABILITIES", ignoreCase = true) ||
+                                (rawMsg.contains("MediaCodecVideoRenderer", ignoreCase = true) && rawMsg.contains("hevc", ignoreCase = true)) -> {
+                                    "Your device's hardware chip does not support 10-Bit HEVC (H.265) video decoding. You can play it directly using an external player (VLC / MX Player) or download it."
+                                }
+                                rawMsg.contains("MediaCodec", ignoreCase = true) -> {
+                                    "Your device cannot decode this video codec natively. Open it in an external player (VLC / MX Player) or download it."
+                                }
+                                else -> rawMsg.ifBlank { "Failed to stream media" }
+                            }
+                            playerError = friendlyMsg
                             isBuffering = false
                         }
                     }
@@ -616,14 +637,101 @@ fun MediaPreviewScreen(
                                 verticalArrangement = Arrangement.Center,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(24.dp)
+                                    .padding(horizontal = 28.dp, vertical = 24.dp)
                             ) {
-                                Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(playerError ?: "Cannot stream file", color = Color.White, textAlign = TextAlign.Center)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = onDownload) {
-                                    Text("Download to Play Locally")
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
+                                    modifier = Modifier.size(68.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ErrorOutline,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(18.dp))
+                                Text(
+                                    text = "Codec Not Supported by Phone Hardware",
+                                    color = Color.White,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = playerError ?: "Cannot stream file",
+                                    color = Color.White.copy(alpha = 0.75f),
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                // Play in External Player Button (VLC / MX Player)
+                                Button(
+                                    onClick = {
+                                        try {
+                                            val streamUri = Uri.parse(activeUrl)
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(streamUri, "video/*")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(Intent.createChooser(intent, "Play with..."))
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "No external video player found (install VLC or MX Player)", Toast.LENGTH_LONG).show()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = BluePrimary,
+                                        contentColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.9f)
+                                        .height(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Play in VLC / MX Player",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                // Download Locally Button
+                                OutlinedButton(
+                                    onClick = onDownload,
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.9f)
+                                        .height(46.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Download,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Download to Play Locally",
+                                        color = Color.White,
+                                        fontSize = 13.sp
+                                    )
                                 }
                             }
                         } else if (exoPlayer != null) {
