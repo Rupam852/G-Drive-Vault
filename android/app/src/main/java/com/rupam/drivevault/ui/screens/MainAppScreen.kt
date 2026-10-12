@@ -172,6 +172,24 @@ fun MainAppScreen(
     var showTransfersSheet by remember { mutableStateOf(false) }
     var showServerCheckScreen by remember { mutableStateOf(false) }
     var showTrashScreen by remember { mutableStateOf(false) }
+    var showNotificationSettingsScreen by remember { mutableStateOf(false) }
+
+    // Automatic Android 13/14+ Notification Permission Request
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied */ }
+
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val hasNotifPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasNotifPermission) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
 
     fun triggerDownload(file: DriveFile) {
         scope.launch {
@@ -579,6 +597,15 @@ fun MainAppScreen(
         return
     }
 
+    // ── NOTIFICATION SETTINGS SCREEN ──
+    if (showNotificationSettingsScreen) {
+        NotificationSettingsScreen(
+            authManager = authManager,
+            onBack = { showNotificationSettingsScreen = false }
+        )
+        return
+    }
+
     // ── TRASH / RECYCLE BIN SCREEN ──
     if (showTrashScreen) {
         TrashScreen(
@@ -852,6 +879,9 @@ fun MainAppScreen(
                         },
                         onTrashClick = {
                             showTrashScreen = true
+                        },
+                        onNotificationsClick = {
+                            showNotificationSettingsScreen = true
                         }
                     )
                 }

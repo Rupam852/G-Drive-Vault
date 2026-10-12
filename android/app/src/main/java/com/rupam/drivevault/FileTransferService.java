@@ -8,12 +8,15 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import com.rupam.drivevault.auth.AuthManager;
 
 public class FileTransferService extends Service {
     public static final String ACTION_START = "com.rupam.drivevault.action.START_TRANSFER";
@@ -23,6 +26,7 @@ public class FileTransferService extends Service {
     public static final String EXTRA_TITLE = "extra_title";
     public static final String EXTRA_PROGRESS = "extra_progress";
     public static final String EXTRA_SPEED = "extra_speed";
+    public static final String EXTRA_IS_UPLOAD = "extra_is_upload";
 
     private static final String CHANNEL_ID = "drive_vault_transfers";
     private static final int NOTIFICATION_ID = 9999;
@@ -39,14 +43,56 @@ public class FileTransferService extends Service {
         } catch (Exception ignored) {}
     }
 
-    public static void updateProgress(Context context, String title, int progress, String speedText) {
+    public static void updateProgress(Context context, String title, int progress, String speedText, boolean isUpload) {
         try {
             Intent intent = new Intent(context, FileTransferService.class);
             intent.setAction(ACTION_UPDATE);
             intent.putExtra(EXTRA_TITLE, title);
             intent.putExtra(EXTRA_PROGRESS, progress);
             intent.putExtra(EXTRA_SPEED, speedText);
+            intent.putExtra(EXTRA_IS_UPLOAD, isUpload);
             ContextCompat.startForegroundService(context, intent);
+        } catch (Exception ignored) {}
+    }
+
+    public static void showCompletion(Context context, String title, String message, boolean isUpload) {
+        try {
+            AuthManager authManager = new AuthManager(context);
+            if (!authManager.isMasterNotificationEnabled()) return;
+            if (isUpload && !authManager.isUploadNotificationEnabled()) return;
+            if (!isUpload && !authManager.isDownloadNotificationEnabled()) return;
+
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            Intent notificationIntent = new Intent(context, MainActivity.class);
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                    context,
+                    (int) System.currentTimeMillis(),
+                    notificationIntent,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Bitmap largeIcon = null;
+            try {
+                largeIcon = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
+            } catch (Exception ignored) {}
+
+            int iconRes = isUpload ? R.drawable.ic_upload_notification : R.drawable.ic_download_notification;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setContentTitle(title)
+                    .setContentText(message)
+                    .setSmallIcon(iconRes)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+            if (largeIcon != null) {
+                builder.setLargeIcon(largeIcon);
+            }
+
+            nm.notify((int) (System.currentTimeMillis() % 100000), builder.build());
         } catch (Exception ignored) {}
     }
 
@@ -78,6 +124,7 @@ public class FileTransferService extends Service {
         String title = "Transferring files...";
         int progress = 0;
         String speedText = "";
+        boolean isUpload = true;
 
         if (intent != null) {
             if (intent.hasExtra(EXTRA_TITLE)) {
@@ -89,9 +136,12 @@ public class FileTransferService extends Service {
             if (intent.hasExtra(EXTRA_SPEED)) {
                 speedText = intent.getStringExtra(EXTRA_SPEED);
             }
+            if (intent.hasExtra(EXTRA_IS_UPLOAD)) {
+                isUpload = intent.getBooleanExtra(EXTRA_IS_UPLOAD, true);
+            }
         }
 
-        Notification notification = buildNotification(title, progress, speedText);
+        Notification notification = buildNotification(title, progress, speedText, isUpload);
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -100,7 +150,6 @@ public class FileTransferService extends Service {
                 startForeground(NOTIFICATION_ID, notification);
             }
         } catch (Exception e) {
-            // Fallback for Android 14 strict foreground requirements
             try {
                 startForeground(NOTIFICATION_ID, notification);
             } catch (Exception ignored) {}
@@ -120,7 +169,7 @@ public class FileTransferService extends Service {
         return null;
     }
 
-    private Notification buildNotification(String title, int progress, String speedText) {
+    private Notification buildNotification(String title, int progress, String speedText, boolean isUpload) {
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
@@ -132,14 +181,25 @@ public class FileTransferService extends Service {
 
         String contentText = (speedText != null && !speedText.isEmpty()) ? speedText : "Running in background...";
 
+        int smallIcon = isUpload ? R.drawable.ic_upload_notification : R.drawable.ic_download_notification;
+
+        Bitmap largeIcon = null;
+        try {
+            largeIcon = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+        } catch (Exception ignored) {}
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(contentText)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(smallIcon)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW);
+
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon);
+        }
 
         if (progress >= 0 && progress <= 100) {
             builder.setProgress(100, progress, false);
@@ -151,18 +211,15 @@ public class FileTransferService extends Service {
     }
 
     private void acquireLocks() {
-        // 1. Acquire WakeLock (prevents CPU sleep / thread suspension)
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (powerManager != null && (wakeLock == null || !wakeLock.isHeld())) {
                 wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DriveVault::TransferWakeLock");
                 wakeLock.setReferenceCounted(false);
-                // 12 hours max timeout to prevent battery drain if killed
                 wakeLock.acquire(12 * 60 * 60 * 1000L);
             }
         } catch (Exception ignored) {}
 
-        // 2. Acquire WifiLock (prevents Wi-Fi chip power-saving sleep and latency throttling)
         try {
             WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             if (wifiManager != null && (wifiLock == null || !wifiLock.isHeld())) {
@@ -202,8 +259,8 @@ public class FileTransferService extends Service {
                     "DriveVault Transfers",
                     NotificationManager.IMPORTANCE_LOW
             );
-            serviceChannel.setDescription("Keeps file uploads and downloads running at full speed in the background");
-            serviceChannel.setShowBadge(false);
+            serviceChannel.setDescription("Shows active file upload and download progress");
+            serviceChannel.setShowBadge(true);
             if (notificationManager != null) {
                 notificationManager.createNotificationChannel(serviceChannel);
             }

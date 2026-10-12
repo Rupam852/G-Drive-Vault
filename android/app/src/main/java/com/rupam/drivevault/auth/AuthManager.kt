@@ -32,6 +32,33 @@ class AuthManager(context: Context) {
         private const val KEY_IS_LOGGED_IN = "key_is_logged_in"
         private const val KEY_BIOMETRIC_ENABLED = "key_biometric_enabled"
         private const val KEY_HIGH_QUALITY_STREAMING = "key_high_quality_streaming"
+        private const val KEY_NOTIF_MASTER_ENABLED = "key_notif_master_enabled"
+        private const val KEY_NOTIF_UPLOAD_ENABLED = "key_notif_upload_enabled"
+        private const val KEY_NOTIF_DOWNLOAD_ENABLED = "key_notif_download_enabled"
+    }
+
+    fun isMasterNotificationEnabled(): Boolean {
+        return prefs.getBoolean(KEY_NOTIF_MASTER_ENABLED, true)
+    }
+
+    fun setMasterNotificationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIF_MASTER_ENABLED, enabled).apply()
+    }
+
+    fun isUploadNotificationEnabled(): Boolean {
+        return prefs.getBoolean(KEY_NOTIF_UPLOAD_ENABLED, true)
+    }
+
+    fun setUploadNotificationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIF_UPLOAD_ENABLED, enabled).apply()
+    }
+
+    fun isDownloadNotificationEnabled(): Boolean {
+        return prefs.getBoolean(KEY_NOTIF_DOWNLOAD_ENABLED, true)
+    }
+
+    fun setDownloadNotificationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIF_DOWNLOAD_ENABLED, enabled).apply()
     }
 
     fun isHighQualityStreaming(): Boolean {

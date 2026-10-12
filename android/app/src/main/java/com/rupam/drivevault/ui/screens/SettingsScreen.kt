@@ -41,6 +41,7 @@ fun SettingsScreen(
     onServerCheckClick: () -> Unit = {},
     onTrashClick: () -> Unit = {},
     authManager: AuthManager? = null,
+    onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -299,6 +300,16 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
+                    SettingsActionRow(
+                        icon = Icons.Rounded.Notifications,
+                        title = "Notifications",
+                        subtitle = if (authManager?.isMasterNotificationEnabled() != false)
+                            "Upload, download, and transfer status alerts active"
+                        else
+                            "Transfer alerts turned off",
+                        onClick = onNotificationsClick
+                    )
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                     SettingsSwitchRow(
                         icon = Icons.Rounded.Fingerprint,
                         title = "Biometric Lock",
@@ -465,7 +476,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsSwitchRow(
+fun SettingsSwitchRow(
     icon: ImageVector,
     title: String,
     subtitle: String,

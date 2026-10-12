@@ -237,7 +237,7 @@ object TransferManager {
 
                                     val percent = if (fileSize > 0) ((totalWritten * 100) / fileSize).toInt() else 0
                                     val speedText = "${formatSpeed(speed)} • $percent%"
-                                    FileTransferService.updateProgress(context, "Uploading: $fileName", percent, speedText)
+                                    FileTransferService.updateProgress(context, "Uploading: $fileName", percent, speedText, true)
 
                                     lastTime = now
                                     lastBytes = totalWritten
@@ -285,6 +285,7 @@ object TransferManager {
                             status = TransferStatus.COMPLETED
                         )
                     }
+                    FileTransferService.showCompletion(context, "Upload Complete", "$fileName uploaded to DriveVault", true)
                     withContext(Dispatchers.Main) { onComplete(true, null, uploadedDto) }
                 } else {
                     val code = response.code
@@ -409,7 +410,7 @@ object TransferManager {
 
                                 val percent = if (totalLength > 0) ((totalDownloaded * 100) / totalLength).toInt() else 0
                                 val speedText = "${formatSpeed(speed)} • $percent%"
-                                FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText)
+                                FileTransferService.updateProgress(context, "Downloading: ${file.name}", percent, speedText, false)
 
                                 lastTime = now
                                 lastBytes = totalDownloaded
@@ -435,6 +436,7 @@ object TransferManager {
                         status = TransferStatus.COMPLETED
                     )
                 }
+                FileTransferService.showCompletion(context, "Download Complete", "${file.name} saved to Downloads", false)
                 withContext(Dispatchers.Main) { onComplete(true, null) }
             } catch (e: CancellationException) {
                 updateTransfer(transferId) { current ->
