@@ -156,16 +156,23 @@ fun FileExplorerScreen(
             }
             matchesQuery && matchesCat
         }.sortedWith { a, b ->
-            // Folders always first
+            // Standard convention: Folders always appear first
             if (a.type == FileCategoryType.FOLDER && b.type != FileCategoryType.FOLDER) -1
             else if (a.type != FileCategoryType.FOLDER && b.type == FileCategoryType.FOLDER) 1
             else when (currentSort) {
+                SortOption.DATE_DESC -> {
+                    val cmp = b.timestamp.compareTo(a.timestamp)
+                    if (cmp != 0) cmp else a.name.compareTo(b.name, ignoreCase = true)
+                }
                 SortOption.NAME_ASC -> a.name.compareTo(b.name, ignoreCase = true)
                 SortOption.NAME_DESC -> b.name.compareTo(a.name, ignoreCase = true)
-                SortOption.DATE_DESC -> b.timestamp.compareTo(a.timestamp)
-                SortOption.SIZE_DESC -> b.sizeBytes.compareTo(a.sizeBytes)
+                SortOption.SIZE_DESC -> {
+                    val cmp = b.sizeBytes.compareTo(a.sizeBytes)
+                    if (cmp != 0) cmp else a.name.compareTo(b.name, ignoreCase = true)
+                }
             }
         }
+
     }
 
     Box(

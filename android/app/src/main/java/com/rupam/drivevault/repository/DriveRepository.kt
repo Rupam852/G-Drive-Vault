@@ -198,6 +198,7 @@ class DriveRepository(private val authManager: AuthManager) {
         val parsedBytes = dto.size?.toLongOrNull() ?: dto.sizeBytes ?: 0L
         val displaySize = if (isFolder) "Folder" else formatBytes(parsedBytes)
         val displayDate = formatDate(dto.modifiedTime ?: dto.createdTime)
+        val parsedTimestamp = parseTimestamp(dto.modifiedTime ?: dto.createdTime)
 
         return DriveFile(
             id = dto.id,
@@ -206,6 +207,7 @@ class DriveRepository(private val authManager: AuthManager) {
             size = displaySize,
             sizeBytes = parsedBytes,
             date = displayDate,
+            timestamp = parsedTimestamp,
             thumbnail = dto.thumbnailLink,
             webViewLink = dto.webViewLink,
             starred = dto.starred ?: false,
@@ -215,6 +217,7 @@ class DriveRepository(private val authManager: AuthManager) {
             parents = dto.parents ?: emptyList()
         )
     }
+
 
     suspend fun getFiles(folderId: String? = null, filter: String? = null): Result<List<DriveFile>> = withContext(Dispatchers.IO) {
         try {
@@ -528,6 +531,24 @@ class DriveRepository(private val authManager: AuthManager) {
             isoString.take(10)
         }
     }
+
+    private fun parseTimestamp(isoString: String?): Long {
+        if (isoString.isNullOrBlank()) return 0L
+        return try {
+            val cleanIso = if (isoString.contains(".")) {
+                isoString.substringBefore(".")
+            } else {
+                isoString.removeSuffix("Z")
+            }
+            val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            parser.parse(cleanIso)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
 
     private fun formatBytes(bytes: Long): String {
         if (bytes <= 0) return "0 B"
