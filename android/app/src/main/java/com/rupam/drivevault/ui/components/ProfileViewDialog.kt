@@ -18,16 +18,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import coil.compose.AsyncImage
 import com.rupam.drivevault.auth.AuthUser
+import com.rupam.drivevault.model.StorageStats
 import com.rupam.drivevault.ui.theme.BluePrimary
 
 @Composable
 fun ProfileViewDialog(
     user: AuthUser?,
+    storageStats: StorageStats? = null,
     onDismiss: () -> Unit,
     onSwitchAccountClick: () -> Unit
 ) {
+    val isGoogleOne = (storageStats?.totalBytes ?: 0L) > 16L * 1024L * 1024L * 1024L
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -41,31 +48,13 @@ fun ProfileViewDialog(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
-                // Large Circular Avatar
-                Surface(
-                    shape = CircleShape,
-                    border = BorderStroke(3.dp, BluePrimary.copy(alpha = 0.6f)),
-                    color = BluePrimary.copy(alpha = 0.15f),
-                    modifier = Modifier.size(88.dp)
-                ) {
-                    if (!user?.picture.isNullOrBlank()) {
-                        AsyncImage(
-                            model = user?.picture,
-                            contentDescription = user?.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.Person,
-                                contentDescription = null,
-                                tint = BluePrimary,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-                }
+                // Large Circular Avatar (Google One Signature Ring)
+                GoogleOneAvatar(
+                    pictureUrl = user?.picture,
+                    name = user?.name,
+                    size = 88.dp,
+                    isGoogleOne = isGoogleOne
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -108,6 +97,38 @@ fun ProfileViewDialog(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
+                    }
+                }
+
+                if (isGoogleOne) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF4285F4).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFF4285F4).copy(alpha = 0.35f))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(Brush.sweepGradient(GoogleOneColors))
+                            )
+                            val planGb = (storageStats?.totalBytes ?: 0L) / (1024L * 1024L * 1024L)
+                            val planText = if (planGb >= 1000) "${planGb / 1000} TB Plan" else "$planGb GB Plan"
+                            Text(
+                                text = "Google One Member • $planText",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.5.sp
+                                ),
+                                color = Color(0xFF2563EB)
+                            )
+                        }
                     }
                 }
 

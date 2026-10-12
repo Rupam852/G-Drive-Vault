@@ -993,6 +993,7 @@ fun MainAppScreen(
     if (showProfileDialog) {
         ProfileViewDialog(
             user = currentUser,
+            storageStats = storageStats,
             onDismiss = { showProfileDialog = false },
             onSwitchAccountClick = { triggerSwitchAccount() }
         )

@@ -29,6 +29,9 @@ import com.rupam.drivevault.auth.AuthUser
 import com.rupam.drivevault.auth.BiometricHelper
 import com.rupam.drivevault.model.StorageStats
 import com.rupam.drivevault.ui.components.StorageGauge
+import com.rupam.drivevault.ui.components.GoogleOneAvatar
+import com.rupam.drivevault.ui.components.GoogleOneColors
+import androidx.compose.ui.graphics.Brush
 import com.rupam.drivevault.ui.theme.BluePrimary
 import com.rupam.drivevault.ui.theme.ThemeManager
 import com.rupam.drivevault.ui.theme.AppThemeMode
@@ -107,31 +110,15 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // ── Circular Avatar ──
-                        Surface(
-                            shape = CircleShape,
-                            border = BorderStroke(2.dp, BluePrimary.copy(alpha = 0.5f)),
-                            color = BluePrimary.copy(alpha = 0.15f),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            if (!user?.picture.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = user?.picture,
-                                    contentDescription = user?.name,
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Person,
-                                        contentDescription = null,
-                                        tint = BluePrimary,
-                                        modifier = Modifier.size(30.dp)
-                                    )
-                                }
-                            }
-                        }
+                        val isGoogleOne = storageStats.totalBytes > 16L * 1024L * 1024L * 1024L
+
+                        // ── Circular Avatar (Google One Styled) ──
+                        GoogleOneAvatar(
+                            pictureUrl = user?.picture,
+                            name = user?.name,
+                            size = 56.dp,
+                            isGoogleOne = isGoogleOne
+                        )
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -145,6 +132,36 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
+                            if (isGoogleOne) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF4285F4).copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, Color(0xFF4285F4).copy(alpha = 0.35f))
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(7.dp)
+                                                .clip(CircleShape)
+                                                .background(Brush.sweepGradient(GoogleOneColors))
+                                        )
+                                        Text(
+                                            text = "Google One Member",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 11.sp
+                                            ),
+                                            color = Color(0xFF2563EB)
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         // Logout Icon

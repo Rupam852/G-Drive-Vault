@@ -178,43 +178,16 @@ fun HomeScreen(
                             }
                         }
 
-                        // ── Circular Google Profile Picture Avatar ──
-                        Surface(
-                            shape = CircleShape,
-                            border = BorderStroke(
-                                2.dp,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            ),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shadowElevation = 2.dp,
-                            modifier = Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
-                                .clickable { onProfileClick() }
-                        ) {
-                            if (!userPictureUrl.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = userPictureUrl,
-                                    contentDescription = "Profile",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = userName.take(1).uppercase(),
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp
-                                    )
-                                }
-                            }
-                        }
+                        // ── Circular Google Profile Picture Avatar (Google One Styled) ──
+                        val isGoogleOne = storageStats.totalBytes > 16L * 1024L * 1024L * 1024L
+                        GoogleOneAvatar(
+                            pictureUrl = userPictureUrl,
+                            name = userName,
+                            size = 46.dp,
+                            isGoogleOne = isGoogleOne,
+                            onClick = onProfileClick
+                        )
+
                     }
                 }
             }
