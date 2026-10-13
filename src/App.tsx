@@ -20,8 +20,8 @@ import MoveDialog from './components/MoveDialog';
 import ManageAccessDialog from './components/ManageAccessDialog';
 import ShareDialog from './components/ShareDialog';
 import InfoDialog from './components/InfoDialog';
-import { formatBytes } from './utils';
 import TransferManager, { TransferState } from './components/TransferManager';
+import TransfersModal from './components/TransfersModal';
 import Login from './components/Login';
 import { FileItem } from './types';
 import { Toaster } from '@/components/ui/sonner';
@@ -260,6 +260,12 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
+  const [isTransfersModalOpen, setIsTransfersModalOpen] = useState(false);
+
+  // Live active transfers count (Uploads + Downloads)
+  const activeUploadsCount = transfers.filter(t => t.status === 'uploading' || t.status === 'pending' || t.status === 'paused').length;
+  const activeDownloadsCount = activeDownloads.filter(d => d.status === 'downloading' || d.status === 'paused').length;
+  const totalActiveTransfers = activeUploadsCount + activeDownloadsCount;
 
   const handleToggleNotification = async (val: boolean) => {
     setIsNotificationEnabled(val);
@@ -861,6 +867,7 @@ export default function App() {
         // --- Fallback Global Priorities ---
 
         // 1. Close global dialogs managed in App.tsx
+        if (isTransfersModalOpen) { setIsTransfersModalOpen(false); return; }
         if (isInfoOpen) { setIsInfoOpen(false); return; }
         if (isMoveOpen) { setIsMoveOpen(false); return; }
         if (sharingState === 'manage') { setSharingState('share'); return; }
@@ -889,7 +896,7 @@ export default function App() {
     return () => {
       listenerPromise.then(l => l.remove());
     };
-  }, [breadcrumb, activeTab, isMoveOpen, sharingState, isInfoOpen]);
+  }, [breadcrumb, activeTab, isMoveOpen, sharingState, isInfoOpen, isTransfersModalOpen]);
 
   // ── BACKGROUND POLLING: only when logged in, paused when screen is off ───
   // Polls every 5 minutes (not 30s) to avoid battery drain and heating.
@@ -2174,6 +2181,8 @@ export default function App() {
             onNavigateToFiles={handleNavigateToFiles}
             isDownloadEnabled={isDownloadEnabled}
             onShowInfo={handleShowInfo}
+            activeTransfersCount={totalActiveTransfers}
+            onTransfersClick={() => setIsTransfersModalOpen(true)}
           />
         );
       case 'files':
@@ -2231,6 +2240,8 @@ export default function App() {
             activeDownloads={activeDownloads}
             setActiveDownloads={setActiveDownloads}
             onCancelDownload={handleCancelDownload}
+            activeTransfersCount={totalActiveTransfers}
+            onTransfersClick={() => setIsTransfersModalOpen(true)}
           />
         );
 
@@ -2261,6 +2272,7 @@ export default function App() {
             onCancelTransfer={handleCancelTransfer}
             onPauseTransfer={handlePauseTransfer}
             onResumeTransfer={handleResumeTransfer}
+            onOpenTransfers={() => setIsTransfersModalOpen(true)}
             defaultOpenTransfers={defaultOpenTransfers}
             onCloseTransfers={() => setDefaultOpenTransfers(false)}
             currentVersion={CURRENT_VERSION}
@@ -2416,6 +2428,23 @@ export default function App() {
           }}
           file={fileForInfo}
           breadcrumb={breadcrumb}
+        />
+
+        {/* ── UNIFIED TRANSFERS MODAL (matches Android TransfersBottomSheet) ── */}
+        <TransfersModal
+          isOpen={isTransfersModalOpen}
+          onClose={() => setIsTransfersModalOpen(false)}
+          activeUploads={transfers}
+          activeDownloads={activeDownloads}
+          onPauseUpload={handlePauseTransfer}
+          onResumeUpload={handleResumeTransfer}
+          onCancelUpload={handleCancelTransfer}
+          onPauseDownload={handlePauseDownload}
+          onResumeDownload={handleResumeDownload}
+          onCancelDownload={handleCancelDownload}
+          onClearCompletedTransfers={() => {
+            setTransfers(prev => prev.filter(t => t.status !== 'completed'));
+          }}
         />
       </div>
 

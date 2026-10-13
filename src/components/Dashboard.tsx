@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File, Check, Loader2 } from 'lucide-react';
+import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File, Check, Loader2, ArrowUpDown } from 'lucide-react';
 
 import { StorageStats, FileItem } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -43,9 +43,11 @@ interface DashboardProps {
   onNavigateToFiles?: (targetFolderId?: string, openFile?: FileItem) => void;
   isDownloadEnabled?: boolean;
   onShowInfo?: (file: FileItem) => void;
+  activeTransfersCount?: number;
+  onTransfersClick?: () => void;
 }
 
-export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, categorySyncState: propCategorySyncState, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
+export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, categorySyncState: propCategorySyncState, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo, activeTransfersCount = 0, onTransfersClick }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [localSyncState, setLocalSyncState] = useState<'syncing' | 'synced' | 'idle'>('idle');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
@@ -561,8 +563,22 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
           </div>
         </div>
 
-        {/* ── Live Drive Sync Button (matches Android HomeScreen) ── */}
+        {/* ── Actions: Live Transfers Manager + Live Drive Sync (matches Android HomeScreen) ── */}
         <div className="flex items-center gap-2">
+          {/* Live Transfers Manager Button */}
+          <button
+            onClick={onTransfersClick}
+            className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            title="Transfers & History"
+          >
+            <ArrowUpDown size={17} className={activeTransfersCount > 0 ? "text-blue-600 dark:text-blue-400 animate-pulse" : "text-slate-600 dark:text-slate-300"} />
+            {activeTransfersCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md shadow-blue-500/30">
+                {activeTransfersCount > 9 ? '9+' : activeTransfersCount}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}

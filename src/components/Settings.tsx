@@ -51,6 +51,7 @@ interface SettingsProps {
   onResumeTransfer?: (id: string) => void;
   defaultOpenTransfers?: boolean;
   onCloseTransfers?: () => void;
+  onOpenTransfers?: () => void;
   currentVersion?: string;
   updateInfo?: any;
   onSwitchAccount?: () => void;
@@ -60,7 +61,7 @@ interface SettingsProps {
   onResumeDownload?: (id: string) => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode = false, setIsDarkMode, themeMode: propThemeMode, setThemeMode: propSetThemeMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount, activeDownloads = [], onCancelDownload, onPauseDownload, onResumeDownload }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode = false, setIsDarkMode, themeMode: propThemeMode, setThemeMode: propSetThemeMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, onOpenTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount, activeDownloads = [], onCancelDownload, onPauseDownload, onResumeDownload }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -269,7 +270,10 @@ export default function Settings({ user, setUser, isDarkMode = false, setIsDarkM
           color: 'text-sky-500',
           bg: 'bg-sky-50 dark:bg-sky-900/20',
           badge: (uploadHistory.length + downloadHistory.length) > 0 ? `${uploadHistory.length + downloadHistory.length} total` : undefined,
-          onClick: () => setIsTransfersOpen(true)
+          onClick: () => {
+            if (onOpenTransfers) onOpenTransfers();
+            else setIsTransfersOpen(true);
+          }
         },
       ]
     },

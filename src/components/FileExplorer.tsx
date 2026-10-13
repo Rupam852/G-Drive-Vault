@@ -59,6 +59,8 @@ interface FileExplorerProps {
   setActiveDownloads: React.Dispatch<React.SetStateAction<any[]>>;
   onCancelDownload: (id: string) => void;
   isFilesLoading?: boolean;
+  activeTransfersCount?: number;
+  onTransfersClick?: () => void;
 }
 
 const iconMap = {
@@ -83,7 +85,7 @@ const categoryThemeMap: Record<string, { textColor: string; bgColor: string }> =
   other: { textColor: 'text-slate-500', bgColor: 'bg-slate-100 dark:bg-slate-800' },
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload, isFilesLoading = false }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload, isFilesLoading = false, activeTransfersCount = 0, onTransfersClick }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc' | 'size_desc' | 'size_asc' | 'type'>('date_desc');
@@ -946,6 +948,19 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               className="pl-10 h-10 sm:h-11 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl shadow-xs focus-visible:ring-2 focus-visible:ring-blue-500 text-slate-900 dark:text-white text-sm transition-all"
             />
           </div>
+          {/* ── Live Transfers Manager Button (matches Android) ── */}
+          <button
+            onClick={onTransfersClick}
+            className="relative w-10 h-10 sm:w-11 sm:h-11 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer"
+            title="Transfers & History"
+          >
+            <ArrowUpDown size={18} className={activeTransfersCount > 0 ? "text-blue-600 dark:text-blue-400 animate-pulse" : "text-slate-700 dark:text-slate-300"} />
+            {activeTransfersCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md shadow-blue-500/30">
+                {activeTransfersCount > 9 ? '9+' : activeTransfersCount}
+              </span>
+            )}
+          </button>
           <DropdownMenu>
             <DropdownMenuTrigger 
               className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all shrink-0 shadow-xs cursor-pointer ${
