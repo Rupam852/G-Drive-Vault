@@ -353,9 +353,9 @@ export default function Settings({ user, setUser, isDarkMode = false, setIsDarkM
         <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-blue-600/10 via-indigo-600/5 to-transparent border border-blue-500/20 dark:border-blue-500/15 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <Avatar className="w-16 h-16 rounded-2xl ring-2 ring-blue-500/20 shadow-md">
+              <Avatar className="w-16 h-16 rounded-full ring-2 ring-blue-500/25 shadow-md">
                 <AvatarImage src={user?.picture} referrerPolicy="no-referrer" />
-                <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-2xl font-bold rounded-2xl">
+                <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-2xl font-bold rounded-full">
                   {user?.name?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>
