@@ -64,30 +64,21 @@ DriveVault is engineered as a unified cross-platform application:
 DriveVault is powered by modern, battle-tested technologies across web, backend, and native mobile layers:
 
 ```mermaid
-graph TD
-    subgraph Clients
-        Web["Web Client (React 19 + Vite 6 + Tailwind v4)"]
-        Mobile["Android App (Jetpack Compose + Material3 + Media3)"]
-    end
+flowchart TD
+    Web["Web Client (React 19, Vite 6, Tailwind v4)"]
+    Mobile["Android App (Jetpack Compose, Media3)"]
+    Server["Backend Server (Node.js Express, TypeScript)"]
+    Auth["Google OAuth 2.0 & Auth Handler"]
+    Drive["Google Drive API v3"]
+    DB["Neon Serverless PostgreSQL"]
 
-    subgraph BackendGateway ["Backend API Gateway (Node.js + Express)"]
-        API["Express REST API (TypeScript / tsx)"]
-        Auth["Google OAuth 2.0 Engine"]
-        StreamEngine["Streaming Transfer & Range Piper"]
-    end
-
-    subgraph ExternalServices ["Cloud & Storage Services"]
-        DriveAPI["Google Drive API v3"]
-        DB["Neon Serverless PostgreSQL"]
-    end
-
-    Web -->|HTTPS / REST| API
-    Mobile -->|HTTPS / Retrofit 2| API
-    API -->|Token Management| Auth
-    Auth -->|Credentials Sync| DB
-    API -->|Metadata & File Ops| DriveAPI
-    StreamEngine -->|Direct Stream| Web
-    StreamEngine -->|Direct Stream| Mobile
+    Web -->|REST API Requests| Server
+    Mobile -->|REST API Requests| Server
+    Server -->|OAuth Handshake| Auth
+    Auth -->|Token Persistence| DB
+    Server -->|Files & Metadata Ops| Drive
+    Drive -->|Direct Media Streaming| Web
+    Drive -->|Direct Media Streaming| Mobile
 ```
 
 | Layer | Framework / Technology | Purpose |
