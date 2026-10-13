@@ -237,14 +237,90 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
     }
   };
 
-  const menuItems = [
-    { icon: History, label: 'Transfer History', color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-900/20', onClick: () => setIsTransfersOpen(true) },
-    { icon: Zap, label: 'Edge & Server Diagnostics', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20', onClick: () => { setIsDiagnosticsOpen(true); runDiagnostics(); } },
-    { icon: Trash2, label: 'Trash Bin', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20', onClick: () => setIsTrashOpen(true) },
-    { icon: EyeOff, label: 'Hidden Files', color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20', onClick: () => setIsHiddenOpen(true) },
-    { icon: Shield, label: 'Security & Privacy', color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20', onClick: () => setIsSecurityOpen(true), hideOnWeb: true },
-    { icon: Database, label: 'File Permission', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', toggle: true, checked: isDownloadEnabled, onChange: setIsDownloadEnabled },
-    { icon: isDarkMode ? Sun : Moon, label: 'Dark Mode', color: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800', toggle: true },
+  const sectionedMenu = [
+    {
+      title: 'Performance & Network',
+      items: [
+        {
+          icon: Zap,
+          label: 'Edge & Server Diagnostics',
+          desc: 'Cloudflare Edge CDN & Render latency',
+          color: 'text-amber-500',
+          bg: 'bg-amber-50 dark:bg-amber-900/20',
+          badge: cfEdgeEnabled ? '⚡ Edge Active' : 'Off',
+          badgeColor: cfEdgeEnabled ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+          onClick: () => { setIsDiagnosticsOpen(true); runDiagnostics(); }
+        },
+        {
+          icon: History,
+          label: 'Transfer History',
+          desc: 'Completed uploads & downloads log',
+          color: 'text-sky-500',
+          bg: 'bg-sky-50 dark:bg-sky-900/20',
+          badge: (uploadHistory.length + downloadHistory.length) > 0 ? `${uploadHistory.length + downloadHistory.length} total` : undefined,
+          onClick: () => setIsTransfersOpen(true)
+        },
+      ]
+    },
+    {
+      title: 'Vault & Storage',
+      items: [
+        {
+          icon: Trash2,
+          label: 'Trash Bin',
+          desc: 'Manage and restore deleted files',
+          color: 'text-rose-500',
+          bg: 'bg-rose-50 dark:bg-rose-900/20',
+          badge: (trashedFiles || []).length > 0 ? `${(trashedFiles || []).length} items` : undefined,
+          badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400',
+          onClick: () => setIsTrashOpen(true)
+        },
+        {
+          icon: EyeOff,
+          label: 'Hidden Files',
+          desc: 'Protected & vaulted private items',
+          color: 'text-indigo-500',
+          bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+          badge: (hiddenFiles || []).length > 0 ? `${(hiddenFiles || []).length} items` : undefined,
+          badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400',
+          onClick: () => setIsHiddenOpen(true)
+        },
+        {
+          icon: Shield,
+          label: 'Security & Privacy',
+          desc: 'Biometrics and account security',
+          color: 'text-emerald-500',
+          bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+          hideOnWeb: true,
+          onClick: () => setIsSecurityOpen(true)
+        },
+      ]
+    },
+    {
+      title: 'Preferences',
+      items: [
+        {
+          icon: Database,
+          label: 'File Permission',
+          desc: 'Allow file downloads and local saves',
+          color: 'text-blue-500',
+          bg: 'bg-blue-50 dark:bg-blue-900/20',
+          toggle: true,
+          checked: isDownloadEnabled,
+          onChange: setIsDownloadEnabled
+        },
+        {
+          icon: isDarkMode ? Sun : Moon,
+          label: 'Dark Mode',
+          desc: isDarkMode ? 'High-contrast dark theme active' : 'Clean light theme active',
+          color: isDarkMode ? 'text-amber-400' : 'text-slate-600 dark:text-slate-400',
+          bg: 'bg-slate-100 dark:bg-slate-800',
+          toggle: true,
+          checked: isDarkMode,
+          onChange: setIsDarkMode
+        },
+      ]
+    }
   ];
 
   // CENTRAL BACK GESTURE HANDLING FOR SETTINGS SUB-VIEWS
@@ -265,61 +341,96 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   }, [isTrashOpen, isHiddenOpen, isTransfersOpen, isProfileOpen, isNotificationsOpen, isSecurityOpen, isDiagnosticsOpen]);
 
   return (
-    <div className="p-6 pb-6 md:pb-8 space-y-8 bg-slate-50 dark:bg-slate-950 transition-colors">
-      <header className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
+    <div className="p-4 md:p-10 pb-6 md:pb-8 space-y-6 md:space-y-8 max-w-4xl mx-auto w-full transition-colors">
+      <header className="space-y-4">
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
         
-        <Card className="border-none shadow-sm bg-white dark:bg-slate-900">
-          <CardContent className="p-4 flex items-center gap-4">
-            <Avatar className="w-16 h-16 rounded-2xl">
-              <AvatarImage src={user?.picture} referrerPolicy="no-referrer" />
-              <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold rounded-2xl">
-                {user?.name?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <h3 className="font-bold text-slate-900 dark:text-white text-lg">{user?.name || 'User'}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{user?.email || 'No email provided'}</p>
+        <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-blue-600/10 via-indigo-600/5 to-transparent border border-blue-500/20 dark:border-blue-500/15 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Avatar className="w-16 h-16 rounded-2xl ring-2 ring-blue-500/20 shadow-md">
+                <AvatarImage src={user?.picture} referrerPolicy="no-referrer" />
+                <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-2xl font-bold rounded-2xl">
+                  {user?.name?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-white" title="Connected">
+                <CheckCircle size={12} strokeWidth={3} />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base md:text-lg truncate">{user?.name || 'User'}</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-400 shrink-0">
+                  Google
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{user?.email || 'No email provided'}</p>
             </div>
 
             {onSwitchAccount && (
               <Button
                 variant="ghost"
-                size="icon"
-                className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shrink-0 self-center transition-all active:scale-90"
+                size="sm"
+                className="rounded-xl hover:bg-white/80 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center gap-1 shrink-0 transition-all border border-slate-200/60 dark:border-slate-700/60 shadow-xs cursor-pointer"
                 onClick={onSwitchAccount}
                 title="Switch Google Account"
               >
-                <ChevronDown size={20} className="text-slate-400 dark:text-slate-500" />
+                <span>Switch</span>
+                <ChevronDown size={14} />
               </Button>
             )}
-
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </header>
 
-      <div className="space-y-2">
-        {menuItems.filter(item => !(item.hideOnWeb && !Capacitor.isNativePlatform())).map((item, idx) => {
-          const Icon = item.icon || Info;
+      <div className="space-y-6">
+        {sectionedMenu.map((section, sIdx) => {
+          const visibleItems = section.items.filter(item => !(item.hideOnWeb && !Capacitor.isNativePlatform()));
+          if (visibleItems.length === 0) return null;
           return (
-            <div
-              key={idx}
-              onClick={item.onClick}
-              className={`w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm transition-all ${item.onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
-            >
-              <div className={`w-10 h-10 ${item.bg || ''} ${item.color || ''} rounded-xl flex items-center justify-center`}>
-                <Icon size={20} />
+            <div key={sIdx} className="space-y-2.5">
+              <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">
+                {section.title}
+              </h2>
+              <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-100 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60 shadow-sm overflow-hidden">
+                {visibleItems.map((item, idx) => {
+                  const Icon = item.icon || Info;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={item.onClick}
+                      className={`w-full flex items-center gap-3.5 p-4 transition-colors ${
+                        item.onClick 
+                          ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800' 
+                          : ''
+                      }`}
+                    >
+                      <div className={`w-10 h-10 ${item.bg || ''} ${item.color || ''} rounded-xl flex items-center justify-center shrink-0`}>
+                        <Icon size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate">{item.label}</p>
+                        {item.desc && <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">{item.desc}</p>}
+                      </div>
+                      {item.badge && (
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${item.badgeColor || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                      {item.toggle ? (
+                        <Switch 
+                          checked={item.checked !== undefined ? item.checked : isDarkMode} 
+                          onCheckedChange={item.onChange || setIsDarkMode}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      ) : (
+                        <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <span className="flex-1 text-left font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
-              {item.toggle ? (
-                <Switch 
-                  checked={item.checked !== undefined ? item.checked : isDarkMode} 
-                  onCheckedChange={item.onChange || setIsDarkMode}
-                  className="data-[state=checked]:bg-blue-600"
-                />
-              ) : (
-                <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
-              )}
             </div>
           );
         })}
@@ -908,9 +1019,9 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
 
       <button 
         onClick={onLogout}
-        className="w-full flex items-center justify-center gap-2 p-4 text-red-500 font-bold bg-red-50 dark:bg-red-900/20 rounded-2xl active:scale-95 transition-transform"
+        className="w-full flex items-center justify-center gap-2.5 p-4 text-red-600 dark:text-red-400 font-bold bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 dark:border-red-500/30 rounded-2xl active:scale-[0.98] transition-all cursor-pointer shadow-xs"
       >
-        <LogOut size={20} />
+        <LogOut size={18} />
         <span>Log Out</span>
       </button>
 

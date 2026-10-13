@@ -70,6 +70,17 @@ const iconMap = {
   other: FileQuestion,
 };
 
+const categoryThemeMap: Record<string, { textColor: string; bgColor: string }> = {
+  image: { textColor: 'text-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
+  video: { textColor: 'text-purple-500', bgColor: 'bg-purple-50 dark:bg-purple-900/20' },
+  document: { textColor: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-900/20' },
+  audio: { textColor: 'text-emerald-500', bgColor: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  apk: { textColor: 'text-teal-500', bgColor: 'bg-teal-50 dark:bg-teal-900/20' },
+  folder: { textColor: 'text-amber-500', bgColor: 'bg-amber-50 dark:bg-amber-900/20' },
+  archive: { textColor: 'text-rose-500', bgColor: 'bg-rose-50 dark:bg-rose-900/20' },
+  other: { textColor: 'text-slate-500', bgColor: 'bg-slate-100 dark:bg-slate-800' },
+};
+
 export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -733,6 +744,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
   const renderItem = (file: FileItem, idx: number) => {
     const Icon = iconMap[file.type] || FileIcon;
+    const theme = categoryThemeMap[file.type] || categoryThemeMap.other;
     
     if (view === 'grid') {
       return (
@@ -740,17 +752,17 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           key={file.id}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: Math.min(idx, 15) * 0.05 }}
+          transition={{ delay: Math.min(idx, 15) * 0.04 }}
           onClick={() => handleItemClick(file)}
           onPointerDown={() => handlePressStart(file)}
           onPointerUp={handlePressEnd}
           onPointerLeave={handlePressEnd}
           onPointerCancel={handlePressEnd}
           onContextMenu={(e) => e.preventDefault()}
-          className={`p-4 rounded-2xl space-y-3 group cursor-pointer relative transition-all duration-200 select-none border-2 ${
+          className={`p-3.5 rounded-2xl space-y-3 group cursor-pointer relative transition-all duration-200 select-none border ${
             selectedIds.has(file.id) 
               ? 'bg-blue-50/70 dark:bg-blue-500/10 border-blue-500 shadow-md shadow-blue-500/10 scale-[0.98]' 
-              : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-transparent'
+              : 'bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow-md'
           }`}
         >
           {selectedIds.has(file.id) && (
@@ -759,22 +771,24 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             </div>
           )}
           {file.starred && (
-            <div className="absolute top-2 left-2 text-yellow-500 z-10">
+            <div className="absolute top-2 left-2 text-amber-400 z-10">
               <Star size={14} fill="currentColor" />
             </div>
           )}
-          <div className="aspect-square bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors overflow-hidden">
+          <div className={`aspect-square rounded-xl flex items-center justify-center overflow-hidden ${file.thumbnail && file.type !== 'folder' ? 'bg-black/5 dark:bg-black/20' : theme.bgColor}`}>
             {file.thumbnail && file.type !== 'folder' ? (
-              <img src={file.thumbnail} className="w-full h-full object-cover" alt={file.name} referrerPolicy="no-referrer" />
+              <img src={file.thumbnail} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" alt={file.name} referrerPolicy="no-referrer" />
             ) : (
-              <Icon size={file.type === 'folder' ? 48 : 32} className={file.type === 'folder' ? 'text-blue-500' : ''} />
+              <Icon size={file.type === 'folder' ? 44 : 32} className={`${theme.textColor} transition-transform duration-300 group-hover:scale-110`} />
             )}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{file.name}</h4>
-            </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">{file.type === 'folder' ? 'Folder' : file.size}</p>
+            <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              {file.name}
+            </h4>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+              {file.type === 'folder' ? 'Folder' : file.size}
+            </p>
           </div>
         </motion.div>
       );
@@ -792,10 +806,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         onPointerLeave={handlePressEnd}
         onPointerCancel={handlePressEnd}
         onContextMenu={(e) => e.preventDefault()}
-        className={`flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800/40 pb-3 mb-1 last:border-b-0 last:pb-0 last:mb-0 transition-all duration-200 cursor-pointer group relative select-none ${
+        className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer group relative select-none ${
           selectedIds.has(file.id) 
-            ? 'bg-blue-50/70 dark:bg-blue-500/10 shadow-sm' 
-            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+            ? 'bg-blue-50/70 dark:bg-blue-500/10 border-blue-500/50 shadow-sm' 
+            : 'bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-100 dark:border-slate-700/60 hover:border-slate-200 dark:hover:border-slate-600 shadow-sm'
         }`}
       >
         {isSelectionMode && (
@@ -809,14 +823,19 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             )}
           </div>
         )}
-        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">
-          <Icon size={20} className={file.type === 'folder' ? 'text-blue-500' : ''} />
+        <div className={`w-11 h-11 rounded-2xl ${theme.bgColor} flex items-center justify-center ${theme.textColor} transition-transform group-hover:scale-105 shrink-0`}>
+          <Icon size={22} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="font-medium text-slate-800 dark:text-slate-200 truncate">{file.name}</h4>
-            {file.starred && <Star size={14} className="text-yellow-500 fill-yellow-500 shrink-0" />}
+            <h4 className="font-semibold text-slate-800 dark:text-slate-200 truncate text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              {file.name}
+            </h4>
+            {file.starred && <Star size={13} className="text-amber-400 fill-amber-400 shrink-0" />}
           </div>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            {file.type === 'folder' ? 'Folder' : file.size} {file.date ? `• ${file.date}` : ''}
+          </p>
         </div>
         <button 
           onClick={(e) => {
@@ -824,7 +843,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             e.stopPropagation();
             setActionMenuFile(file);
           }}
-          className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-2 -mr-2"
+          className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-2 -mr-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50"
         >
           <MoreVertical size={18} />
         </button>
@@ -839,15 +858,20 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white leading-none">Files</h1>
             {activeSubTab === 'all' && (
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-[200px] sm:max-w-md">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 max-w-[280px] sm:max-w-xl">
                 {breadcrumb.map((b, i) => (
                   <React.Fragment key={b.id}>
-                    {i > 0 && <span className="text-slate-400 text-xs">/</span>}
+                    {i > 0 && <ChevronRight size={13} className="text-slate-400 shrink-0" />}
                     <button 
                       onClick={() => onNavigate(b.id, b.name)}
-                      className={`text-xs font-medium whitespace-nowrap ${i === breadcrumb.length - 1 ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                        i === breadcrumb.length - 1 
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 font-bold shadow-xs' 
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      }`}
                     >
-                      {b.name}
+                      {i === 0 && <Folder size={12} className="shrink-0" />}
+                      <span>{b.name}</span>
                     </button>
                   </React.Fragment>
                 ))}
@@ -941,9 +965,34 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
 
 
-      <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'space-y-1'}>
-        {filteredFiles.map((file, idx) => renderItem(file, idx))}
-      </div>
+      {filteredFiles.length === 0 ? (
+        <div className="py-20 flex flex-col items-center justify-center text-center px-4 space-y-4">
+          <div className="w-20 h-20 rounded-3xl bg-blue-500/10 dark:bg-blue-500/15 flex items-center justify-center text-blue-500">
+            <Folder size={40} className="stroke-[1.5]" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+              {searchQuery ? 'No matching files found' : 'This folder is empty'}
+            </h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
+              {searchQuery ? `No files matching "${searchQuery}" in this folder.` : 'Upload files, import archives, or create folders to get started.'}
+            </p>
+          </div>
+          {!searchQuery && (
+            <button
+              onClick={() => setShowUploadSheet(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus size={16} />
+              Upload to this folder
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4' : 'space-y-1.5'}>
+          {filteredFiles.map((file, idx) => renderItem(file, idx))}
+        </div>
+      )}
 
       <FileDetails 
         file={selectedFile}
