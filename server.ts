@@ -761,6 +761,13 @@ app.get('/api/drive/files', async (req, res) => {
 app.get('/api/drive/breakdown', async (req, res) => {
   const tokens = getTokensFromRequest(req);
   if (!tokens) return res.status(401).json({ error: 'Not authenticated' });
+
+  const cacheKey = `breakdown_${tokens.access_token.substring(0, 20)}`;
+  const cached = filesCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < 300000)) { // 5 minutes cache
+    return res.json(cached.data);
+  }
+
   try {
     const client = getOAuth2Client(req);
     client.setCredentials(tokens);
@@ -782,7 +789,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
     do {
       const response: any = await drive.files.list({
         q: "trashed = false",
-        pageSize: 500,
+        pageSize: 1000,
         fields: 'nextPageToken, files(mimeType, size, name)',
         pageToken: pageToken
       });
@@ -813,6 +820,7 @@ app.get('/api/drive/breakdown', async (req, res) => {
       pageToken = response.data.nextPageToken;
     } while (pageToken);
 
+    filesCache.set(cacheKey, { data: breakdown, timestamp: Date.now() });
     res.json(breakdown);
   } catch (error) {
     console.error('Error calculating breakdown:', error);
