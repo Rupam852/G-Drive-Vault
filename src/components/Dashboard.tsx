@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatBytes } from '../utils';
 import FileDetails from './FileDetails';
+import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 
 
@@ -215,10 +216,13 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
       if (!ticketRes.ok) throw new Error('Ticket failed');
       const { ticketId } = await ticketRes.json();
 
-      const downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
-
       const isNative = Capacitor.isNativePlatform();
       const isAndroid = isNative && Capacitor.getPlatform() === 'android';
+
+      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
+      const downloadUrl = (cfUrl && !isAndroid)
+        ? cfUrl
+        : `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
 
       if (isAndroid) {
         try {
@@ -646,7 +650,12 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
       <section className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Files</h2>
-          <button className="text-sm font-medium text-blue-600 dark:text-blue-400">View All</button>
+          <button 
+            onClick={() => setActiveTab('files')} 
+            className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer active:scale-95 transition-all"
+          >
+            View All
+          </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {files.slice(0, 6).map((file, idx) => {
@@ -984,18 +993,39 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
               <span className="font-medium dark:text-white">Hide</span>
             </button>
 
-            <button
-              onClick={() => {
-                if (actionMenuFile) handleDownload(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <Download size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Download</span>
-            </button>
+            {actionMenuFile?.type === 'folder' ? (
+              <button
+                onClick={() => {
+                  if (actionMenuFile) handleDownload(actionMenuFile);
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600">
+                  <Archive size={20} />
+                </div>
+                <div>
+                  <span className="font-medium dark:text-white block">Download as ZIP</span>
+                  <span className="text-[10px] text-slate-400">Compress & download folder archive</span>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (actionMenuFile) handleDownload(actionMenuFile);
+                  setActionMenuFile(null);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
+                  <Download size={20} />
+                </div>
+                <div>
+                  <span className="font-medium dark:text-white block">Download</span>
+                  <span className="text-[10px] text-slate-400">High-speed Edge download</span>
+                </div>
+              </button>
+            )}
 
             <button
               onClick={() => {

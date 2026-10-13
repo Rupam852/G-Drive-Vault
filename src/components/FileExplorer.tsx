@@ -702,6 +702,33 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     setIsMoveDialogOpen(false);
   };
 
+  const handleBulkDownload = async () => {
+    const filesToDownload = filteredFiles.filter(f => selectedIds.has(f.id));
+    if (filesToDownload.length === 0) return;
+
+    toast.info(`Starting download for ${filesToDownload.length} items...`);
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+
+    for (let i = 0; i < filesToDownload.length; i++) {
+      const f = filesToDownload[i];
+      handleDownload(f);
+      if (i < filesToDownload.length - 1) {
+        await new Promise(r => setTimeout(r, 600));
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredFiles.length) {
+      setSelectedIds(new Set());
+      setIsSelectionMode(false);
+    } else {
+      setSelectedIds(new Set(filteredFiles.map(f => f.id)));
+      setIsSelectionMode(true);
+    }
+  };
+
 
 
   const renderItem = (file: FileItem, idx: number) => {
@@ -936,30 +963,43 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-0 left-0 right-0 z-[60] bg-slate-900 dark:bg-slate-800 border-t border-slate-700 pb-safe"
         >
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto w-full">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { setIsSelectionMode(false); setSelectedIds(new Set()); }}
-                className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white"
+                className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white"
               >
                 <X size={16} />
               </button>
               <span className="text-white font-semibold text-sm">{selectedIds.size} selected</span>
+              <button
+                onClick={handleSelectAll}
+                className="text-xs font-semibold text-blue-400 hover:text-blue-300 underline ml-1 cursor-pointer"
+              >
+                {selectedIds.size === filteredFiles.length ? 'Deselect All' : 'Select All'}
+              </button>
             </div>
             <div className="flex gap-2">
               <button
+                onClick={handleBulkDownload}
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold active:scale-95 transition-all shadow-md shadow-emerald-600/20"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Download</span>
+              </button>
+              <button
                 onClick={() => { setIsMoveDialogOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold active:scale-95 transition-all"
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold active:scale-95 transition-all"
               >
                 <Move size={16} />
-                Move
+                <span className="hidden sm:inline">Move</span>
               </button>
               <button
                 onClick={() => { handleBulkDelete(); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold active:scale-95 transition-all"
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold active:scale-95 transition-all"
               >
                 <Trash2 size={16} />
-                Delete
+                <span className="hidden sm:inline">Delete</span>
               </button>
             </div>
           </div>

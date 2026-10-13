@@ -269,14 +269,54 @@ export default function App() {
   };
 
   const mainScrollRef = useRef<HTMLElement>(null);
+  const tabScrollPosRef = useRef<Record<string, number>>({});
+  const folderScrollPosRef = useRef<Record<string, number>>({});
 
-  // Reset scroll position when switching tabs
-  useEffect(() => {
+  const getScrollPos = useCallback(() => {
+    return (mainScrollRef.current && mainScrollRef.current.scrollTop > 0)
+      ? mainScrollRef.current.scrollTop
+      : window.scrollY;
+  }, []);
+
+  const setScrollPos = useCallback((pos: number) => {
     if (mainScrollRef.current) {
-      mainScrollRef.current.scrollTop = 0;
+      mainScrollRef.current.scrollTop = pos;
     }
-    window.scrollTo(0, 0);
-  }, [activeTab]);
+    window.scrollTo({ top: pos, behavior: 'instant' });
+  }, []);
+
+  // Track scroll position continuously for current tab and current folder
+  useEffect(() => {
+    const handleScroll = () => {
+      const pos = getScrollPos();
+      tabScrollPosRef.current[activeTab] = pos;
+      if (activeTab === 'files') {
+        folderScrollPosRef.current[currentFolderIdRef.current] = pos;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    const mainEl = mainScrollRef.current;
+    if (mainEl) {
+      mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (mainEl) {
+        mainEl.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [activeTab, getScrollPos]);
+
+  // Restore scroll position when switching tabs
+  useEffect(() => {
+    const saved = tabScrollPosRef.current[activeTab] || 0;
+    const timer = setTimeout(() => {
+      setScrollPos(saved);
+    }, 35);
+    return () => clearTimeout(timer);
+  }, [activeTab, setScrollPos]);
 
   // Global Drag & Drop state
   const [isGlobalDragging, setIsGlobalDragging] = useState(false);
@@ -644,6 +684,14 @@ export default function App() {
   };
 
   const navigateToFolder = (folderId: string, folderName: string, isBacking: boolean = false) => {
+    if (!isBacking) {
+      // Save current scroll for the folder we are leaving
+      const currentScroll = getScrollPos();
+      folderScrollPosRef.current[currentFolderIdRef.current] = currentScroll;
+      // Newly opened folder starts at top
+      folderScrollPosRef.current[folderId] = 0;
+    }
+
     setCurrentFolderId(folderId);
     currentFolderIdRef.current = folderId; // keep ref in sync
     setFileFilter('all');
@@ -663,7 +711,17 @@ export default function App() {
 
       return newBreadcrumb;
     });
-    fetchFiles(folderId);
+
+    fetchFiles(folderId).then(() => {
+      if (isBacking) {
+        const saved = folderScrollPosRef.current[folderId] || 0;
+        setTimeout(() => {
+          setScrollPos(saved);
+        }, 50);
+      } else {
+        setScrollPos(0);
+      }
+    });
   };
 
   // ── MOUNT ONLY: fetch user + attach event listeners ──────────────────────

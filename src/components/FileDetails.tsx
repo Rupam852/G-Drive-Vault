@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { getCloudflareStreamUrl, isEdgeCdnUrl } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 interface FileDetailsProps {
   file: FileItem | null;
@@ -44,6 +44,8 @@ function getImageUrl(file: FileItem, tokens: any): string | null {
 export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, onShare, onDownload }: FileDetailsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [rawProxyUrl, setRawProxyUrl] = useState<string | null>(null);
+  const [docViewerType, setDocViewerType] = useState<'google' | 'office'>('google');
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewError, setPreviewError] = useState(false);
@@ -141,8 +143,20 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               if (ticketRes.ok && active) {
                 const { ticketId } = await ticketRes.json();
                 const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
-                const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
-                setPreviewUrl(viewerUrl);
+                setRawProxyUrl(proxyUrl);
+                const fileNameLower = file.name.toLowerCase();
+                const isPdf = fileNameLower.endsWith('.pdf') || file.mimeType === 'application/pdf';
+
+                if (isPdf) {
+                  // Direct native PDF viewing in browser (zero dependency on Google Docs viewer, instant!)
+                  setPreviewUrl(proxyUrl);
+                } else if (docViewerType === 'office') {
+                  const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(proxyUrl)}`;
+                  setPreviewUrl(officeUrl);
+                } else {
+                  const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
+                  setPreviewUrl(viewerUrl);
+                }
               } else if (active) {
                 setPreviewError(true);
               }
@@ -159,10 +173,24 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
       }
     } else {
       setPreviewUrl(null);
+      setRawProxyUrl(null);
       setPreviewError(false);
     }
     return () => { active = false; };
   }, [file?.id, isOpen, retryCount]);
+
+  // Handle switching document viewer engines
+  useEffect(() => {
+    if (!rawProxyUrl || !file || file.type !== 'document') return;
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.mimeType === 'application/pdf';
+    if (isPdf) return;
+
+    if (docViewerType === 'office') {
+      setPreviewUrl(`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawProxyUrl)}`);
+    } else {
+      setPreviewUrl(`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(rawProxyUrl)}`);
+    }
+  }, [docViewerType, rawProxyUrl, file]);
 
   if (!file) return null;
 
@@ -382,13 +410,53 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     }
 
     if (file.type === 'document' && previewUrl) {
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.mimeType === 'application/pdf';
       return (
-        <iframe
-          src={previewUrl}
-          className="w-full h-full min-h-[400px] border-0 rounded-2xl bg-white"
-          title={file.name}
-          allow="autoplay"
-        />
+        <div className="w-full h-full flex flex-col bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
+          {!isPdf && (
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/90 border-b border-slate-700/60 text-xs shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-medium text-[11px]">Engine:</span>
+                <button
+                  type="button"
+                  onClick={() => setDocViewerType('google')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    docViewerType === 'google'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Google Viewer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDocViewerType('office')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    docViewerType === 'office'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  Office Online
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onDownload(file)}
+                className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-all cursor-pointer"
+              >
+                <Download size={13} />
+                <span>Download</span>
+              </button>
+            </div>
+          )}
+          <iframe
+            src={previewUrl}
+            className="w-full flex-1 min-h-[420px] border-0 bg-white"
+            title={file.name}
+            allow="autoplay"
+          />
+        </div>
       );
     }
 
