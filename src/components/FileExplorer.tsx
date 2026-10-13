@@ -925,15 +925,15 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               placeholder="Search files..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 sm:h-11 bg-slate-50 dark:bg-slate-800 border-none rounded-xl focus-visible:ring-blue-500 dark:text-white text-sm"
+              className="pl-10 h-10 sm:h-11 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl shadow-xs focus-visible:ring-2 focus-visible:ring-blue-500 text-slate-900 dark:text-white text-sm transition-all"
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger 
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all shrink-0 shadow-xs cursor-pointer ${
                 sortBy !== 'date_desc' 
                   ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50' 
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
+                  : 'bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
               title="Sort Options"
             >
@@ -1018,7 +1018,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           </DropdownMenu>
           <button 
             onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
-            className="w-10 h-10 sm:w-11 sm:h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors shrink-0"
+            className="w-10 h-10 sm:w-11 sm:h-11 bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all shadow-xs shrink-0 cursor-pointer"
+            title={view === 'grid' ? 'List View' : 'Grid View'}
           >
             {view === 'grid' ? <ListIcon size={18} /> : <Grid size={18} />}
           </button>
@@ -1031,10 +1032,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 setIsSelectionMode(true);
               }
             }}
-            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-xs ${
               isSelectionMode 
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
+                : 'bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95'
             }`}
             title={isSelectionMode ? "Cancel Selection" : "Select Files"}
           >
@@ -1046,10 +1047,10 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             <button
               key={type}
               onClick={() => onFilterChange(type)}
-              className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap
+              className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer shadow-2xs
                 ${filterType === type 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25' 
+                  : 'bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
             >
               {type === 'all' ? 'All' : type}

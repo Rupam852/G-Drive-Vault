@@ -529,7 +529,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     document: { textColor: 'text-amber-500 dark:text-amber-400', countBadge: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' },
     audio: { textColor: 'text-emerald-500 dark:text-emerald-400', countBadge: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' },
     apk: { textColor: 'text-teal-500 dark:text-teal-400', countBadge: 'bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-300' },
-    folder: { textColor: 'text-yellow-500 dark:text-yellow-400', countBadge: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-950/60 dark:text-yellow-300' },
+    folder: { textColor: 'text-amber-500 dark:text-amber-400', countBadge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' },
     archive: { textColor: 'text-rose-500 dark:text-rose-400', countBadge: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300' },
     other: { textColor: 'text-slate-500 dark:text-slate-400', countBadge: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
   };
@@ -567,7 +567,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
       <Card 
         onClick={() => setShowStorageDetails(true)}
-        className="border-none shadow-sm bg-slate-50 dark:bg-slate-800/50 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+        className="bg-white dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-all duration-200 group"
       >
         <CardContent className="p-6 space-y-4">
           <div className="flex justify-between items-end">

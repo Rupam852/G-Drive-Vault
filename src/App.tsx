@@ -923,6 +923,10 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', isDarkMode ? '#020617' : '#f8fafc');
+    }
     localStorage.setItem('themeMode', themeMode);
     localStorage.setItem('darkMode', isDarkMode.toString());
   }, [themeMode, isDarkMode]);
@@ -2014,9 +2018,9 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-905 bg-slate-900 text-white font-sans">
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors">
         <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-        <p className="text-sm font-semibold text-slate-400">Loading Drive Vault...</p>
+        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading Drive Vault...</p>
       </div>
     );
   }
@@ -2026,18 +2030,18 @@ export default function App() {
       <>
         <Login onLoginSuccess={fetchUser} />
         <Toaster
-          theme="dark"
+          theme={isDarkMode ? 'dark' : 'light'}
           position="top-center"
           richColors
           closeButton
           toastOptions={{
             style: {
-              background: 'rgba(15, 23, 42, 0.9)',
+              background: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
               backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fff',
+              border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)',
+              color: isDarkMode ? '#fff' : '#0f172a',
               borderRadius: '16px',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              boxShadow: isDarkMode ? '0 20px 25px -5px rgba(0, 0, 0, 0.5)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
               fontSize: '14px',
               fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               padding: '12px 16px'
@@ -2399,18 +2403,18 @@ export default function App() {
       </AnimatePresence>
 
       <Toaster
-        theme="dark"
+        theme={isDarkMode ? 'dark' : 'light'}
         position="top-center"
         richColors
         closeButton
         toastOptions={{
           style: {
-            background: 'rgba(15, 23, 42, 0.9)',
+            background: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            color: '#fff',
+            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)',
+            color: isDarkMode ? '#fff' : '#0f172a',
             borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            boxShadow: isDarkMode ? '0 20px 25px -5px rgba(0, 0, 0, 0.5)' : '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
             fontSize: '14px',
             fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             padding: '12px 16px'

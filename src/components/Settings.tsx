@@ -405,7 +405,7 @@ export default function Settings({ user, setUser, isDarkMode = false, setIsDarkM
                       <div key={idx} className="p-4 space-y-3">
                         <div className="flex items-center gap-3.5">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            currentThemeMode === 'dark' ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-400' :
+                            currentThemeMode === 'dark' ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400' :
                             currentThemeMode === 'light' ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-500' :
                             'bg-blue-50 dark:bg-blue-950/60 text-blue-500'
                           }`}>
