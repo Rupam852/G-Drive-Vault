@@ -85,7 +85,7 @@ const categoryThemeMap: Record<string, { textColor: string; bgColor: string }> =
 export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc' | 'size_desc' | 'size_asc' | 'type'>('date_desc');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -236,10 +236,41 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      if (sortBy === 'size') return a.sizeBytes - b.sizeBytes;
-      if (sortBy === 'type') return a.type.localeCompare(b.type);
-      return b.timestamp - a.timestamp;
+      // 1. Standard Hierarchy: Folders always appear first (unless searching across all files)
+      if (!searchQuery.trim()) {
+        if (a.type === 'folder' && b.type !== 'folder') return -1;
+        if (a.type !== 'folder' && b.type === 'folder') return 1;
+      }
+
+      // 2. Multi-Directional Standard Sort
+      switch (sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        case 'name_desc':
+          return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
+        case 'date_desc': {
+          const cmp = b.timestamp - a.timestamp;
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        case 'date_asc': {
+          const cmp = a.timestamp - b.timestamp;
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        case 'size_desc': {
+          const cmp = b.sizeBytes - a.sizeBytes;
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        case 'size_asc': {
+          const cmp = a.sizeBytes - b.sizeBytes;
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        case 'type': {
+          const cmp = a.type.localeCompare(b.type);
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        default:
+          return b.timestamp - a.timestamp;
+      }
     });
 
   const toggleSelection = (file: FileItem) => {
@@ -898,14 +929,91 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             />
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-10 h-10 sm:w-11 sm:h-11 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 active:bg-slate-100 transition-colors shrink-0">
+            <DropdownMenuTrigger 
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
+                sortBy !== 'date_desc' 
+                  ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50' 
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 active:bg-slate-100'
+              }`}
+              title="Sort Options"
+            >
               <ArrowUpDown size={18} />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 border-none shadow-xl rounded-2xl p-2">
-              <DropdownMenuItem onClick={() => setSortBy('name')} className="rounded-xl cursor-pointer">Sort by Name</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy('size')} className="rounded-xl cursor-pointer">Sort by Size</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy('type')} className="rounded-xl cursor-pointer">Sort by Type</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy('date')} className="rounded-xl cursor-pointer">Sort by Date</DropdownMenuItem>
+            <DropdownMenuContent align="end" className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl rounded-2xl p-1.5 min-w-[215px]">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Sort Hierarchy
+              </div>
+              <div className="px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 mb-1 bg-slate-50 dark:bg-slate-800/70 rounded-xl font-medium">
+                <Folder size={13} className="text-yellow-500 shrink-0" />
+                <span>Folders always on top</span>
+              </div>
+              <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Order By
+              </div>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('date_desc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'date_desc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Date modified (Newest)</span>
+                {sortBy === 'date_desc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('date_asc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'date_asc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Date modified (Oldest)</span>
+                {sortBy === 'date_asc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('name_asc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'name_asc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Name (A to Z)</span>
+                {sortBy === 'name_asc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('name_desc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'name_desc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Name (Z to A)</span>
+                {sortBy === 'name_desc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('size_desc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'size_desc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Size (Largest first)</span>
+                {sortBy === 'size_desc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('size_asc')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'size_asc' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Size (Smallest first)</span>
+                {sortBy === 'size_asc' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setSortBy('type')} 
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                  sortBy === 'type' ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <span>Type (Category)</span>
+                {sortBy === 'type' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button 
