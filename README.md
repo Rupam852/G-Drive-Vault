@@ -1,121 +1,186 @@
 # 🌌 DriveVault
 
 <p align="center">
-  <img src="./public/logo.svg" width="80" height="80" alt="DriveVault Logo" />
+  <img src="./public/logo.svg" width="96" height="96" alt="DriveVault Logo" />
 </p>
 
 <p align="center">
-  <strong>An elegant, self-hosted, secure Google Drive client & transfer manager.</strong>
+  <strong>An elegant, decentralized Google Drive client, media streaming platform & native mobile cloud vault.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Rupam852/G-Drive-Vault/releases"><img src="https://img.shields.io/badge/version-1.5.3-blue.svg?style=for-the-badge&logo=android" alt="Version" /></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/built%20with-React-61DAFB.svg?style=for-the-badge&logo=react" alt="React" /></a>
-  <a href="https://capacitorjs.com/"><img src="https://img.shields.io/badge/native-Capacitor-119EFF.svg?style=for-the-badge&logo=capacitor" alt="Capacitor" /></a>
-  <a href="https://neon.tech/"><img src="https://img.shields.io/badge/database-Neon%20Postgres-00E599.svg?style=for-the-badge&logo=postgresql" alt="Neon" /></a>
-  <a href="https://render.com/"><img src="https://img.shields.io/badge/backend-Render-46E3B7.svg?style=for-the-badge&logo=render" alt="Render" /></a>
+  <a href="https://github.com/Rupam852/G-Drive-Vault/releases"><img src="https://img.shields.io/badge/version-1.6.0-blue.svg?style=for-the-badge&logo=android" alt="Version" /></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB.svg?style=for-the-badge&logo=react" alt="React 19" /></a>
+  <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/Android-Jetpack%20Compose-4285F4.svg?style=for-the-badge&logo=jetpackcompose" alt="Jetpack Compose" /></a>
+  <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-6-646CFF.svg?style=for-the-badge&logo=vite" alt="Vite 6" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind-v4-06B6D4.svg?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS v4" /></a>
+  <a href="https://neon.tech/"><img src="https://img.shields.io/badge/Database-Neon%20Postgres-00E599.svg?style=for-the-badge&logo=postgresql" alt="Neon Postgres" /></a>
+  <a href="https://render.com/"><img src="https://img.shields.io/badge/Backend-Render-46E3B7.svg?style=for-the-badge&logo=render" alt="Render" /></a>
 </p>
 
 ---
 
-## 🚀 Welcome to DriveVault
+## 🚀 Overview
 
-**DriveVault** is a state-of-the-art personal cloud explorer client that connects directly to the official Google Drive API. Unlike traditional cloud drives that charge expensive monthly hosting fees, DriveVault utilizes a **genius decentralized architecture** where users upload/download files directly to their own personal Google Drive (offering 15 GB free space out of the box), keeping server hosting costs strictly at **$0 / month**!
+**DriveVault** is a next-generation personal cloud explorer and high-performance media hub that connects directly to the official **Google Drive API v3**. 
 
-Fully optimized for both web browsers and native Android devices, DriveVault delivers a premium, native-feeling enterprise dashboard with high-end glassmorphic visual aesthetics.
+Unlike conventional storage services that charge recurring subscription fees, DriveVault harnesses a **zero-hosting-cost decentralized model**: files are stored and managed directly on your personal Google Drive accounts (with 15 GB free storage per Google account), while DriveVault delivers a fluid, ultra-responsive native and web experience with **$0/month infrastructure cost**.
 
----
-
-## ✨ Premium Features
-
-### 🎛️ Unified Transfer Manager
-* **Dual-Action Dashboard Overlay:** Track active transfers through an overlay card. Click **Minimize (➖)** to send the download to the background or **Cancel (❌)** to instantly terminate it.
-* **Tabbed Transfer History:** A beautiful tabbed settings view supporting **Upload History** and **Download History** with dynamic sliding transitions.
-* **Interactive Active Controls:** Pause (**⏸️**), Play/Resume (**▶️**), or Cancel (**❌**) active downloads on the fly.
-* **Live Analytics:** Displays real-time download speeds (e.g., `4.5 MB/s`), remaining time ETA (e.g., `12s left`), and growth size text (`15 MB / 50 MB`).
-
-### 📂 File System & Dashboard
-* **Dynamic Search & Filters:** Instantly search your entire drive or filter by file types (Folders, PDF, Images, Videos, Audios, Zip).
-* **Grid / List Views:** Toggle seamlessly between a grid of thumbnails and a detailed list format.
-* **Star & Hide Files:** Bookmark your most important files or place them into a hidden vault folder with biometric/password protection support.
-* **Zero-Lag SWR Caching:** Near 0ms navigation times for nested folders with custom client-side caching.
-
-### 📱 Native Mobile Support (Capacitor)
-* **Custom Background Notifications:** Integrated native Android bridge triggers notifications with high-end progress bars, speed, and remaining time details.
-* **Persistent Download Storage:** Completed items automatically persist inside local storage for full history access.
-* **OTA Auto-Updater:** Instantly alerts users to update their app upon release of a new version.
+DriveVault is engineered as a unified cross-platform application:
+- **Web App:** Built with React 19, TypeScript, Vite 6, and Tailwind CSS v4 featuring sleek glassmorphic aesthetics and dark/light modes.
+- **Android App:** Built with 100% native **Jetpack Compose (Material3)**, Kotlin Coroutines, Android Media3 ExoPlayer, and biometric security targeting modern Android 15 (API level 36).
 
 ---
 
-## 🛠️ The Architecture & Technology Stack
+## ✨ Key Features
+
+### 🎛️ Centralized Transfers Manager
+* **Clean Header Modal:** All floating overlays and progress bars have been unified into a single Transfers button in the top navigation bar, featuring live active badge counters.
+* **Dual Tab History:** Seamlessly switch between **Uploads** and **Downloads** history with granular status indicators (`Completed`, `Failed`, `In Progress`, `Paused`).
+* **Active Stream Controls:** Pause (**⏸️**), Resume (**▶️**), or Cancel (**❌**) ongoing transfers on the fly.
+* **Real-time Transfer Metrics:** Live transfer speed calculations (e.g. `4.8 MB/s`), dynamic ETA countdowns (e.g. `12s left`), and processed bytes tracking (`45 MB / 120 MB`).
+* **Background Foreground Service (Android):** Native notification channels with live progress bars and controls keep downloads alive even when the app is minimized.
+
+### 📂 Smart Drive Engine & Navigation
+* **Smart Root Fallback:** Automatically resolves root hierarchies for accounts with phone/Google Photos sync backups where files lack explicit `'root'` parent IDs.
+* **Instant SWR Caching:** Near 0ms folder navigation with client-side stale-while-revalidate caching and breadcrumb hierarchy.
+* **Grid & List Views:** Instant toggle between high-density lists and media thumbnail grids.
+* **Advanced Filters & Search:** Search files globally or filter instantaneously by type: Documents, PDFs, Images, Videos, Audio, and Archives.
+
+### 🎬 Media Streaming & File Previews
+* **Native Video Engine (Android):** Powered by Android **Media3 (ExoPlayer)** with hardware acceleration, audio track selection, and subtitle support.
+* **HTTP Range Video Streaming (Web):** Full chunked video playback supporting instant scrubbing and low memory consumption.
+* **In-App Document Viewer:** Native and web-based previews for PDFs, text/code files, Markdown, and high-resolution images.
+
+### 🔐 Enterprise-Grade Privacy & Security
+* **Biometric Vault:** Lock sensitive files inside a private vault protected by fingerprint, face unlock, or app passcode.
+* **Zero-Trace Metadata Masking:** Hidden files (`isHidden`) are securely filtered in-memory and omitted from global queries.
+* **Neon PostgreSQL Token Store:** Encrypted OAuth tokens and session data stored securely in serverless PostgreSQL with automated schema migrations.
+
+---
+
+## 🛠️ Technology Stack & Frameworks
+
+DriveVault is powered by modern, battle-tested technologies across web, backend, and native mobile layers:
 
 ```mermaid
 graph TD
-    A[Capacitor Native App / Web Frontend] -->|API Requests| B[NodeJS Express API Server]
-    B -->|OAuth Handshake| C[Google Drive API]
-    B -->|Token Persistence| D[Neon.tech Serverless Postgres]
-    A -->|Static Page Hosting| E[Vercel CDN]
+    subgraph Clients
+        Web["Web Client (React 19 + Vite 6 + Tailwind v4)"]
+        Mobile["Android App (Jetpack Compose + Material3 + Media3)"]
+    end
+
+    subgraph BackendGateway ["Backend API Gateway (Node.js + Express)"]
+        API["Express REST API (TypeScript / tsx)"]
+        Auth["Google OAuth 2.0 Engine"]
+        StreamEngine["Streaming Transfer & Range Piper"]
+    end
+
+    subgraph ExternalServices ["Cloud & Storage Services"]
+        DriveAPI["Google Drive API v3"]
+        DB["Neon Serverless PostgreSQL"]
+    end
+
+    Web -->|HTTPS / REST| API
+    Mobile -->|HTTPS / Retrofit 2| API
+    API -->|Token Management| Auth
+    Auth -->|Credentials Sync| DB
+    API -->|Metadata & File Ops| DriveAPI
+    StreamEngine -->|Direct Stream| Web
+    StreamEngine -->|Direct Stream| Mobile
 ```
 
-* **Frontend:** [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [TailwindCSS](https://tailwindcss.com/) (Hosted on Vercel)
-* **Backend:** [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/) (Hosted on Render Free Tier)
-* **Database:** [Neon.tech](https://neon.tech/) Serverless PostgreSQL (For 100% Free Lifetime token stores)
-* **Native Layer:** [Ionic Capacitor](https://capacitorjs.com/) (Compiling to fully signed Android release APKs)
-
----
-
-## ⚙️ Environment Variables Config
-
-Create a `.env` file in the root directory to run DriveVault:
-
-| Variable Name | Description | Example |
+| Layer | Framework / Technology | Purpose |
 | :--- | :--- | :--- |
-| `PORT` | API Listening port | `3000` |
-| `DATABASE_URL` | Neon.tech PostgreSQL connection string | `postgresql://user:pass@ep-host.aws.neon.tech/neondb` |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | `your-google-oauth-client-id.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | `GOCSPX-your-secret` |
-| `SESSION_SECRET` | Secret key used to encrypt sessions and signed download tickets | `your-secure-custom-secret-string` |
-| `APP_URL` | Production host URL | `https://yourbackendhostdomain.onrender.com` |
+| **Frontend Web** | **React 19**, **Vite 6**, **TypeScript 5.8** | High-performance, reactive user interface |
+| **Styling & Motion** | **Tailwind CSS v4**, **Motion**, **Lucide Icons** | Ultra-modern design system, smooth animations |
+| **Mobile UI** | **Android Jetpack Compose**, **Material 3** | 100% declarative native Android UI |
+| **Mobile Media** | **Android Media3 ExoPlayer 1.4.1** | Native video/audio hardware-accelerated playback |
+| **Mobile Networking** | **Retrofit 2.11**, **OkHttp 4.12**, **Coil 2.7** | Resilient HTTP requests, image caching |
+| **Mobile Platform** | **Capacitor 8**, **Target SDK 36 (Android 15)** | Native bridges, biometric auth & foreground service |
+| **Backend Runtime** | **Node.js**, **Express 4.22**, **tsx** | Scalable REST API & file streaming server |
+| **Database** | **Neon.tech Serverless PostgreSQL** (`pg`) | Secure session, token, and preference storage |
+| **Cloud Storage API** | **Google APIs v3** (`googleapis`) | Direct Google Drive file operations |
+| **Deployment** | **Render** (API & Web Server) | Continuous deployment from GitHub `main` branch |
 
 ---
 
-## 🚀 Running Locally
+## ⚙️ Environment Variables
 
-### 1️⃣ Clone the Repository & Install Dependencies
+Create a `.env` file in the project root:
+
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=production
+APP_URL=https://your-drivevault-app.onrender.com
+
+# PostgreSQL Database (Neon.tech)
+DATABASE_URL=postgresql://user:password@ep-sample-pooler.aws.neon.tech/neondb?sslmode=require
+
+# Google Cloud OAuth 2.0 Credentials
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-your-google-client-secret
+
+# Session & Encryption Keys
+SESSION_SECRET=your-super-strong-random-session-secret-key
+```
+
+---
+
+## 🚀 Getting Started Locally
+
+### 1️⃣ Clone & Install
 ```bash
 git clone https://github.com/Rupam852/G-Drive-Vault.git
 cd G-Drive-Vault
 npm install
 ```
 
-### 2️⃣ Start Development Server
+### 2️⃣ Run Development Server
 ```bash
 npm run dev
 ```
-The React development bundle will boot up locally at `http://localhost:5173`.
+The server will start at `http://localhost:3000` (serving both the API and the Vite frontend).
 
-### 3️⃣ Build & Sync Capacitor Android Project
+### 3️⃣ Run Type Check & Production Build
 ```bash
-npm run build
-npx cap sync
+npm run lint     # TypeScript strict compilation check
+npm run build    # Vite production bundle build
+```
+
+### 4️⃣ Android Native Development
+Ensure Android Studio is installed with Android SDK 34+:
+```bash
+# Sync web assets to Capacitor Android project
+npx cap sync android
+
+# Open Android Studio
 npx cap open android
 ```
-This compiles the distribution resources and launches **Android Studio** directly for native physical testing.
+Alternatively, build the release APK directly via Gradle:
+```bash
+cd android
+./gradlew assembleRelease
+```
+The signed APK will be generated at `android/app/build/outputs/apk/release/app-release.apk`.
 
 ---
 
-## 📥 OTA Auto-Updater Config
-The application's auto-update system is configured dynamically through [app-update.json](app-update.json):
+## 📥 In-App OTA Updates
+
+DriveVault includes an integrated Over-The-Air (OTA) update checker configured via [`app-update.json`](app-update.json):
+
 ```json
 {
-  "latestVersion": "1.5.3",
-  "apkUrl": "https://docs.google.com/uc?export=download&id=1IjU8rFoq13__KPZ3VR5Y3InICv2m06Ba&confirm=t",
-  "releaseNotes": "Major architectural update: Introducing tabbed Transfer History (Uploads & Downloads), live background minimize overlay, dynamic pause/resume/cancel controllers, and real-time speed, ETA, and progress size metrics! 🚀📥💎"
+  "latestVersion": "1.6.0",
+  "apkUrl": "https://github.com/Rupam852/G-Drive-Vault/releases/download/v1.6.0/DriveVault.apk",
+  "releaseNotes": "Unified Transfers Modal, Google Drive smart root fallback, React 19 & Tailwind v4 engine, Jetpack Compose media enhancements!"
 }
 ```
 
 ---
 
-## 📄 License
-This project is proprietary and custom-tailored for personal secure cloud explorer operations. All rights reserved.
+## 📄 License & Credits
 
+Built with ❤️ by [Rupam](https://github.com/Rupam852). Proprietary & open for personal cloud hosting.

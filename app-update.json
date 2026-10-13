@@ -1,5 +1,5 @@
 {
-  "latestVersion": "1.5.3",
+  "latestVersion": "1.6.0",
   "apkUrl": "https://docs.google.com/uc?export=download&id=1IjU8rFoq13__KPZ3VR5Y3InICv2m06Ba&confirm=t",
-  "releaseNotes": "Major architectural update: Introducing tabbed Transfer History (Uploads & Downloads), live background minimize overlay, dynamic pause/resume/cancel controllers, and real-time speed, ETA, and progress size metrics! 🚀📥💎"
+  "releaseNotes": "DriveVault v1.6.0: Centralized Transfers Modal (unified uploads & downloads with pause/resume/cancel and real-time speed & ETA), Google Drive smart root fallback for backup sync, React 19 + Tailwind v4 performance upgrades, and enhanced Jetpack Compose Media3 video engine! 🚀✨"
 }
