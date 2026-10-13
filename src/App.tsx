@@ -20,7 +20,7 @@ import MoveDialog from './components/MoveDialog';
 import ManageAccessDialog from './components/ManageAccessDialog';
 import ShareDialog from './components/ShareDialog';
 import InfoDialog from './components/InfoDialog';
-import TransferManager, { TransferState } from './components/TransferManager';
+import { TransferState } from './components/TransferManager';
 import TransfersModal from './components/TransfersModal';
 import Login from './components/Login';
 import { FileItem } from './types';
@@ -252,7 +252,6 @@ export default function App() {
   const uploadSessionsRef = useRef<Record<string, { uploadUrl: string, file: File, currentFolderId: string }>>({});
   const uploadSpeedsRef = useRef<Record<string, number>>({});
   const [defaultOpenTransfers, setDefaultOpenTransfers] = useState(false);
-  const [showTransferOverlay, setShowTransferOverlay] = useState(false);
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
   const [categorySyncState, setCategorySyncState] = useState<'syncing' | 'synced' | 'idle'>('syncing');
   const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
@@ -1439,7 +1438,6 @@ export default function App() {
       status: 'pending',
       type: 'upload'
     }]);
-    setShowTransferOverlay(true);
 
     try {
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
@@ -1553,7 +1551,6 @@ export default function App() {
       status: 'pending',
       type: 'upload'
     }]);
-    setShowTransferOverlay(true);
 
     try {
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
@@ -2183,6 +2180,8 @@ export default function App() {
             onShowInfo={handleShowInfo}
             activeTransfersCount={totalActiveTransfers}
             onTransfersClick={() => setIsTransfersModalOpen(true)}
+            activeDownloads={activeDownloads}
+            setActiveDownloads={setActiveDownloads}
           />
         );
       case 'files':
@@ -2376,16 +2375,6 @@ export default function App() {
         }} />
 
 
-        {showTransferOverlay && (
-          <TransferManager
-            transfers={transfers}
-            onDismiss={(id) => setTransfers(prev => prev.filter(t => t.id !== id))}
-            onCloseAll={() => setShowTransferOverlay(false)}
-            onCancel={handleCancelTransfer}
-            onPause={handlePauseTransfer}
-            onResume={handleResumeTransfer}
-          />
-        )}
 
         <MoveDialog
           isOpen={isMoveOpen}

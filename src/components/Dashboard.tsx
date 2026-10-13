@@ -45,9 +45,11 @@ interface DashboardProps {
   onShowInfo?: (file: FileItem) => void;
   activeTransfersCount?: number;
   onTransfersClick?: () => void;
+  activeDownloads?: any[];
+  setActiveDownloads?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, categorySyncState: propCategorySyncState, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo, activeTransfersCount = 0, onTransfersClick }: DashboardProps) {
+export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, categorySyncState: propCategorySyncState, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo, activeTransfersCount = 0, onTransfersClick, activeDownloads: propActiveDownloads, setActiveDownloads: propSetActiveDownloads }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [localSyncState, setLocalSyncState] = useState<'syncing' | 'synced' | 'idle'>('idle');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
@@ -62,9 +64,11 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dashFolderInputRef = useRef<HTMLInputElement>(null);
   const [showDashUploadSheet, setShowDashUploadSheet] = useState(false);
-  const [activeDownloads, setActiveDownloads] = useState<{
+  const [localActiveDownloads, setLocalActiveDownloads] = useState<{
     id: string; name: string; progress: number; controller: AbortController;
   }[]>([]);
+  const activeDownloads = propActiveDownloads || localActiveDownloads;
+  const setActiveDownloads = propSetActiveDownloads || setLocalActiveDownloads;
 
   // CENTRAL BACK GESTURE HANDLING
   useEffect(() => {
@@ -486,6 +490,22 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         const a = document.createElement('a'); a.href = blobUrl; a.download = finalFilename; a.click();
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         toast.success(`Downloaded: ${finalFilename}`);
+      }
+
+      try {
+        const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+        const histEntry = {
+          id: dlId,
+          name: finalFilename,
+          date: new Date().toISOString(),
+          size: file.sizeBytes || 0,
+          status: 'completed'
+        };
+        hist.unshift(histEntry);
+        localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+        window.dispatchEvent(new CustomEvent('vault-transfers-synced'));
+      } catch (e) {
+        console.error('Failed to save download history in dashboard:', e);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') toast.info(`Cancelled: ${file.name}`);
@@ -952,40 +972,6 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         </motion.button>
       </div>
 
-      {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
-      {activeDownloads.length > 0 && (
-        <div className="fixed top-0 left-0 right-0 z-[999] space-y-1 p-3 pointer-events-none">
-          {activeDownloads.map(dl => (
-            <div key={dl.id} className="bg-slate-900/97 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl border border-slate-700/60 pointer-events-auto">
-              <div className="w-8 h-8 rounded-lg bg-blue-900/40 flex items-center justify-center shrink-0">
-                <Download size={16} className="text-blue-400 animate-bounce" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate mb-1.5">{dl.name}</p>
-                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  {dl.progress >= 0 ? (
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
-                      style={{ width: `${dl.progress}%` }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full animate-[shimmer_1.5s_infinite]" />
-                  )}
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-blue-400 shrink-0 w-8 text-right">
-                {dl.progress >= 0 ? `${dl.progress}%` : ''}
-              </span>
-              <button
-                onClick={() => dl.controller.abort()}
-                className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* New Folder Dialog */}
       <Dialog open={isNewFolderOpen} onOpenChange={setIsNewFolderOpen}>
@@ -1077,40 +1063,6 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         onDownload={handleDownload}
       />
 
-      {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
-      {activeDownloads.length > 0 && (
-        <div className="fixed top-0 left-0 right-0 z-[999] space-y-1 p-3 pointer-events-none">
-          {activeDownloads.map(dl => (
-            <div key={dl.id} className="bg-slate-900/97 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl border border-slate-700/60 pointer-events-auto">
-              <div className="w-8 h-8 rounded-lg bg-blue-900/40 flex items-center justify-center shrink-0">
-                <Download size={16} className="text-blue-400 animate-bounce" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate mb-1.5">{dl.name}</p>
-                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  {dl.progress >= 0 ? (
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
-                      style={{ width: `${dl.progress}%` }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full animate-[shimmer_1.5s_infinite]" />
-                  )}
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-blue-400 shrink-0 min-w-[42px] text-right">
-                {dl.progress >= 0 ? `${dl.progress}%` : ''}
-              </span>
-              <button
-                onClick={() => dl.controller.abort()}
-                className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

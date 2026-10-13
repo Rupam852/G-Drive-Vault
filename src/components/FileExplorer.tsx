@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare, Minus, Loader2 } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, ArrowDownWideNarrow, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare, Minus, Loader2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -970,7 +970,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               }`}
               title="Sort Options"
             >
-              <ArrowUpDown size={18} />
+              <ArrowDownWideNarrow size={18} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl rounded-2xl p-1.5 min-w-[215px]">
               <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -1479,50 +1479,6 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         </DialogContent>
       </Dialog>
 
-      {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
-      {activeDownloads.filter(d => !d.isHidden).length > 0 && (
-        <div className="fixed top-0 left-0 right-0 z-[999] space-y-1 p-3 pointer-events-none">
-          {activeDownloads.filter(d => !d.isHidden).map(dl => (
-            <div key={dl.id} className="bg-slate-900/97 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl border border-slate-700/60 pointer-events-auto">
-              <div className="w-8 h-8 rounded-lg bg-blue-900/40 flex items-center justify-center shrink-0">
-                <Download size={16} className="text-blue-400 animate-bounce" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate mb-1.5">{dl.name}</p>
-                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                  {dl.progress >= 0 ? (
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
-                      style={{ width: `${dl.progress}%` }}
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full animate-[shimmer_1.5s_infinite]" />
-                  )}
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-blue-400 shrink-0 min-w-[42px] text-right">
-                {dl.progress >= 0 ? `${dl.progress}%` : ''}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setActiveDownloads(prev => prev.map(d => d.id === dl.id ? { ...d, isHidden: true } : d))}
-                  className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300 hover:text-white transition-all shrink-0 pointer-events-auto"
-                  title="Minimize to Background"
-                >
-                  <Minus size={14} />
-                </button>
-                <button
-                  onClick={() => cancelDownload(dl.id, dl.controller)}
-                  className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-red-500/80 flex items-center justify-center text-slate-400 hover:text-white transition-all shrink-0 pointer-events-auto"
-                  title="Cancel Download"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Rename Dialog */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
