@@ -231,6 +231,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
 
     setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
+    onTransfersClick?.();
 
     try {
       const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {

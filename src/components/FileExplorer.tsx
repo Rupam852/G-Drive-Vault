@@ -343,6 +343,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
 
     setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
+    onTransfersClick?.();
 
     try {
       // Get one-time ticket

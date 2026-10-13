@@ -262,6 +262,23 @@ export default function App() {
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
   const [isTransfersModalOpen, setIsTransfersModalOpen] = useState(false);
 
+  // Auto-open TransfersModal whenever an upload or download begins
+  const prevUploadsCountRef = useRef(transfers.length);
+  useEffect(() => {
+    if (transfers.length > prevUploadsCountRef.current) {
+      setIsTransfersModalOpen(true);
+    }
+    prevUploadsCountRef.current = transfers.length;
+  }, [transfers.length]);
+
+  const prevDownloadsCountRef = useRef(activeDownloads.length);
+  useEffect(() => {
+    if (activeDownloads.length > prevDownloadsCountRef.current) {
+      setIsTransfersModalOpen(true);
+    }
+    prevDownloadsCountRef.current = activeDownloads.length;
+  }, [activeDownloads.length]);
+
   // Live active transfers count (Uploads + Downloads)
   const activeUploadsCount = transfers.filter(t => t.status === 'uploading' || t.status === 'pending' || t.status === 'paused').length;
   const activeDownloadsCount = activeDownloads.filter(d => d.status === 'downloading' || d.status === 'paused').length;
@@ -1439,6 +1456,7 @@ export default function App() {
       status: 'pending',
       type: 'upload'
     }]);
+    setIsTransfersModalOpen(true);
 
     try {
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
@@ -1552,6 +1570,7 @@ export default function App() {
       status: 'pending',
       type: 'upload'
     }]);
+    setIsTransfersModalOpen(true);
 
     try {
       setTransfers(prev => prev.map(t => t.id === transferId ? { ...t, status: 'uploading' } : t));
