@@ -2334,7 +2334,15 @@ export default function App() {
         {/* Desktop Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={(tab) => {
+            if (tab === 'files') {
+              setFileFilter('all');
+              setCurrentFolderId('root');
+              setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
+              fetchFiles('root');
+            }
+            setActiveTab(tab);
+          }}
           user={user}
           onLogout={handleLogout}
           onSwitchAccount={handleSwitchAccount}

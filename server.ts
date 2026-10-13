@@ -669,13 +669,13 @@ app.get('/api/drive/files', async (req, res) => {
     client.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: client });
     
-    let q = "trashed = false and not properties has { key='isHidden' and value='true' }";
+    let q = "trashed = false";
     if (filter === 'starred') {
       q += " and starred = true";
     } else if (filter === 'shared') {
       q += " and sharedWithMe = true";
     } else if (filter === 'recent') {
-      q = "trashed = false and not properties has { key='isHidden' and value='true' }";
+      q = "trashed = false";
     } else if (filter === 'image') {
       q += " and mimeType contains 'image/' and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'video') {
@@ -719,10 +719,13 @@ app.get('/api/drive/files', async (req, res) => {
       pagesFetched++;
     } while (pageToken && pagesFetched < MAX_PAGES);
     
-    // Save to memory cache
-    filesCache.set(cacheKey, { data: allFiles, timestamp: Date.now() });
+    // Filter out hidden files in memory (Google Drive API does not support negative 'not properties has' queries)
+    const visibleFiles = allFiles.filter(f => !f.properties || f.properties.isHidden !== 'true');
 
-    res.json(allFiles);
+    // Save to memory cache
+    filesCache.set(cacheKey, { data: visibleFiles, timestamp: Date.now() });
+
+    res.json(visibleFiles);
   } catch (error) {
     console.error('Error fetching drive files:', error);
     res.status(500).json({ error: 'Failed to fetch files' });
