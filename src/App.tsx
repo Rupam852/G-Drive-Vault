@@ -545,7 +545,7 @@ export default function App() {
       if (activeTokens) {
         headers['x-goog-tokens'] = JSON.stringify(activeTokens);
       }
-      const res = await fetch(`${API_BASE_URL}/api/drive/files`, { headers, credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/api/drive/files?filter=recent`, { headers, credentials: 'include' });
       if (res.ok) {
         const driveFiles = await res.json();
         const mapped = mapDriveFiles(driveFiles);

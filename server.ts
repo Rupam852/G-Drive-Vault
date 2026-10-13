@@ -698,10 +698,7 @@ app.get('/api/drive/files', async (req, res) => {
       q += " and 'root' in parents";
     }
 
-    let allFiles: any[] = [];
-    let pageToken: string | undefined = undefined;
-    let pagesFetched = 0;
-    const MAX_PAGES = 10; // Maximum 10,000 files to prevent OOM
+    const isRootQuery = (!folderId || folderId === 'root') && !filter;
 
     do {
       const response = await drive.files.list({
@@ -719,6 +716,28 @@ app.get('/api/drive/files', async (req, res) => {
       pagesFetched++;
     } while (pageToken && pagesFetched < MAX_PAGES);
     
+    // If root query returns 0 files (e.g. user files are backed up without 'root' parent or in unorganized storage),
+    // fallback to searching all non-trashed files so user's files are never hidden!
+    if (isRootQuery && allFiles.length === 0) {
+      console.log('[Drive] Root query returned 0 files, fetching all non-trashed files across drive as fallback');
+      pageToken = undefined;
+      pagesFetched = 0;
+      do {
+        const fallbackRes = await drive.files.list({
+          pageSize: 1000,
+          fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
+          q: 'trashed = false',
+          orderBy: 'modifiedTime desc',
+          pageToken: pageToken
+        });
+        if (fallbackRes.data.files) {
+          allFiles = allFiles.concat(fallbackRes.data.files);
+        }
+        pageToken = fallbackRes.data.nextPageToken || undefined;
+        pagesFetched++;
+      } while (pageToken && pagesFetched < MAX_PAGES);
+    }
+
     // Filter out hidden files in memory (Google Drive API does not support negative 'not properties has' queries)
     const visibleFiles = allFiles.filter(f => !f.properties || f.properties.isHidden !== 'true');
 
