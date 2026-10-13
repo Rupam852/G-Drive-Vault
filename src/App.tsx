@@ -240,6 +240,7 @@ export default function App() {
   const [defaultOpenTransfers, setDefaultOpenTransfers] = useState(false);
   const [showTransferOverlay, setShowTransferOverlay] = useState(false);
   const [storageBreakdown, setStorageBreakdown] = useState<any>(null);
+  const [categorySyncState, setCategorySyncState] = useState<'syncing' | 'synced' | 'idle'>('syncing');
   const [isDownloadEnabled, setIsDownloadEnabled] = useState(() => {
     const saved = localStorage.getItem('drive_vault_download_permission');
     return saved !== null ? saved === 'true' : true;
@@ -495,6 +496,7 @@ export default function App() {
 
   const fetchStorageBreakdown = async (currentTokens?: any) => {
     const activeTokens = currentTokens || tokens;
+    setCategorySyncState('syncing');
     try {
       const headers: any = {};
       if (activeTokens) {
@@ -504,9 +506,16 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setStorageBreakdown(data);
+        setCategorySyncState('synced');
+        setTimeout(() => {
+          setCategorySyncState('idle');
+        }, 1100);
+      } else {
+        setCategorySyncState('idle');
       }
     } catch (err) {
       console.error('Error fetching storage breakdown:', err);
+      setCategorySyncState('idle');
     }
   };
 
@@ -2075,6 +2084,7 @@ export default function App() {
             files={recentFiles}
             storageInfo={storageInfo}
             storageBreakdown={storageBreakdown}
+            categorySyncState={categorySyncState}
             onUpload={handleUploadFile}
             onNativeUpload={handleNativeUploadSelection}
             setActiveTab={setActiveTab}
@@ -2202,6 +2212,7 @@ export default function App() {
           files={recentFiles}
           storageInfo={storageInfo}
           storageBreakdown={storageBreakdown}
+          categorySyncState={categorySyncState}
           onUpload={handleUploadFile}
           onNativeUpload={handleNativeUploadSelection}
           setActiveTab={setActiveTab}

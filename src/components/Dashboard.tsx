@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File } from 'lucide-react';
+import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File, Check, Loader2 } from 'lucide-react';
 
 import { StorageStats, FileItem } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,6 +27,7 @@ interface DashboardProps {
   files: FileItem[];
   storageInfo: any;
   storageBreakdown?: any;
+  categorySyncState?: 'syncing' | 'synced' | 'idle';
   onUpload: (file: File, relativePath?: string, targetFolderId?: string) => void;
   onNativeUpload?: (targetFolderId?: string) => void;
   setActiveTab: (tab: string) => void;
@@ -44,8 +45,9 @@ interface DashboardProps {
   onShowInfo?: (file: FileItem) => void;
 }
 
-export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
+export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, categorySyncState: propCategorySyncState, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [localSyncState, setLocalSyncState] = useState<'syncing' | 'synced' | 'idle'>('idle');
   const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -86,14 +88,22 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
     }
   }, []);
 
+  const currentSyncState: 'syncing' | 'synced' | 'idle' = (propCategorySyncState && propCategorySyncState !== 'idle')
+    ? propCategorySyncState
+    : (localSyncState !== 'idle' ? localSyncState : (storageBreakdown ? 'idle' : 'syncing'));
+
   const handleRefresh = async () => {
     if (onRefreshStorage) {
       setIsRefreshing(true);
+      setLocalSyncState('syncing');
       try {
         await onRefreshStorage();
         toast.success('Storage & files synced with Google Drive');
+        setLocalSyncState('synced');
+        setTimeout(() => setLocalSyncState('idle'), 1100);
       } catch (err) {
         toast.error('Failed to sync storage');
+        setLocalSyncState('idle');
       } finally {
         setTimeout(() => setIsRefreshing(false), 700);
       }
@@ -659,14 +669,51 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
               onClick={() => onCategoryClick ? onCategoryClick(cat.type) : setActiveTab('files')}
               className="group cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-lg dark:hover:shadow-slate-900/40 hover:border-slate-200 dark:hover:border-slate-600 transition-all duration-200 flex flex-col justify-between min-h-[114px]"
             >
-              {/* Header: Clean floating icon (No inner box) + sleek count pill */}
+              {/* Header: Clean floating icon (No inner box) + smooth Syncing -> Synced -> Count animated badge */}
               <div className="flex items-start justify-between">
                 <div className="transition-transform duration-200 group-hover:scale-110 origin-left">
                   <Icon size={28} className={`${theme.textColor} transition-colors`} />
                 </div>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${theme.countBadge}`}>
-                  {cat.count}
-                </span>
+                
+                {/* Modern Pill Badge for Count / Syncing / Synced */}
+                <AnimatePresence mode="wait">
+                  {currentSyncState === 'syncing' ? (
+                    <motion.div
+                      key="syncing"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.18 }}
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${theme.countBadge}`}
+                    >
+                      <Loader2 size={10} className="animate-spin shrink-0" />
+                      <span>Syncing</span>
+                    </motion.div>
+                  ) : currentSyncState === 'synced' ? (
+                    <motion.div
+                      key="synced"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.18 }}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
+                    >
+                      <Check size={11} strokeWidth={2.5} className="shrink-0" />
+                      <span>Synced</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="count"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.18 }}
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${theme.countBadge}`}
+                    >
+                      {cat.count}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Category Info */}
@@ -675,7 +722,14 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
                   {cat.name}
                 </h3>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                  {cat.size === '--' ? 'Directories' : cat.size}
+                  {currentSyncState === 'syncing' && (!storageBreakdown || cat.size === '0 B') ? (
+                    <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500 animate-pulse">
+                      <span className="w-1 h-1 rounded-full bg-blue-500 animate-ping inline-block" />
+                      Syncing...
+                    </span>
+                  ) : (
+                    cat.size === '--' ? 'Directories' : cat.size
+                  )}
                 </p>
               </div>
             </motion.div>
