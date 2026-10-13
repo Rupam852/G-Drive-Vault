@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare, Minus } from 'lucide-react';
+import { Search, Grid, List as ListIcon, MoreVertical, File as FileIcon, Image as ImageIcon, Video, Music, FileText, ArrowUpDown, Plus, Folder, Archive, Camera, User, Star, Trash2, Move, Check, Share2, Edit2, ExternalLink, EyeOff, Download, X, ChevronRight, Info, Smartphone, FileArchive, FileQuestion, CheckSquare, Minus, Loader2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,7 @@ interface FileExplorerProps {
   activeDownloads: any[];
   setActiveDownloads: React.Dispatch<React.SetStateAction<any[]>>;
   onCancelDownload: (id: string) => void;
+  isFilesLoading?: boolean;
 }
 
 const iconMap = {
@@ -82,7 +83,7 @@ const categoryThemeMap: Record<string, { textColor: string; bgColor: string }> =
   other: { textColor: 'text-slate-500', bgColor: 'bg-slate-100 dark:bg-slate-800' },
 };
 
-export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload }: FileExplorerProps) {
+export default function FileExplorer({ files, tokens, breadcrumb, filterType, onFilterChange, onNavigate, onDelete, onUpload, onNativeUpload, onCreateFolder, onRename, onShare, onTabChange, activeSubTab, onStar, onMove, onHide, isDownloadEnabled, onShowInfo, autoOpenFile, onClearAutoOpenFile, activeDownloads, setActiveDownloads, onCancelDownload, isFilesLoading = false }: FileExplorerProps) {
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc' | 'size_desc' | 'size_asc' | 'type'>('date_desc');
@@ -799,9 +800,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       return (
         <motion.div
           key={file.id}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: Math.min(idx, 15) * 0.04 }}
+          transition={{ duration: 0.18, delay: Math.min(idx, 8) * 0.015 }}
           onClick={() => handleItemClick(file)}
           onPointerDown={() => handlePressStart(file)}
           onPointerUp={handlePressEnd}
@@ -846,9 +847,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     return (
       <motion.div
         key={file.id}
-        initial={{ opacity: 0, x: -10 }}
+        initial={{ opacity: 0, x: -6 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: Math.min(idx, 15) * 0.03 }}
+        transition={{ duration: 0.18, delay: Math.min(idx, 8) * 0.015 }}
         onClick={() => handleItemClick(file)}
         onPointerDown={() => handlePressStart(file)}
         onPointerUp={handlePressEnd}
@@ -1063,7 +1064,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           {['all', 'image', 'video', 'document', 'audio', 'folder', 'archive'].map((type) => (
             <button
               key={type}
-              onClick={() => onFilterChange(type)}
+              onClick={() => onFilterChange(filterType === type ? 'all' : type)}
               className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer shadow-2xs
                 ${filterType === type 
                   ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25' 
@@ -1090,31 +1091,57 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         </TabsList>
       </Tabs>
 
-
+      {/* Top indeterminate progress bar when switching categories or folders */}
+      {isFilesLoading && (
+        <div className="w-full h-1 bg-blue-100/60 dark:bg-blue-950/40 rounded-full overflow-hidden relative">
+          <motion.div
+            className="h-full bg-blue-600 dark:bg-blue-500 rounded-full w-1/3"
+            initial={{ x: '-100%' }}
+            animate={{ x: '350%' }}
+            transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
+          />
+        </div>
+      )}
 
       {filteredFiles.length === 0 ? (
-        <div className="py-20 flex flex-col items-center justify-center text-center px-4 space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-blue-500/10 dark:bg-blue-500/15 flex items-center justify-center text-blue-500">
-            <Folder size={40} className="stroke-[1.5]" />
+        isFilesLoading ? (
+          <div className="py-24 flex flex-col items-center justify-center text-center px-4 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Loader2 size={32} className="animate-spin text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                Loading {filterType !== 'all' ? `${filterType} files...` : 'files...'}
+              </h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
+                Fetching your Drive Vault files securely...
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              {searchQuery ? 'No matching files found' : 'This folder is empty'}
-            </h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
-              {searchQuery ? `No files matching "${searchQuery}" in this folder.` : 'Upload files, import archives, or create folders to get started.'}
-            </p>
+        ) : (
+          <div className="py-20 flex flex-col items-center justify-center text-center px-4 space-y-4">
+            <div className="w-20 h-20 rounded-3xl bg-blue-500/10 dark:bg-blue-500/15 flex items-center justify-center text-blue-500">
+              <Folder size={40} className="stroke-[1.5]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                {searchQuery ? 'No matching files found' : 'This folder is empty'}
+              </h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
+                {searchQuery ? `No files matching "${searchQuery}" in this folder.` : 'Upload files, import archives, or create folders to get started.'}
+              </p>
+            </div>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowUploadSheet(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+              >
+                <Plus size={16} />
+                Upload to this folder
+              </button>
+            )}
           </div>
-          {!searchQuery && (
-            <button
-              onClick={() => setShowUploadSheet(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
-            >
-              <Plus size={16} />
-              Upload to this folder
-            </button>
-          )}
-        </div>
+        )
       ) : (
         <div className={view === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4' : 'space-y-1.5'}>
           {filteredFiles.map((file, idx) => renderItem(file, idx))}

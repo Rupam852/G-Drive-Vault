@@ -109,6 +109,20 @@ export default function App() {
   const [currentFolderId, setCurrentFolderId] = useState<string>(initialFolderId);
   const currentFolderIdRef = useRef<string>(initialFolderId); // always latest, no stale closure
   const folderCacheRef = useRef<Record<string, FileItem[]>>({});
+  const [isFilesLoading, setIsFilesLoading] = useState(false);
+  const fetchFilesAbortRef = useRef<AbortController | null>(null);
+
+  const invalidateFolderCache = (folderId?: string) => {
+    if (folderId) {
+      Object.keys(folderCacheRef.current).forEach(key => {
+        if (key.startsWith(`${folderId}_`)) {
+          delete folderCacheRef.current[key];
+        }
+      });
+    } else {
+      folderCacheRef.current = {};
+    }
+  };
   const [breadcrumb, setBreadcrumb] = useState<{ id: string, name: string }[]>(() => {
     const saved = sessionStorage.getItem('drive_vault_breadcrumb');
     return saved ? JSON.parse(saved) : [{ id: 'root', name: 'My Drive' }];
@@ -681,9 +695,24 @@ export default function App() {
     const activeTokens = currentTokens || tokens;
     const cacheKey = `${folderId}_${filter || 'all'}`;
 
+    // Cancel in-flight file fetch requests to avoid race conditions when switching quickly
+    if (fetchFilesAbortRef.current) {
+      fetchFilesAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    fetchFilesAbortRef.current = controller;
+
     // Stale-While-Revalidate: render instantly from cache if available (0ms lag!)
     if (folderCacheRef.current[cacheKey]) {
       setFiles(folderCacheRef.current[cacheKey]);
+      setIsFilesLoading(false);
+    } else {
+      // If switching to a specific category not yet cached, clear stale items so
+      // previous category items don't falsely evaluate to empty folder during fetch
+      if (filter && filter !== 'all') {
+        setFiles([]);
+      }
+      setIsFilesLoading(true);
     }
 
     try {
@@ -697,7 +726,8 @@ export default function App() {
 
       const res = await fetch(`${API_BASE_URL}${url}`, {
         headers,
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
 
       if (res.ok) {
@@ -710,12 +740,20 @@ export default function App() {
       } else {
         console.error('[App] Failed to fetch files:', res.status);
       }
-    } catch (err) {
-      console.error('[App] Error fetching files:', err);
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('[App] Error fetching files:', err);
+      }
+    } finally {
+      if (fetchFilesAbortRef.current === controller) {
+        setIsFilesLoading(false);
+      }
     }
   };
 
   const navigateToFolder = (folderId: string, folderName: string, isBacking: boolean = false) => {
+    if (folderId.startsWith('cat_')) return;
+
     if (!isBacking) {
       // Save current scroll for the folder we are leaving
       const currentScroll = getScrollPos();
@@ -943,6 +981,7 @@ export default function App() {
       });
 
       if (res.ok) {
+        invalidateFolderCache();
         setFiles(prev => prev.filter(f => f.id !== id));
         setRecentFiles(prev => prev.filter(f => f.id !== id));
         fetchHiddenFiles();
@@ -972,6 +1011,7 @@ export default function App() {
       await Promise.all(promises);
 
       // Update hidden files immediately locally
+      invalidateFolderCache();
       setHiddenFiles(prev => prev.filter(f => !ids.includes(f.id)));
       fetchFiles(currentFolderId);
       fetchRecentFiles();
@@ -994,6 +1034,7 @@ export default function App() {
       });
 
       if (res.ok) {
+        invalidateFolderCache();
         setFiles(prev => prev.filter(f => f.id !== id));
         fetchRecentFiles();
         fetchTrash();
@@ -1023,6 +1064,7 @@ export default function App() {
       });
 
       if (res.ok) {
+        invalidateFolderCache();
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchFiles(currentFolderId);
         fetchRecentFiles();
@@ -1052,6 +1094,7 @@ export default function App() {
       });
 
       if (res.ok) {
+        invalidateFolderCache();
         setTrashedFiles(prev => prev.filter(f => f.id !== id));
         fetchStorageBreakdown();
         toast.success('💥 File permanently deleted!');
@@ -1316,6 +1359,7 @@ export default function App() {
             localStorage.setItem('drive_vault_upload_history', JSON.stringify(hist.slice(0, 200)));
           } catch { }
           toast.success(`Uploaded ${file.name} to ${folderLabel}`);
+          invalidateFolderCache(uploadToFolder);
           if (uploadToFolder === currentFolderIdRef.current) {
             fetchFiles(uploadToFolder, undefined, fileFilterRef.current);
           }
@@ -1761,6 +1805,7 @@ export default function App() {
         if (parentId === currentFolderIdRef.current) {
           setFiles(prev => [mapped, ...prev]);
         }
+        invalidateFolderCache(parentId);
         toast.success(`📁 Folder "${name}" created successfully!`);
         fetchStorage();
         fetchStorageBreakdown();
@@ -1790,6 +1835,7 @@ export default function App() {
       if (res.ok) {
         const updatedFile = await res.json();
         const mapped = mapDriveFiles([updatedFile])[0];
+        invalidateFolderCache();
         setFiles(prev => prev.map(f => f.id === id ? { ...f, name: mapped.name } : f));
         setRecentFiles(prev => prev.map(f => f.id === id ? { ...f, name: mapped.name } : f));
         toast.success(`✏️ Renamed to "${newName}" successfully!`);
@@ -1813,6 +1859,7 @@ export default function App() {
       });
 
       if (res.ok) {
+        invalidateFolderCache();
         setFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
         setRecentFiles(prev => prev.map(f => f.id === id ? { ...f, starred } : f));
         toast.success(starred ? '⭐ Added to Starred!' : '🌟 Removed from Starred!');
@@ -1855,6 +1902,7 @@ export default function App() {
       }
 
       if (successCount > 0) {
+        invalidateFolderCache();
         setFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
         setRecentFiles(prev => prev.filter(f => !targetIds.includes(f.id)));
         fetchStorage();
@@ -2055,7 +2103,11 @@ export default function App() {
   const handleCategoryClick = (type: string) => {
     setFileFilter(type);
     setCurrentFolderId('root');
-    setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
+    const catName = type.charAt(0).toUpperCase() + type.slice(1);
+    setBreadcrumb([
+      { id: 'root', name: 'My Drive' },
+      { id: `cat_${type}`, name: catName }
+    ]);
     fetchFiles('root', undefined, type); // Pass type so backend searches ALL Drive by mimeType
     setActiveTab('files');
   };
@@ -2131,11 +2183,22 @@ export default function App() {
             tokens={tokens}
             breadcrumb={breadcrumb}
             filterType={fileFilter}
+            isFilesLoading={isFilesLoading}
             onFilterChange={(newType) => {
               setFileFilter(newType);
               fileFilterRef.current = newType;
               if (currentFolderId === 'root') {
-                fetchFiles('root', undefined, newType === 'all' ? undefined : newType);
+                if (newType === 'all') {
+                  setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
+                  fetchFiles('root', undefined, undefined);
+                } else {
+                  const catName = newType.charAt(0).toUpperCase() + newType.slice(1);
+                  setBreadcrumb([
+                    { id: 'root', name: 'My Drive' },
+                    { id: `cat_${newType}`, name: catName }
+                  ]);
+                  fetchFiles('root', undefined, newType);
+                }
               }
             }}
             onNavigate={navigateToFolder}
