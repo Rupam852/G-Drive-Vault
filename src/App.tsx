@@ -23,6 +23,7 @@ import InfoDialog from './components/InfoDialog';
 import { TransferState } from './components/TransferManager';
 import { formatBytes } from './utils';
 import TransfersModal from './components/TransfersModal';
+import SignOutLoadingDialog from './components/SignOutLoadingDialog';
 import Login from './components/Login';
 import { FileItem } from './types';
 import { Toaster } from '@/components/ui/sonner';
@@ -261,6 +262,9 @@ export default function App() {
   });
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(true);
   const [isTransfersModalOpen, setIsTransfersModalOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutTitle, setSignOutTitle] = useState('Signing out...');
+  const [signOutSubtitle, setSignOutSubtitle] = useState('Clearing secure session & cache...');
 
   // Auto-open TransfersModal whenever an upload or download begins
   const prevUploadsCountRef = useRef(transfers.length);
@@ -1950,18 +1954,38 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    const headers: any = {};
-    if (tokens) {
-      headers['x-goog-tokens'] = JSON.stringify(tokens);
+    setIsSigningOut(true);
+    setSignOutTitle('Signing out...');
+    setSignOutSubtitle('Clearing secure session & cache...');
+
+    const startTime = Date.now();
+    try {
+      const headers: any = {};
+      if (tokens) {
+        headers['x-goog-tokens'] = JSON.stringify(tokens);
+      }
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers,
+        credentials: 'include'
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('Logout request failed:', e);
     }
-    await fetch(`${API_BASE_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers,
-      credentials: 'include'
-    });
-    setUser(null);
-    setTokens(null);
-    setFiles([]);
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
+        await GoogleSignIn.signOut().catch(console.error);
+      } catch (e) {}
+    }
+
+    // Match Android app: ensure at least 850ms for smooth spinner animation and transition
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 850) {
+      await new Promise(r => setTimeout(r, 850 - elapsed));
+    }
+
     localStorage.removeItem('drive_vault_user');
     localStorage.removeItem('drive_vault_tokens');
     sessionStorage.removeItem('drive_vault_active_tab');
@@ -1970,18 +1994,19 @@ export default function App() {
     sessionStorage.removeItem('drive_vault_file_filter');
 
     // Reset React state variables back to defaults on logout
+    setFiles([]);
+    setRecentFiles([]);
     setActiveTab('home');
     setCurrentFolderId('root');
     setBreadcrumb([{ id: 'root', name: 'My Drive' }]);
     setFileFilter('all');
+    setTokens(null);
+    setUser(null);
 
-    if (Capacitor.isNativePlatform()) {
-      import('@capawesome/capacitor-google-sign-in').then(({ GoogleSignIn }) => {
-        GoogleSignIn.signOut().catch(console.error);
-      });
-    }
-
-    toast.info('Logged out');
+    setTimeout(() => {
+      setIsSigningOut(false);
+      toast.success('Signed out successfully');
+    }, 200);
   };
 
   const handleSwitchAccount = async () => {
@@ -2101,6 +2126,11 @@ export default function App() {
     return (
       <>
         <Login onLoginSuccess={fetchUser} />
+        <SignOutLoadingDialog
+          visible={isSigningOut}
+          title={signOutTitle}
+          subtitle={signOutSubtitle}
+        />
         <Toaster
           theme={isDarkMode ? 'dark' : 'light'}
           position="top-center"
@@ -2462,6 +2492,13 @@ export default function App() {
           onClearCompletedTransfers={() => {
             setTransfers(prev => prev.filter(t => t.status !== 'completed'));
           }}
+        />
+
+        {/* ── SIGN-OUT LOADING SPINNER DIALOG (matches Android SignOutLoadingDialog.kt) ── */}
+        <SignOutLoadingDialog
+          visible={isSigningOut}
+          title={signOutTitle}
+          subtitle={signOutSubtitle}
         />
       </div>
 
