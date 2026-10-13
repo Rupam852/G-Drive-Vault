@@ -2288,7 +2288,7 @@ export default function App() {
         return <Dashboard
           user={user}
           tokens={tokens}
-          files={recentFiles}
+          files={recentFiles.length > 0 ? recentFiles : files.filter(f => f.type !== 'folder')}
           storageInfo={storageInfo}
           storageBreakdown={storageBreakdown}
           categorySyncState={categorySyncState}

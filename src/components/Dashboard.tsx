@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File, Check, Loader2, ArrowUpDown } from 'lucide-react';
+import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File, Check, Loader2, ArrowUpDown, Clock } from 'lucide-react';
 
 import { StorageStats, FileItem } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -797,41 +797,51 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
             View All
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {files.slice(0, 6).map((file, idx) => {
-            const Icon = iconMap[file.type] || FileText;
-            const theme = categoryThemeMap[file.type] || categoryThemeMap.other;
-            return (
-              <div 
-                key={idx} 
-                onClick={() => handleOpenFile(file)}
-                className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all cursor-pointer group"
-              >
-                <div className="shrink-0 transition-transform duration-200 group-hover:scale-110">
-                  <Icon size={26} className={theme.textColor} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {file.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                    {file.size} {file.date ? `• ${file.date}` : ''}
-                  </p>
-                </div>
-                <button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setActionMenuFile(file);
-                  }}
-                  className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50"
+        {files.length === 0 ? (
+          <div className="py-7 px-4 rounded-2xl bg-white dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center mb-2">
+              <Clock size={20} />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No recent files found</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Files you upload or open will appear here</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {files.slice(0, 6).map((file, idx) => {
+              const Icon = iconMap[file.type] || FileText;
+              const theme = categoryThemeMap[file.type] || categoryThemeMap.other;
+              return (
+                <div 
+                  key={idx} 
+                  onClick={() => handleOpenFile(file)}
+                  className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600 transition-all cursor-pointer group"
                 >
-                  <MoreHorizontal size={18} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                  <div className="shrink-0 transition-transform duration-200 group-hover:scale-110">
+                    <Icon size={26} className={theme.textColor} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {file.name}
+                    </h4>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                      {file.size} {file.date ? `• ${file.date}` : ''}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setActionMenuFile(file);
+                    }}
+                    className="text-slate-300 dark:text-slate-600 hover:text-blue-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Hidden inputs */}

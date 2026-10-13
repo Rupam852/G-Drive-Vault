@@ -675,7 +675,7 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'shared') {
       q += " and sharedWithMe = true";
     } else if (filter === 'recent') {
-      q = "trashed = false";
+      q = "trashed = false and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'image') {
       q += " and mimeType contains 'image/' and mimeType != 'application/vnd.google-apps.folder'";
     } else if (filter === 'video') {
@@ -691,7 +691,7 @@ app.get('/api/drive/files', async (req, res) => {
     } else if (filter === 'folder') {
       q += " and mimeType = 'application/vnd.google-apps.folder'";
     } else if (filter === 'other') {
-      q += " and not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.android.package-archive' or name contains '.apk') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z') and mimeType != 'application/vnd.google-apps.folder'";
+      q += " and not mimeType contains 'image/' and not mimeType contains 'video/' and not mimeType contains 'audio/' and not (mimeType contains 'pdf' or mimeType contains 'document' or mimeType contains 'spreadsheet' or mimeType contains 'presentation' or mimeType contains 'text/') and not (mimeType = 'application/vnd.google-apps.folder') and not (mimeType contains 'zip' or mimeType contains 'rar' or mimeType contains 'tar' or mimeType contains '7z') and mimeType != 'application/vnd.google-apps.folder'";
     } else if (folderId) {
       q += ` and '${folderId}' in parents`;
     } else {
@@ -699,15 +699,17 @@ app.get('/api/drive/files', async (req, res) => {
     }
 
     const isRootQuery = (!folderId || folderId === 'root') && !filter;
+    const isRecent = filter === 'recent';
 
     let allFiles: any[] = [];
     let pageToken: string | undefined = undefined;
     let pagesFetched = 0;
-    const MAX_PAGES = 10; // Maximum 10,000 files to prevent OOM
+    const MAX_PAGES = isRecent ? 1 : 10; // 1 page (50 files) for recent files to respond in <300ms
+    const fetchPageSize = isRecent ? 50 : 1000;
 
     do {
       const response = await drive.files.list({
-        pageSize: 1000,
+        pageSize: fetchPageSize,
         fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, thumbnailLink, webViewLink, parents, starred, shared, properties)',
         q: q,
         orderBy: filter === 'recent' ? 'modifiedTime desc' : undefined,
