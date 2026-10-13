@@ -322,14 +322,37 @@ export default function App() {
   const [isGlobalDragging, setIsGlobalDragging] = useState(false);
   const dragCounter = useRef(0);
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('darkMode');
-      if (saved !== null) return saved === 'true';
+      const saved = localStorage.getItem('themeMode');
+      if (saved === 'system' || saved === 'light' || saved === 'dark') return saved;
+      const oldDark = localStorage.getItem('darkMode');
+      if (oldDark !== null) return oldDark === 'true' ? 'dark' : 'light';
+      return 'system';
+    }
+    return 'system';
+  });
+
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
+    if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  const isDarkMode = themeMode === 'system' ? systemPrefersDark : themeMode === 'dark';
+
+  const handleSetIsDarkMode = (val: boolean) => {
+    setThemeMode(val ? 'dark' : 'light');
+  };
 
   const [isUnlocked, setIsUnlocked] = useState(true);
   const isAuthenticatingRef = useRef(false);
@@ -891,8 +914,9 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    localStorage.setItem('themeMode', themeMode);
     localStorage.setItem('darkMode', isDarkMode.toString());
-  }, [isDarkMode]);
+  }, [themeMode, isDarkMode]);
 
   const handleHideFile = async (id: string) => {
     try {
@@ -2139,7 +2163,9 @@ export default function App() {
             user={user}
             setUser={setUser}
             isDarkMode={isDarkMode}
-            setIsDarkMode={setIsDarkMode}
+            setIsDarkMode={handleSetIsDarkMode}
+            themeMode={themeMode}
+            setThemeMode={setThemeMode}
             onLogout={handleLogout}
             trashedFiles={trashedFiles}
             hiddenFiles={hiddenFiles}

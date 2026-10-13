@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown, Download, Zap, Activity, Wifi, AlertCircle } from 'lucide-react';
+import { User, Bell, Shield, Cloud, Info, LogOut, ChevronRight, Moon, Sun, Trash2, RefreshCw, X, CheckCircle, EyeOff, Eye, History, Database, Loader2, Pause, Play, ChevronDown, Download, Zap, Activity, Wifi, AlertCircle, Laptop } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -30,8 +30,10 @@ const isVersionOlder = (current: string, latest: string): boolean => {
 interface SettingsProps {
   user: any;
   setUser?: (user: any) => void;
-  isDarkMode: boolean;
-  setIsDarkMode: (val: boolean) => void;
+  isDarkMode?: boolean;
+  setIsDarkMode?: (val: boolean) => void;
+  themeMode?: 'system' | 'light' | 'dark';
+  setThemeMode?: (mode: 'system' | 'light' | 'dark') => void;
   onLogout: () => void;
   trashedFiles: FileItem[];
   hiddenFiles: FileItem[];
@@ -58,7 +60,7 @@ interface SettingsProps {
   onResumeDownload?: (id: string) => void;
 }
 
-export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount, activeDownloads = [], onCancelDownload, onPauseDownload, onResumeDownload }: SettingsProps) {
+export default function Settings({ user, setUser, isDarkMode = false, setIsDarkMode, themeMode: propThemeMode, setThemeMode: propSetThemeMode, onLogout, trashedFiles, hiddenFiles, onRestore, onUnhide, onPermanentDelete, transfers, onClearTransfers, isDownloadEnabled, setIsDownloadEnabled, isNotificationEnabled, setIsNotificationEnabled, onCancelTransfer, onPauseTransfer, onResumeTransfer, defaultOpenTransfers, onCloseTransfers, currentVersion = '1.0.0', updateInfo, onSwitchAccount, activeDownloads = [], onCancelDownload, onPauseDownload, onResumeDownload }: SettingsProps) {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -78,6 +80,15 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
   const [cfLatency, setCfLatency] = useState<any>({ status: 'active', message: 'Ready' });
   const [renderLatency, setRenderLatency] = useState<any>({ status: 'active', message: 'Ready' });
   const [isTestingLatency, setIsTestingLatency] = useState(false);
+
+  const currentThemeMode: 'system' | 'light' | 'dark' = propThemeMode || (isDarkMode ? 'dark' : 'light');
+  const handleSelectTheme = (mode: 'system' | 'light' | 'dark') => {
+    if (propSetThemeMode) {
+      propSetThemeMode(mode);
+    } else if (setIsDarkMode) {
+      setIsDarkMode(mode === 'dark');
+    }
+  };
 
   const runDiagnostics = async () => {
     setIsTestingLatency(true);
@@ -310,14 +321,8 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
           onChange: setIsDownloadEnabled
         },
         {
-          icon: isDarkMode ? Sun : Moon,
-          label: 'Dark Mode',
-          desc: isDarkMode ? 'High-contrast dark theme active' : 'Clean light theme active',
-          color: isDarkMode ? 'text-amber-400' : 'text-slate-600 dark:text-slate-400',
-          bg: 'bg-slate-100 dark:bg-slate-800',
-          toggle: true,
-          checked: isDarkMode,
-          onChange: setIsDarkMode
+          isThemeSelector: true,
+          label: 'Theme Appearance',
         },
       ]
     }
@@ -395,6 +400,78 @@ export default function Settings({ user, setUser, isDarkMode, setIsDarkMode, onL
               </h2>
               <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-100 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60 shadow-sm overflow-hidden">
                 {visibleItems.map((item, idx) => {
+                  if ((item as any).isThemeSelector) {
+                    return (
+                      <div key={idx} className="p-4 space-y-3">
+                        <div className="flex items-center gap-3.5">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            currentThemeMode === 'dark' ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-400' :
+                            currentThemeMode === 'light' ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-500' :
+                            'bg-blue-50 dark:bg-blue-950/60 text-blue-500'
+                          }`}>
+                            {currentThemeMode === 'dark' ? <Moon size={20} /> : currentThemeMode === 'light' ? <Sun size={20} /> : <Laptop size={20} />}
+                          </div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">Theme Appearance</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+                              {currentThemeMode === 'system' ? 'Follows device appearance automatically' :
+                               currentThemeMode === 'dark' ? 'High-contrast dark theme active' : 'Clean light theme active'}
+                            </p>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize shrink-0 ${
+                            currentThemeMode === 'system' ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400' :
+                            currentThemeMode === 'light' ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400' :
+                            'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400'
+                          }`}>
+                            {currentThemeMode === 'system' ? 'System' : currentThemeMode}
+                          </span>
+                        </div>
+
+                        {/* Segmented 3-Way Selector: System Default | Light | Dark */}
+                        <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/50">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTheme('system')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              currentThemeMode === 'system'
+                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Laptop size={14} className={currentThemeMode === 'system' ? 'text-blue-500' : ''} />
+                            <span>System</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTheme('light')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              currentThemeMode === 'light'
+                                ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Sun size={14} className={currentThemeMode === 'light' ? 'text-amber-500' : ''} />
+                            <span>Light</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTheme('dark')}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              currentThemeMode === 'dark'
+                                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Moon size={14} className={currentThemeMode === 'dark' ? 'text-indigo-400' : ''} />
+                            <span>Dark</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const Icon = item.icon || Info;
                   return (
                     <div
