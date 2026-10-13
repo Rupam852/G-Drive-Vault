@@ -1184,16 +1184,16 @@ export default function App() {
     };
   }, []);
 
-  const handleShareFile = async (id: string) => {
-    const file = files.find(f => f.id === id) || recentFiles.find(f => f.id === id);
+  const handleShareFile = async (idOrFile: string | FileItem) => {
+    const targetId = typeof idOrFile === 'string' ? idOrFile : idOrFile?.id;
+    const file = (typeof idOrFile === 'object' && idOrFile !== null)
+      ? idOrFile
+      : (files.find(f => f.id === targetId) || recentFiles.find(f => f.id === targetId));
     if (file) {
-      const link = file.webViewLink ||
-        (file.type === 'folder'
-          ? `https://drive.google.com/drive/folders/${file.id}?usp=sharing`
-          : `https://drive.google.com/file/d/${file.id}/view?usp=sharing`);
-      navigator.clipboard.writeText(link).then(() => {
-        toast.success('🔗 Link copied! Anyone with the link can view in Google Drive.');
-      }).catch(() => toast.error('Failed to copy link'));
+      setFileToShare(file);
+      setSharingState('share');
+    } else {
+      toast.error('File not found for sharing');
     }
   };
 
@@ -2320,7 +2320,6 @@ export default function App() {
           currentFolderId={currentFolderId}
         />
 
-        {/* 
         <ShareDialog
           isOpen={sharingState === 'share'}
           onClose={() => {
@@ -2341,7 +2340,6 @@ export default function App() {
           tokens={tokens}
           user={user}
         />
-        */}
 
         <InfoDialog
           isOpen={isInfoOpen}

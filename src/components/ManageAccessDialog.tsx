@@ -5,6 +5,8 @@ import { FileItem } from '../types';
 import { X, Users, Loader2, UserMinus, Shield, Globe, Lock, ShieldCheck, Link, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface PermissionList {
   id: string;
   emailAddress?: string;
@@ -55,7 +57,7 @@ export default function ManageAccessDialog({ isOpen, onClose, file, tokens, user
     if (!file) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions`, {
         headers: { 'x-goog-tokens': JSON.stringify(tokens) },
         credentials: 'include'
       });
@@ -79,7 +81,7 @@ export default function ManageAccessDialog({ isOpen, onClose, file, tokens, user
     if (!file) return;
     setUpdatingId(permissionId);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions/${permissionId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions/${permissionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +106,7 @@ export default function ManageAccessDialog({ isOpen, onClose, file, tokens, user
     if (!file) return;
     setUpdatingId(permissionId);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions/${permissionId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions/${permissionId}`, {
         method: 'DELETE',
         headers: { 'x-goog-tokens': JSON.stringify(tokens) },
         credentials: 'include'
@@ -125,7 +127,7 @@ export default function ManageAccessDialog({ isOpen, onClose, file, tokens, user
     if (!file) return;
     setChangingGeneral(true);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions-anyone`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions-anyone`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,12 +150,13 @@ export default function ManageAccessDialog({ isOpen, onClose, file, tokens, user
   };
 
   const handleCopyLink = () => {
-    if (!file || !file.webViewLink) {
-      toast.error('Link not available');
-      return;
-    }
-    navigator.clipboard.writeText(file.webViewLink).then(() => {
-      toast.success('Sharing link copied to clipboard');
+    if (!file) return;
+    const link = file.webViewLink ||
+      (file.type === 'folder'
+        ? `https://drive.google.com/drive/folders/${file.id}?usp=sharing`
+        : `https://drive.google.com/file/d/${file.id}/view?usp=sharing`);
+    navigator.clipboard.writeText(link).then(() => {
+      toast.success('📋 Link copied to clipboard!');
     }).catch(() => {
       toast.error('Failed to copy link');
     });

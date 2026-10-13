@@ -6,6 +6,8 @@ import { FileItem } from '../types';
 import { X, Link, Users, Loader2, UserPlus, ShieldAlert, Check, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface PermissionList {
   id: string;
   emailAddress?: string;
@@ -56,7 +58,7 @@ export default function ShareDialog({ isOpen, onClose, onManageAccess, file, tok
     if (!file) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions`, {
         headers: { 'x-goog-tokens': JSON.stringify(tokens) },
         credentials: 'include'
       });
@@ -76,7 +78,7 @@ export default function ShareDialog({ isOpen, onClose, onManageAccess, file, tok
     }
     setAddingEmail(true);
     try {
-      const res = await fetch(`/api/drive/files/${file.id}/permissions`, {
+      const res = await fetch(`${API_BASE_URL}/api/drive/files/${file.id}/permissions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,12 +101,13 @@ export default function ShareDialog({ isOpen, onClose, onManageAccess, file, tok
   };
 
   const handleCopyLink = () => {
-    if (!file || !file.webViewLink) {
-      toast.error('Link not available for this file');
-      return;
-    }
-    navigator.clipboard.writeText(file.webViewLink).then(() => {
-      toast.success('Link copied to clipboard (Restricted)');
+    if (!file) return;
+    const link = file.webViewLink ||
+      (file.type === 'folder'
+        ? `https://drive.google.com/drive/folders/${file.id}?usp=sharing`
+        : `https://drive.google.com/file/d/${file.id}/view?usp=sharing`);
+    navigator.clipboard.writeText(link).then(() => {
+      toast.success('📋 Link copied to clipboard!');
     }).catch(() => {
       toast.error('Failed to copy link');
     });
