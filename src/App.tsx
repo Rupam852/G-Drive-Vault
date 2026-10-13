@@ -21,6 +21,7 @@ import ManageAccessDialog from './components/ManageAccessDialog';
 import ShareDialog from './components/ShareDialog';
 import InfoDialog from './components/InfoDialog';
 import { TransferState } from './components/TransferManager';
+import { formatBytes } from './utils';
 import TransfersModal from './components/TransfersModal';
 import Login from './components/Login';
 import { FileItem } from './types';

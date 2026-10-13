@@ -395,7 +395,7 @@ export default function Settings({ user, setUser, isDarkMode = false, setIsDarkM
 
       <div className="space-y-6">
         {sectionedMenu.map((section, sIdx) => {
-          const visibleItems = section.items.filter(item => !(item.hideOnWeb && !Capacitor.isNativePlatform()));
+          const visibleItems = section.items.filter((item: any) => !(item.hideOnWeb && !Capacitor.isNativePlatform()));
           if (visibleItems.length === 0) return null;
           return (
             <div key={sIdx} className="space-y-2.5">
@@ -403,8 +403,9 @@ export default function Settings({ user, setUser, isDarkMode = false, setIsDarkM
                 {section.title}
               </h2>
               <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-100 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60 shadow-sm overflow-hidden">
-                {visibleItems.map((item, idx) => {
-                  if ((item as any).isThemeSelector) {
+                {visibleItems.map((rawItem, idx) => {
+                  const item = rawItem as any;
+                  if (item.isThemeSelector) {
                     return (
                       <div key={idx} className="p-4 space-y-3">
                         <div className="flex items-center gap-3.5">

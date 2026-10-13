@@ -700,6 +700,11 @@ app.get('/api/drive/files', async (req, res) => {
 
     const isRootQuery = (!folderId || folderId === 'root') && !filter;
 
+    let allFiles: any[] = [];
+    let pageToken: string | undefined = undefined;
+    let pagesFetched = 0;
+    const MAX_PAGES = 10; // Maximum 10,000 files to prevent OOM
+
     do {
       const response = await drive.files.list({
         pageSize: 1000,
