@@ -15,7 +15,7 @@ import FileActionBottomSheet from './FileActionBottomSheet';
 import { toast } from 'sonner';
 import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.vercel.app';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
 
 const truncateFilename = (name: string, maxLen = 30): string => {
   if (!name || name.length <= maxLen) return name;
@@ -352,6 +352,9 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       if (!ticketRes.ok) throw new Error('Ticket failed');
       const { ticketId } = await ticketRes.json();
 
+      const isNative = Capacitor.isNativePlatform();
+      const isAndroid = isNative && Capacitor.getPlatform() === 'android';
+
       const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
       const downloadUrl = (cfUrl && !isAndroid) 
         ? cfUrl 
@@ -449,7 +452,21 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         }
       }
 
-      const res = await fetch(downloadUrl, { signal: controller.signal });
+      let res: Response;
+      try {
+        res = await fetch(downloadUrl, { signal: controller.signal });
+        if (!res.ok && downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+          console.warn('Edge download returned non-200, retrying standard server...');
+          res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
+        }
+      } catch (fetchErr: any) {
+        if (downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+          console.warn('Edge download failed, retrying standard server...', fetchErr);
+          res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
+        } else {
+          throw fetchErr;
+        }
+      }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || `Download failed (${res.status})`);

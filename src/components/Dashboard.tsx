@@ -282,7 +282,21 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         }
       }
 
-      const res = await fetch(downloadUrl, { signal: controller.signal });
+      let res: Response;
+      try {
+        res = await fetch(downloadUrl, { signal: controller.signal });
+        if (!res.ok && downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+          console.warn('Edge download returned non-200, retrying standard server...');
+          res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
+        }
+      } catch (fetchErr: any) {
+        if (downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+          console.warn('Edge download failed, retrying standard server...', fetchErr);
+          res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
+        } else {
+          throw fetchErr;
+        }
+      }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || `Download failed (${res.status})`);
