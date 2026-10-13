@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Image, FileText, Video, Music, MoreHorizontal, Plus, Folder, Archive, RefreshCw, Camera, ExternalLink, Edit2, Share2, Trash2, Star, EyeOff, Move, Download, Cloud, Package, ChevronRight, Info, X, Smartphone, FileArchive, FileQuestion, File } from 'lucide-react';
 
 import { StorageStats, FileItem } from '@/src/types';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import React, { useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatBytes } from '../utils';
 import FileDetails from './FileDetails';
+import FileActionBottomSheet from './FileActionBottomSheet';
 import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
@@ -45,6 +46,7 @@ interface DashboardProps {
 
 export default function Dashboard({ user, tokens, files, storageInfo, storageBreakdown, onUpload, onNativeUpload, setActiveTab, onRefreshStorage, onCategoryClick, onCreateFolder, onRename, onDelete, onShare, onHide, onMove, onStar, onNavigateToFiles, isDownloadEnabled, onShowInfo }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [actionMenuFile, setActionMenuFile] = useState<FileItem | null>(null);
@@ -63,6 +65,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   // CENTRAL BACK GESTURE HANDLING
   useEffect(() => {
     const handleVaultBack = (e: any) => {
+      if (isFabExpanded) { e.preventDefault(); setIsFabExpanded(false); return; }
       if (selectedFile) { e.preventDefault(); setSelectedFile(null); return; }
       if (actionMenuFile) { e.preventDefault(); setActionMenuFile(null); return; }
       if (isNewFolderOpen) { e.preventDefault(); setIsNewFolderOpen(false); return; }
@@ -72,7 +75,7 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
 
     window.addEventListener('vault-back', handleVaultBack);
     return () => window.removeEventListener('vault-back', handleVaultBack);
-  }, [selectedFile, actionMenuFile, isNewFolderOpen, isRenameOpen, showStorageDetails]);
+  }, [isFabExpanded, selectedFile, actionMenuFile, isNewFolderOpen, isRenameOpen, showStorageDetails]);
 
   // Set webkitdirectory via setAttribute — required for Android WebView folder picker
   useEffect(() => {
@@ -86,9 +89,14 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
   const handleRefresh = async () => {
     if (onRefreshStorage) {
       setIsRefreshing(true);
-      await onRefreshStorage();
-      setTimeout(() => setIsRefreshing(false), 1000);
-      toast.success('Storage information updated');
+      try {
+        await onRefreshStorage();
+        toast.success('Storage & files synced with Google Drive');
+      } catch (err) {
+        toast.error('Failed to sync storage');
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 700);
+      }
     }
   };
 
@@ -528,6 +536,23 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Welcome back, {user?.name.split(' ')[0]}</p>
           </div>
         </div>
+
+        {/* ── Live Drive Sync Button (matches Android HomeScreen) ── */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all border shadow-sm ${
+              isRefreshing
+                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
+                : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 active:scale-95'
+            }`}
+            title="Sync Drive"
+          >
+            <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-blue-600' : 'text-slate-500 dark:text-slate-400'} />
+            <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Sync Drive'}</span>
+          </button>
+        </div>
       </header>
 
       <Card 
@@ -540,6 +565,17 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Storage Used</p>
                 <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                {isRefreshing ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-semibold border border-blue-200 dark:border-blue-800/50 animate-pulse">
+                    <RefreshCw size={10} className="animate-spin" />
+                    Syncing Drive...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Synced
+                  </span>
+                )}
               </div>
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatBytes(stats.used)} <span className="text-sm font-normal text-slate-400">/ {formatBytes(stats.total, 0)}</span></p>
             </div>
@@ -698,122 +734,139 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
       <input type="file" ref={fileInputRef} className="hidden" multiple accept="*/*" onChange={handleFileChange} />
       <input type="file" ref={dashFolderInputRef} className="hidden" webkitdirectory="" directory="" onChange={handleFileChange} />
 
-      {/* ── FAB: New Folder + Upload ── */}
-      <div className="fixed bottom-24 right-4 md:bottom-10 md:right-10 z-50 flex flex-col items-end gap-3">
-        <motion.button
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setIsNewFolderOpen(true)}
-          className="w-12 h-12 bg-slate-800 dark:bg-slate-700 rounded-2xl flex items-center justify-center text-white shadow-xl"
-        >
-          <Folder size={22} />
-        </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setShowDashUploadSheet(true)}
-          className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-blue-500/40"
-        >
-          <Plus size={32} />
-        </motion.button>
-      </div>
+      {/* ── EXPANDABLE SPEED DIAL FAB (matches Android ExpandableSpeedDialFab.kt) ── */}
+      {/* Backdrop when speed dial is open */}
+      <AnimatePresence>
+        {isFabExpanded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            onClick={() => setIsFabExpanded(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* ── DASHBOARD UPLOAD BOTTOM SHEET ── */}
-      {showDashUploadSheet && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
-          onClick={() => setShowDashUploadSheet(false)}
+      <div className="fixed bottom-24 right-4 md:bottom-10 md:right-10 z-50 flex flex-col items-end gap-3">
+        {/* Expanded Speed Dial Action Items */}
+        <AnimatePresence>
+          {isFabExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: 15, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="flex flex-col items-end gap-3"
+            >
+              {/* Option 1: Camera */}
+              <div className="flex items-center gap-2.5">
+                <span className="bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800 pointer-events-none select-none">
+                  Camera
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => {
+                    setIsFabExpanded(false);
+                    const i = document.createElement('input');
+                    i.type = 'file';
+                    i.accept = 'image/*';
+                    (i as any).capture = 'environment';
+                    i.onchange = (e: any) => handleFileChange(e);
+                    i.click();
+                  }}
+                  className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-purple-600/30 hover:bg-purple-700 transition-colors"
+                  title="Take Photo"
+                >
+                  <Camera size={20} />
+                </motion.button>
+              </div>
+
+              {/* Option 2: Upload Files */}
+              <div className="flex items-center gap-2.5">
+                <span className="bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800 pointer-events-none select-none">
+                  Upload Files
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => {
+                    setIsFabExpanded(false);
+                    if (Capacitor.isNativePlatform() && onNativeUpload) {
+                      onNativeUpload();
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-600/30 hover:bg-blue-700 transition-colors"
+                  title="Upload Files"
+                >
+                  <Plus size={22} />
+                </motion.button>
+              </div>
+
+              {/* Option 3: Upload Folder */}
+              <div className="flex items-center gap-2.5">
+                <span className="bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800 pointer-events-none select-none">
+                  Upload Folder
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => {
+                    setIsFabExpanded(false);
+                    if (Capacitor.isNativePlatform()) {
+                      toast.info("ℹ️ Android limitation: Folder selection is not natively supported by WebViews. Please use 'Upload Files' to select multiple files!", { duration: 5000 });
+                    } else {
+                      dashFolderInputRef.current?.click();
+                    }
+                  }}
+                  className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-orange-500/30 hover:bg-orange-600 transition-colors"
+                  title="Upload Folder"
+                >
+                  <Archive size={20} />
+                </motion.button>
+              </div>
+
+              {/* Option 4: New Folder */}
+              <div className="flex items-center gap-2.5">
+                <span className="bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-slate-200/60 dark:border-slate-800 pointer-events-none select-none">
+                  New Folder
+                </span>
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => {
+                    setIsFabExpanded(false);
+                    setIsNewFolderOpen(true);
+                  }}
+                  className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-teal-600/30 hover:bg-teal-700 transition-colors"
+                  title="New Folder"
+                >
+                  <Folder size={20} />
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Primary FAB Button (rotates + to ×) */}
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setIsFabExpanded(prev => !prev)}
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all duration-300 ${
+            isFabExpanded 
+              ? 'bg-slate-800 dark:bg-slate-700 shadow-slate-900/40 ring-4 ring-white/20' 
+              : 'bg-blue-600 shadow-blue-500/40 hover:bg-blue-700'
+          }`}
+          aria-label={isFabExpanded ? "Close menu" : "Create or Upload"}
         >
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 400, damping: 38 }}
-            onClick={e => e.stopPropagation()}
-            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl"
+            animate={{ rotate: isFabExpanded ? 135 : 0 }}
+            transition={{ type: 'spring', damping: 15, stiffness: 220 }}
           >
-            {/* Handle */}
-            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-2" />
-
-            {/* Title */}
-            <div className="px-5 pb-2 pt-2 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-800 dark:text-white leading-none">Upload to My Drive</h3>
-              <button
-                onClick={() => setShowDashUploadSheet(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Options grid — Google Drive style */}
-            <div className="px-4 pb-6 grid grid-cols-4 gap-2">
-              {/* New Folder */}
-              <button
-                onClick={() => { setShowDashUploadSheet(false); setIsNewFolderOpen(true); }}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600 shadow-sm">
-                  <Folder size={28} />
-                </div>
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">New<br/>Folder</span>
-              </button>
-
-              {/* Upload Photos & Files */}
-              <button
-                onClick={() => {
-                  if (Capacitor.isNativePlatform() && onNativeUpload) {
-                    onNativeUpload();
-                  } else {
-                    fileInputRef.current?.click();
-                  }
-                  setShowDashUploadSheet(false);
-                }}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shadow-sm">
-                  <Plus size={28} />
-                </div>
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Files, Photos,<br/>Videos, Zip</span>
-              </button>
-
-              {/* Upload Folder */}
-              <button
-                onClick={() => {
-                  if (Capacitor.isNativePlatform()) {
-                    toast.info("ℹ️ Android limitation: Folder selection is not natively supported by WebViews. Please use 'Files, Photos, Videos, Zip' to select and upload multiple files!", { duration: 6000 });
-                  } else {
-                    dashFolderInputRef.current?.click();
-                  }
-                  setShowDashUploadSheet(false);
-                }}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 shadow-sm">
-                  <Archive size={28} />
-                </div>
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Upload<br/>Folder</span>
-              </button>
-
-              {/* Camera */}
-              <button
-                onClick={() => {
-                  const i = document.createElement('input');
-                  i.type = 'file'; i.accept = 'image/*';
-                  (i as any).capture = 'environment';
-                  i.onchange = (e: any) => handleFileChange(e);
-                  i.click();
-                  setShowDashUploadSheet(false);
-                }}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800 transition-all"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 shadow-sm">
-                  <Camera size={28} />
-                </div>
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 text-center leading-tight">Camera</span>
-              </button>
-            </div>
+            <Plus size={30} strokeWidth={2.5} />
           </motion.div>
-        </div>
-      )}
+        </motion.button>
+      </div>
 
       {/* ── DOWNLOAD PROGRESS OVERLAY (fixed top) ── */}
       {activeDownloads.length > 0 && (
@@ -912,151 +965,23 @@ export default function Dashboard({ user, tokens, files, storageInfo, storageBre
         </DialogContent>
       </Dialog>
 
-
-      {/* Action Menu Dialog */}
-      <Dialog open={!!actionMenuFile} onOpenChange={(open) => !open && setActionMenuFile(null)}>
-        <DialogContent className="w-[90vw] sm:max-w-sm bg-white dark:bg-slate-900 border-none rounded-3xl p-6 overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold dark:text-white truncate pr-8">
-              {actionMenuFile?.name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-2 space-y-1">
-            <button
-              onClick={() => {
-                if (actionMenuFile) handleOpenFile(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <ExternalLink size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Open</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onShowInfo) {
-                  onShowInfo(actionMenuFile);
-                }
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600">
-                <Info size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Information</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile) openRenameDialog(actionMenuFile);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                <Edit2 size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Rename</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onShare) onShare(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-600">
-                <Share2 size={20} />
-              </div>
-              <div>
-                <span className="font-medium dark:text-white block">Share</span>
-                <span className="text-[10px] text-slate-400">Copy viewer link</span>
-              </div>
-            </button>
-
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onHide) onHide(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                <EyeOff size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Hide</span>
-            </button>
-
-            {actionMenuFile?.type === 'folder' ? (
-              <button
-                onClick={() => {
-                  if (actionMenuFile) handleDownload(actionMenuFile);
-                  setActionMenuFile(null);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600">
-                  <Archive size={20} />
-                </div>
-                <div>
-                  <span className="font-medium dark:text-white block">Download as ZIP</span>
-                  <span className="text-[10px] text-slate-400">Compress & download folder archive</span>
-                </div>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (actionMenuFile) handleDownload(actionMenuFile);
-                  setActionMenuFile(null);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                  <Download size={20} />
-                </div>
-                <div>
-                  <span className="font-medium dark:text-white block">Download</span>
-                  <span className="text-[10px] text-slate-400">High-speed Edge download</span>
-                </div>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onMove) onMove(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
-                <Move size={20} />
-              </div>
-              <span className="font-medium dark:text-white">Move</span>
-            </button>
-
-            <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
-
-            <button
-              onClick={() => {
-                if (actionMenuFile && onDelete) onDelete(actionMenuFile.id);
-                setActionMenuFile(null);
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600 group-hover:bg-red-200 dark:group-hover:bg-red-900/60 transition-colors">
-                <Trash2 size={20} />
-              </div>
-              <span className="font-medium text-red-600 dark:text-red-400">Delete</span>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* ── RICH FILE/FOLDER ACTION BOTTOM SHEET (matches Android FileActionBottomSheet.kt) ── */}
+      <FileActionBottomSheet
+        file={actionMenuFile}
+        isOpen={!!actionMenuFile}
+        onClose={() => setActionMenuFile(null)}
+        onOpen={handleOpenFile}
+        onDownload={handleDownload}
+        onRename={openRenameDialog}
+        onMove={(f) => {
+          if (onMove) onMove(f.id);
+        }}
+        onStar={onStar}
+        onShare={onShare}
+        onShowInfo={onShowInfo}
+        onHide={onHide}
+        onDelete={onDelete}
+      />
 
       <FileDetails 
         file={selectedFile}

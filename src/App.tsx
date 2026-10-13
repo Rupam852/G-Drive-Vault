@@ -2054,9 +2054,13 @@ export default function App() {
             onUpload={handleUploadFile}
             onNativeUpload={handleNativeUploadSelection}
             setActiveTab={setActiveTab}
-            onRefreshStorage={() => {
-              fetchStorage();
-              fetchStorageBreakdown();
+            onRefreshStorage={async () => {
+              await Promise.allSettled([
+                fetchStorage(),
+                fetchStorageBreakdown(),
+                fetchRecentFiles(),
+                fetchFiles(currentFolderIdRef.current ?? 'root')
+              ]);
             }}
             onCategoryClick={handleCategoryClick}
             onCreateFolder={handleCreateFolder}
@@ -2175,9 +2179,13 @@ export default function App() {
           onUpload={handleUploadFile}
           onNativeUpload={handleNativeUploadSelection}
           setActiveTab={setActiveTab}
-          onRefreshStorage={() => {
-            fetchStorage();
-            fetchStorageBreakdown();
+          onRefreshStorage={async () => {
+            await Promise.allSettled([
+              fetchStorage(),
+              fetchStorageBreakdown(),
+              fetchRecentFiles(),
+              fetchFiles(currentFolderIdRef.current ?? 'root')
+            ]);
           }}
           onDelete={handleDeleteFile}
           onShare={handleShareFile}
