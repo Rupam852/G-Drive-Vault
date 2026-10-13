@@ -991,7 +991,7 @@ export default function App() {
     }
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', isDarkMode ? '#020617' : '#f8fafc');
+      metaThemeColor.setAttribute('content', isDarkMode ? '#090D16' : '#F8FAFC');
     }
     localStorage.setItem('themeMode', themeMode);
     localStorage.setItem('darkMode', isDarkMode.toString());
