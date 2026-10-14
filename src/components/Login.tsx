@@ -26,8 +26,8 @@ interface LoginProps {
 
 // Sample file data for the interactive Blueprint Explorer
 const MOCK_FILES = [
-  { id: '1', name: 'System_Architecture_Blueprint_v1.6.pdf', category: 'document', size: '4.8 MB', modified: '2 hours ago', icon: FileText, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
-  { id: '2', name: 'DriveVault_Release_v1.6.0.apk', category: 'apk', size: '18.4 MB', modified: 'Yesterday', icon: Box, color: 'text-teal-500 bg-teal-500/10 border-teal-500/20' },
+  { id: '1', name: 'System_Architecture_Blueprint.pdf', category: 'document', size: '4.8 MB', modified: '2 hours ago', icon: FileText, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
+  { id: '2', name: 'DriveVault_Release.apk', category: 'apk', size: '18.4 MB', modified: 'Yesterday', icon: Box, color: 'text-teal-500 bg-teal-500/10 border-teal-500/20' },
   { id: '3', name: 'DeepSpace_Nebula_4K_HDR.mkv', category: 'video', size: '2.4 GB', modified: '3 days ago', icon: Film, color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' },
   { id: '4', name: 'Acoustic_Master_Lossless.flac', category: 'audio', size: '48.2 MB', modified: 'Oct 11', icon: Music, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
   { id: '5', name: 'Engineering_Telemetry_2026.png', category: 'image', size: '3.1 MB', modified: 'Oct 09', icon: ImageIcon, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
@@ -215,7 +215,6 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
               ENCLAVE // READY
             </span>
           </div>
-          <span className="font-mono text-[10px] text-slate-500">v1.6.0-PROD</span>
         </div>
 
         <div className="flex-1 flex flex-col justify-center items-center max-w-sm mx-auto w-full space-y-8 z-10">
@@ -318,9 +317,6 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
 
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-base tracking-tight">DriveVault</span>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${isDarkMode ? 'bg-[#101726] border-[#1E293B] text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600 font-semibold'}`}>
-                v1.6.0
-              </span>
             </div>
           </div>
 
@@ -404,7 +400,7 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
             <button onClick={() => { scrollToSection('benchmarks'); setMobileMenuOpen(false); }} className="text-left py-1 text-slate-400 hover:text-blue-500">Benchmarks</button>
             <button onClick={() => { scrollToSection('faq'); setMobileMenuOpen(false); }} className="text-left py-1 text-slate-400 hover:text-blue-500">FAQ</button>
             <a href={APK_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" className="pt-2 text-teal-500 font-semibold flex items-center gap-1.5">
-              <Download size={15} /> Download Android v1.6.0 APK
+              <Download size={15} /> Download Android App
             </a>
           </div>
         )}
@@ -476,17 +472,14 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
             href={APK_DOWNLOAD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={`w-full sm:w-auto h-14 px-6 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2.5 transition-all active:scale-95 ${
+            className={`w-full sm:w-auto h-14 px-8 rounded-2xl border font-bold text-base flex items-center justify-center gap-3 transition-all active:scale-95 whitespace-nowrap shadow-sm ${
               isDarkMode 
-                ? 'bg-[#101726] hover:bg-[#1A2234] border-[#1E293B] text-slate-300' 
-                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm'
+                ? 'bg-[#101726] hover:bg-[#1A2234] border-[#1E293B] text-slate-200' 
+                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
             }`}
           >
-            <Download size={16} className="text-teal-500" />
-            <div className="text-left">
-              <div className="font-bold">Android APK v1.6.0</div>
-              <div className="text-[10px] text-slate-500">18.4 MB • Direct Download</div>
-            </div>
+            <Download size={18} className="text-teal-500 shrink-0" />
+            <span>Download Android App</span>
           </a>
         </motion.div>
 
@@ -546,7 +539,7 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
               <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
               <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
               <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-              <span className="font-mono text-xs text-slate-500 ml-3 hidden sm:inline">DriveVault Core Engine v1.6.0</span>
+              <span className="font-mono text-xs text-slate-500 ml-3 hidden sm:inline">DriveVault Core Engine</span>
             </div>
 
             {/* Interactive Tab Switcher */}
@@ -1058,7 +1051,7 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
               <thead>
                 <tr className={`border-b ${isDarkMode ? 'border-[#1E293B] bg-[#090D16]' : 'border-slate-200 bg-slate-50'}`}>
                   <th className="py-4 px-6 text-slate-500 font-bold">CAPABILITY SPECIFICATION</th>
-                  <th className="py-4 px-6 text-blue-500 font-bold">DRIVE VAULT (v1.6.0)</th>
+                  <th className="py-4 px-6 text-blue-500 font-bold">DRIVE VAULT</th>
                   <th className="py-4 px-6 text-slate-500 font-semibold">STANDARD WEB DRIVE</th>
                   <th className="py-4 px-6 text-slate-500 font-semibold">PROXIED CLOUD APPS</th>
                 </tr>
@@ -1179,7 +1172,7 @@ export default function Login({ onLoginSuccess, isDarkMode = false, onToggleThem
             </div>
             <div>
               <div className="font-extrabold text-sm tracking-tight">DriveVault Core Engine</div>
-              <div className="font-mono text-[10px] text-slate-500">v1.6.0 • DIRECT CLOUD CLIENT</div>
+              <div className="font-mono text-[10px] text-slate-500">DIRECT CLOUD CLIENT</div>
             </div>
           </div>
 
