@@ -2125,7 +2125,11 @@ export default function App() {
   if (!user) {
     return (
       <>
-        <Login onLoginSuccess={fetchUser} />
+        <Login 
+          onLoginSuccess={fetchUser} 
+          isDarkMode={isDarkMode} 
+          onToggleTheme={() => handleSetIsDarkMode(!isDarkMode)} 
+        />
         <SignOutLoadingDialog
           visible={isSigningOut}
           title={signOutTitle}

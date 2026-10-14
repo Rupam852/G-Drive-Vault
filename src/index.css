@@ -276,3 +276,39 @@
 .animate-sonar-pulse {
   animation: sonar-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
+
+/* ── Modern Technical SaaS / Engineering Blueprint Grid Utilities ── */
+.blueprint-grid-dark {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.blueprint-grid-light {
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.blueprint-dots-dark {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.blueprint-dots-light {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.blueprint-card {
+  position: relative;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.blueprint-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
