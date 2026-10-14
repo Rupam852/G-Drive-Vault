@@ -34,7 +34,7 @@ const MOCK_FILES = [
   { id: '6', name: 'Production_Encrypted_Backups', category: 'folder', size: '12 items', modified: 'Oct 08', icon: FolderOpen, color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
 ];
 
-export default function Login({ onLoginSuccess, isDarkMode = true, onToggleTheme }: LoginProps) {
+export default function Login({ onLoginSuccess, isDarkMode = false, onToggleTheme }: LoginProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
   const [activeDemoTab, setActiveDemoTab] = useState<'explorer' | 'stream' | 'enclave' | 'benchmarks'>('explorer');

@@ -370,9 +370,9 @@ export default function App() {
       if (saved === 'system' || saved === 'light' || saved === 'dark') return saved;
       const oldDark = localStorage.getItem('darkMode');
       if (oldDark !== null) return oldDark === 'true' ? 'dark' : 'light';
-      return 'system';
+      return 'light';
     }
-    return 'system';
+    return 'light';
   });
 
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
