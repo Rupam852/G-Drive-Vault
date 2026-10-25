@@ -65,6 +65,7 @@ import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.model.FileCategoryType
 import com.rupam.drivevault.ui.components.getCategoryIcon
 import com.rupam.drivevault.ui.components.SquigglySlider
+import com.rupam.drivevault.ui.components.YouTubeVideoSlider
 import com.rupam.drivevault.ui.components.NativePdfViewer
 import com.rupam.drivevault.ui.components.NativeDocPreview
 import com.rupam.drivevault.ui.theme.BluePrimary
@@ -82,12 +83,22 @@ data class AvailableTrack(
     val isSelected: Boolean
 )
 
-private fun formatDuration(ms: Long): String {
-    if (ms <= 0L) return "00:00"
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
+private fun formatDuration(ms: Long, referenceDurationMs: Long = ms): String {
+    if (ms <= 0L && referenceDurationMs <= 0L) return "00:00"
+    val safeMs = maxOf(0L, ms)
+    val totalSeconds = safeMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
+
+    val refSeconds = maxOf(0L, referenceDurationMs) / 1000
+    val refHours = refSeconds / 3600
+
+    return if (refHours > 0 || hours > 0) {
+        String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -547,13 +558,13 @@ fun MediaPreviewScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = formatDuration(currentPositionMs),
+                                        text = formatDuration(currentPositionMs, durationMs),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = Color.White.copy(alpha = 0.6f)
                                     )
                                     Text(
-                                        text = formatDuration(durationMs),
+                                        text = formatDuration(durationMs, durationMs),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = Color.White.copy(alpha = 0.6f)
@@ -977,47 +988,42 @@ fun MediaPreviewScreen(
                                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                                         ) {
                                             Text(
-                                                text = formatDuration(currentPositionMs),
+                                                text = formatDuration(currentPositionMs, durationMs),
                                                 color = Color.White,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Medium
                                             )
 
                                             var isDraggingSlider by remember { mutableStateOf(false) }
-                                            var dragPositionMs by remember { mutableFloatStateOf(0f) }
+                                            var dragPositionMs by remember { mutableLongStateOf(0L) }
 
-                                            Slider(
-                                                value = if (isDraggingSlider) dragPositionMs else currentPositionMs.toFloat(),
-                                                onValueChange = {
+                                            val bufferedPos = exoPlayer?.bufferedPosition ?: 0L
+
+                                            YouTubeVideoSlider(
+                                                positionMs = if (isDraggingSlider) dragPositionMs else currentPositionMs,
+                                                durationMs = durationMs,
+                                                bufferedPositionMs = bufferedPos,
+                                                onSeekStarted = {
                                                     isDraggingSlider = true
-                                                    dragPositionMs = it
                                                     lastInteractionTime = System.currentTimeMillis()
                                                 },
-                                                onValueChangeFinished = {
+                                                onSeekProgress = { targetMs ->
+                                                    dragPositionMs = targetMs
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                },
+                                                onSeekFinished = { targetMs ->
                                                     isDraggingSlider = false
-                                                    exoPlayer?.seekTo(dragPositionMs.toLong())
-                                                    currentPositionMs = dragPositionMs.toLong()
+                                                    exoPlayer?.seekTo(targetMs)
+                                                    currentPositionMs = targetMs
                                                     lastInteractionTime = System.currentTimeMillis()
                                                 },
-                                                valueRange = 0f..(if (durationMs > 0L) durationMs.toFloat() else 1f),
-                                                thumb = {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(if (isDraggingSlider) 18.dp else 14.dp)
-                                                            .background(BluePrimary, CircleShape)
-                                                            .border(2.dp, Color.White, CircleShape)
-                                                    )
-                                                },
-                                                colors = SliderDefaults.colors(
-                                                    thumbColor = BluePrimary,
-                                                    activeTrackColor = BluePrimary,
-                                                    inactiveTrackColor = Color.White.copy(alpha = 0.25f)
-                                                ),
+                                                activeColor = BluePrimary,
+                                                thumbColor = BluePrimary,
                                                 modifier = Modifier.weight(1f)
                                             )
 
                                             Text(
-                                                text = formatDuration(durationMs),
+                                                text = formatDuration(durationMs, durationMs),
                                                 color = Color.White.copy(alpha = 0.7f),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Medium

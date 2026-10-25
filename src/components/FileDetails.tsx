@@ -7,6 +7,7 @@ import { Image, Video, FileText, Music, File, Trash2, Share2, Info, Calendar, Ha
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { getCloudflareStreamUrl, isEdgeCdnUrl } from '../services/edgeStreamService';
+import { YouTubeWebPlayer } from './YouTubeWebPlayer';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 
@@ -346,13 +347,9 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
             </div>
           </div>
           <div className="flex-1 min-h-0 relative">
-            <video
-              id="preview-video-element"
+            <YouTubeWebPlayer
               src={previewUrl}
-              className="w-full h-full object-contain bg-black rounded-2xl"
               poster={file.thumbnail?.replace('=s220', '=s1000')}
-              controls
-              playsInline
               onError={async () => {
                 if (isEdgeCdnUrl(previewUrl)) {
                   console.warn('Edge CDN stream failed, falling back to Render...');
