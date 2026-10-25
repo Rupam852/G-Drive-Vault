@@ -531,23 +531,30 @@ fun MediaPreviewScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 // 3. Audio Progress Seek Bar & Timers
-                                val progress = if (durationMs > 0L) {
-                                    (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-                                } else 0f
+                                var isDraggingAudioSlider by remember { mutableStateOf(false) }
+                                var dragAudioPositionMs by remember { mutableLongStateOf(0L) }
+                                val bufferedAudioPos = exoPlayer?.bufferedPosition ?: 0L
 
-                                SquigglySlider(
-                                    value = progress,
-                                    isPlaying = isPlaying,
-                                    onValueChange = { newProgress ->
-                                        if (durationMs > 0L) {
-                                            val targetMs = (newProgress * durationMs).toLong()
-                                            exoPlayer?.seekTo(targetMs)
-                                            currentPositionMs = targetMs
-                                        }
+                                YouTubeVideoSlider(
+                                    positionMs = if (isDraggingAudioSlider) dragAudioPositionMs else currentPositionMs,
+                                    durationMs = durationMs,
+                                    bufferedPositionMs = bufferedAudioPos,
+                                    onSeekStarted = {
+                                        isDraggingAudioSlider = true
+                                        lastInteractionTime = System.currentTimeMillis()
+                                    },
+                                    onSeekProgress = { targetMs ->
+                                        dragAudioPositionMs = targetMs
+                                        lastInteractionTime = System.currentTimeMillis()
+                                    },
+                                    onSeekFinished = { targetMs ->
+                                        isDraggingAudioSlider = false
+                                        exoPlayer?.seekTo(targetMs)
+                                        currentPositionMs = targetMs
+                                        lastInteractionTime = System.currentTimeMillis()
                                     },
                                     activeColor = Color(0xFFA78BFA),
-                                    inactiveColor = Color.White.copy(alpha = 0.22f),
-                                    thumbColor = Color.White,
+                                    thumbColor = Color(0xFFA78BFA),
                                     modifier = Modifier.fillMaxWidth()
                                 )
 

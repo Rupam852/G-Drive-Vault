@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { getCloudflareStreamUrl, isEdgeCdnUrl } from '../services/edgeStreamService';
 import { YouTubeWebPlayer } from './YouTubeWebPlayer';
+import { YouTubeWebAudioPlayer } from './YouTubeWebAudioPlayer';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 
@@ -377,7 +378,7 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
     if (file.type === 'audio') {
       const isEdge = isEdgeCdnUrl(previewUrl);
       return (
-        <div className="flex flex-col items-center gap-5 p-6 w-full min-w-0">
+        <div className="flex flex-col items-center gap-4 p-4 w-full min-w-0">
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-[11px]">
             {isEdge ? (
               <span className="font-bold text-emerald-400 flex items-center gap-1">
@@ -389,15 +390,11 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
               </span>
             )}
           </div>
-          <div className="w-24 h-24 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-400 shrink-0 shadow-lg shadow-green-500/10">
-            <Music size={48} />
-          </div>
-          <p className="text-white font-bold text-center break-words break-all max-w-full px-4">{file.name}</p>
-          <audio
+          <YouTubeWebAudioPlayer
             src={previewUrl}
-            controls
+            fileName={file.name}
+            fileSize={file.size}
             autoPlay={fullscreen}
-            className="w-full max-w-sm shrink-0"
             onError={async () => {
               if (isEdgeCdnUrl(previewUrl)) {
                 try {
