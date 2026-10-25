@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Capacitor } from '@capacitor/core';
 import { isCloudflareEdgeEnabled, setCloudflareEdgeEnabled, pingCloudflareWorker, pingRenderBackend, CLOUDFLARE_WORKER_URL } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 
 import { TransferState } from './TransferManager';
 const isVersionOlder = (current: string, latest: string): boolean => {

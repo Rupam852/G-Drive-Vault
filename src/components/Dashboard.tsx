@@ -17,7 +17,7 @@ import FileDetails from './FileDetails';
 import FileActionBottomSheet from './FileActionBottomSheet';
 import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 
 
 

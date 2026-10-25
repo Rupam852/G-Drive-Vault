@@ -296,7 +296,7 @@ object TransferManager {
                         addProperty("filename", fileName)
                     }
                     val initReqBuilder = Request.Builder()
-                        .url("https://g-drive-vault.onrender.com/api/drive/upload-init")
+                        .url("https://g-drive-vault-api.onrender.com/api/drive/upload-init")
                         .post(initPayload.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
                     if (!authTokensHeader.isNullOrBlank()) {
                         initReqBuilder.header("x-goog-tokens", authTokensHeader)

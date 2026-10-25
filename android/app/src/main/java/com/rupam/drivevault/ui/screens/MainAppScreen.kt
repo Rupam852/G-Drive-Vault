@@ -255,7 +255,7 @@ fun MainAppScreen(
                 )
             }.onFailure {
                 val streamUrl = if (isFolder) {
-                    "https://g-drive-vault.onrender.com/api/drive/download/${file.id}"
+                    "https://g-drive-vault-api.onrender.com/api/drive/download/${file.id}"
                 } else {
                     repository.getFastStreamUrl(file.id)
                 }

@@ -225,7 +225,7 @@ interface DriveApiService {
 // ── RETROFIT CLIENT BUILDER ──
 
 object NetworkClient {
-    const val BASE_URL = "https://g-drive-vault.onrender.com/"
+    const val BASE_URL = "https://g-drive-vault-api.onrender.com/"
 
     var onTokenRefreshed: ((com.rupam.drivevault.auth.AuthTokens) -> Unit)? = null
 

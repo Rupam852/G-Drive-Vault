@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { useState, useEffect, useMemo } from 'react';
 
 const WEB_CLIENT_ID = '443871816940-j8ifmrgsd4f0s1to4bttjm3uh93ujl2l.apps.googleusercontent.com';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 const APK_DOWNLOAD_URL = 'https://neo-files-transfer.pages.dev/download/654f8c0f9c19';
 
 interface LoginProps {

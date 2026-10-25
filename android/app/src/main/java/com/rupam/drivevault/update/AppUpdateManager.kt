@@ -41,7 +41,7 @@ data class AppUpdateInfo(
 
 object AppUpdateManager {
     const val PRIMARY_API_URL = "https://api.neofilestransfer.site/api/version/apk_hlszs2p1724nsuo"
-    const val FALLBACK_API_URL = "https://g-drive-vault.onrender.com/api/app/version"
+    const val FALLBACK_API_URL = "https://g-drive-vault-api.onrender.com/api/app/version"
 
     const val CHANNEL_ID = "drive_vault_app_updates"
     const val UPDATE_NOTIF_ID = 8888

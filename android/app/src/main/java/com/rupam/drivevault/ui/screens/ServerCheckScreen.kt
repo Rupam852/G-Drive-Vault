@@ -114,7 +114,7 @@ fun ServerCheckScreen(
                         .readTimeout(15, TimeUnit.SECONDS)
                         .build()
                     val req = Request.Builder()
-                        .url("https://g-drive-vault.onrender.com/")
+                        .url("https://g-drive-vault-api.onrender.com/")
                         .get()
                         .build()
                     val res = withContext(Dispatchers.IO) { client.newCall(req).execute() }
@@ -207,7 +207,7 @@ fun ServerCheckScreen(
             // ── Render Backend Server Card ──
             ServerStatusCard(
                 title = "Render Cloud Backend",
-                subtitle = "g-drive-vault.onrender.com",
+                subtitle = "g-drive-vault-api.onrender.com",
                 description = "OAuth token exchange, database & Google Drive API engine",
                 icon = Icons.Rounded.CloudSync,
                 iconTint = BluePrimary,

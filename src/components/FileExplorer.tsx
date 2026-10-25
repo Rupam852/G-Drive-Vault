@@ -15,7 +15,7 @@ import FileActionBottomSheet from './FileActionBottomSheet';
 import { toast } from 'sonner';
 import { getCloudflareStreamUrl } from '../services/edgeStreamService';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 
 const truncateFilename = (name: string, maxLen = 30): string => {
   if (!name || name.length <= maxLen) return name;

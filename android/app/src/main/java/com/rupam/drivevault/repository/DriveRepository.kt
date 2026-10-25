@@ -40,7 +40,7 @@ class DriveRepository(private val authManager: AuthManager) {
             val base = "$cfUrl/stream/$fileId?token=$token"
             if (!refreshToken.isNullOrBlank()) "$base&refresh_token=$refreshToken" else base
         } else {
-            "https://g-drive-vault.onrender.com/api/drive/download/$fileId?ticket=$ticket&inline=true"
+            "https://g-drive-vault-api.onrender.com/api/drive/download/$fileId?ticket=$ticket&inline=true"
         }
     }
 
@@ -53,12 +53,12 @@ class DriveRepository(private val authManager: AuthManager) {
             val base = "$cfUrl/stream/$fileId?token=$token"
             if (!refreshToken.isNullOrBlank()) "$base&refresh_token=$refreshToken" else base
         } else {
-            "https://g-drive-vault.onrender.com/api/drive/download/$fileId?inline=true"
+            "https://g-drive-vault-api.onrender.com/api/drive/download/$fileId?inline=true"
         }
     }
 
     fun getRenderDownloadUrl(fileId: String, ticket: String): String {
-        return "https://g-drive-vault.onrender.com/api/drive/download/$fileId?ticket=$ticket"
+        return "https://g-drive-vault-api.onrender.com/api/drive/download/$fileId?ticket=$ticket"
     }
 
     fun getDirectGoogleDownloadUrl(fileId: String): String? {

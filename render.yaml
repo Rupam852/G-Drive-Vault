@@ -18,4 +18,4 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: APP_URL
-        value: https://g-drive-vault.onrender.com
+        value: https://g-drive-vault-api.onrender.com

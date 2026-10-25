@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import ServerWakeupPopup, { WakeStatus } from './components/ServerWakeupPopup';
 
 // Define API Base URL for mobile and production environments
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://g-drive-vault-api.onrender.com';
 const CURRENT_VERSION = '1.5.3';
 
 // Global fetch interceptor to automatically save refreshed OAuth tokens sent by the backend
