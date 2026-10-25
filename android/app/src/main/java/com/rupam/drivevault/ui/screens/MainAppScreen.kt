@@ -237,9 +237,10 @@ fun MainAppScreen(
             Toast.makeText(context, if (isFolder) "Preparing ZIP download for ${file.name}..." else "Starting download for ${file.name}...", Toast.LENGTH_SHORT).show()
             repository.getDownloadTicket().onSuccess { ticket ->
                 val renderUrl = repository.getRenderDownloadUrl(file.id, ticket)
-                // For folders, always stream from backend renderUrl since it has the live ZIP compression engine
-                val streamUrl = if (isFolder) renderUrl else repository.getStreamUrl(file.id, ticket)
-                val fallbackUrl = if (isFolder) renderUrl else (repository.getDirectGoogleDownloadUrl(file.id) ?: renderUrl)
+                val directGoogleUrl = if (!isFolder) repository.getDirectGoogleDownloadUrl(file.id) else null
+                // Prioritize direct Google Drive wire speed for files, with Cloudflare as fast fallback; Render for folders
+                val streamUrl = if (isFolder) renderUrl else (directGoogleUrl ?: repository.getStreamUrl(file.id, ticket))
+                val fallbackUrl = if (isFolder) renderUrl else (if (directGoogleUrl != null) repository.getStreamUrl(file.id, ticket) else renderUrl)
                 TransferManager.startDownload(
                     context = context,
                     file = file,
@@ -254,12 +255,13 @@ fun MainAppScreen(
                     }
                 )
             }.onFailure {
+                val directGoogleUrl = if (!isFolder) repository.getDirectGoogleDownloadUrl(file.id) else null
                 val streamUrl = if (isFolder) {
                     "https://g-drive-vault-api.onrender.com/api/drive/download/${file.id}"
                 } else {
-                    repository.getFastStreamUrl(file.id)
+                    directGoogleUrl ?: repository.getFastStreamUrl(file.id)
                 }
-                val fallbackUrl = if (!isFolder) repository.getDirectGoogleDownloadUrl(file.id) else null
+                val fallbackUrl = if (!isFolder && directGoogleUrl != null) repository.getFastStreamUrl(file.id) else null
                 TransferManager.startDownload(
                     context = context,
                     file = file,
@@ -992,11 +994,12 @@ fun MainAppScreen(
                         scope.launch {
                             val directGoogleUrl = if (file.type != FileCategoryType.FOLDER) repository.getDirectGoogleDownloadUrl(file.id) else null
                             val ticket = repository.getDownloadTicket().getOrNull()
-                            val fallbackUrl = directGoogleUrl ?: (if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null)
+                            val primaryUrl = directGoogleUrl ?: url
+                            val fallbackUrl = if (directGoogleUrl != null) url else (if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null)
                             TransferManager.startDownload(
                                 context = context,
                                 file = file,
-                                streamUrl = url,
+                                streamUrl = primaryUrl,
                                 fallbackUrl = fallbackUrl,
                                 onComplete = { success, err ->
                                     if (success) {

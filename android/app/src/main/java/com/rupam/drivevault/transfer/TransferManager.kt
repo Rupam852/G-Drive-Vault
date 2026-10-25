@@ -227,7 +227,8 @@ object TransferManager {
                     override fun contentLength(): Long = if (fileSize > 0) fileSize else -1
 
                     override fun writeTo(sink: BufferedSink) {
-                        val buffer = ByteArray(64 * 1024)
+                        // High-speed 256KB buffer for max wire-speed TCP throughput
+                        val buffer = ByteArray(256 * 1024)
                         var bytesRead: Int
                         var totalWritten = 0L
 
@@ -241,12 +242,12 @@ object TransferManager {
                                     throw java.io.IOException("Cancelled")
                                 }
                                 sink.write(buffer, 0, bytesRead)
-                                sink.flush()
+                                // Note: DO NOT flush on every chunk, as it breaks TCP window scaling and throttles speed
                                 totalWritten += bytesRead
 
                                 val now = System.currentTimeMillis()
                                 val timeDelta = now - lastTime
-                                if (timeDelta >= 300 || (fileSize > 0 && totalWritten == fileSize)) {
+                                if (timeDelta >= 400 || (fileSize > 0 && totalWritten == fileSize)) {
                                     val bytesDelta = totalWritten - lastBytes
                                     val speed = if (timeDelta > 0) (bytesDelta * 1000) / timeDelta else 0L
                                     val progress = if (fileSize > 0) totalWritten.toFloat() / fileSize.toFloat() else 0.5f
@@ -269,6 +270,7 @@ object TransferManager {
                                     lastBytes = totalWritten
                                 }
                             }
+                            sink.flush()
                         }
                     }
                 }
@@ -538,10 +540,10 @@ object TransferManager {
                     count++
                 }
 
-                val inputStream = body.byteStream()
-                val outputStream = FileOutputStream(targetFile)
+                val inputStream = java.io.BufferedInputStream(body.byteStream(), 256 * 1024)
+                val outputStream = java.io.BufferedOutputStream(FileOutputStream(targetFile), 256 * 1024)
 
-                val buffer = ByteArray(64 * 1024)
+                val buffer = ByteArray(256 * 1024)
                 var bytesRead: Int
                 var totalDownloaded = 0L
                 var lastTime = System.currentTimeMillis()
@@ -558,7 +560,7 @@ object TransferManager {
 
                             val now = System.currentTimeMillis()
                             val timeDelta = now - lastTime
-                            if (timeDelta >= 300 || (totalLength > 0 && totalDownloaded == totalLength)) {
+                            if (timeDelta >= 400 || (totalLength > 0 && totalDownloaded == totalLength)) {
                                 val bytesDelta = totalDownloaded - lastBytes
                                 val speed = if (timeDelta > 0) (bytesDelta * 1000) / timeDelta else 0L
                                 val progress = if (totalLength > 0) totalDownloaded.toFloat() / totalLength.toFloat() else 0.5f
