@@ -223,8 +223,8 @@ fun AboutScreen(
                         iconTint = Color(0xFF059669),
                         iconBackground = Color(0xFF10B981).copy(alpha = 0.14f),
                         title = "Official App Website",
-                        subtitle = "g-drive-vault.vercel.app • Tap to visit",
-                        onClick = { openUrl("https://g-drive-vault.vercel.app/") }
+                        subtitle = "g-drive-vault.pages.dev • Tap to visit",
+                        onClick = { openUrl("https://g-drive-vault.pages.dev/") }
                     )
                 }
             }
