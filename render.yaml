@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: g-drive-vault
+    name: g-drive-vault-api
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
