@@ -240,6 +240,8 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
       const isNative = Capacitor.isNativePlatform();
       const isAndroid = isNative && Capacitor.getPlatform() === 'android';
 
+      let ticketId: string | null = null;
+
       // 1. Prioritize Cloudflare Edge CDN for ultra-fast 0-Render-bandwidth downloads on all devices
       const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
       let downloadUrl = cfUrl;
@@ -252,7 +254,8 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
             body: JSON.stringify({ tokens }), signal: controller.signal,
           });
           if (ticketRes.ok) {
-            const { ticketId } = await ticketRes.json();
+            const ticketData = await ticketRes.json();
+            ticketId = ticketData.ticketId;
             downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
           }
         } catch (ticketErr) {
@@ -310,12 +313,12 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
       let res: Response;
       try {
         res = await fetch(downloadUrl, { signal: controller.signal });
-        if (!res.ok && downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+        if (!res.ok && ticketId && downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
           console.warn('Edge download returned non-200, retrying standard server...');
           res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
         }
       } catch (fetchErr: any) {
-        if (downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
+        if (ticketId && downloadUrl !== `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`) {
           console.warn('Edge download failed, retrying standard server...', fetchErr);
           res = await fetch(`${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`, { signal: controller.signal });
         } else {

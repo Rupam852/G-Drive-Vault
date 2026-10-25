@@ -1570,11 +1570,28 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.SERVE_FRONTEND === 'true' && fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'))) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
+    });
+  } else {
+    // Pure Backend API Mode: Render only serves APIs; Cloudflare Pages serves the Frontend
+    app.get('/', (_req, res) => {
+      res.json({
+        status: 'online',
+        service: 'DriveVault Backend API',
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    app.get('*', (req, res) => {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'DriveVault Backend API. Please access the web application via Cloudflare Pages.'
+      });
     });
   }
 
