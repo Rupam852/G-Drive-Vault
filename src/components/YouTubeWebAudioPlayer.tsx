@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Music } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Music } from 'lucide-react';
 import { formatMediaTime } from './YouTubeWebPlayer';
 
 interface YouTubeWebAudioPlayerProps {
@@ -23,9 +23,6 @@ export const YouTubeWebAudioPlayer: React.FC<YouTubeWebAudioPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState(0);
@@ -103,35 +100,6 @@ export const YouTubeWebAudioPlayer: React.FC<YouTubeWebAudioPlayerProps> = ({
     setHoverTime(null);
   };
 
-  const handleVolumeChange = (newVolume: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const safeVol = Math.max(0, Math.min(1, newVolume));
-    audio.volume = safeVol;
-    setVolume(safeVol);
-    setIsMuted(safeVol === 0);
-  };
-
-  const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isMuted) {
-      audio.muted = false;
-      setIsMuted(false);
-      audio.volume = volume > 0 ? volume : 0.5;
-    } else {
-      audio.muted = true;
-      setIsMuted(true);
-    }
-  };
-
-  const changeSpeed = (speed: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.playbackRate = speed;
-    setPlaybackSpeed(speed);
-  };
-
   const skipTime = (seconds: number) => {
     const audio = audioRef.current;
     if (!audio || !duration) return;
@@ -152,15 +120,35 @@ export const YouTubeWebAudioPlayer: React.FC<YouTubeWebAudioPlayerProps> = ({
         onError={onError}
       />
 
-      {/* Album / Music Art */}
-      <div className="relative w-28 h-28 rounded-3xl bg-gradient-to-tr from-purple-600/30 via-indigo-600/20 to-blue-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-xl shadow-purple-500/10 mb-4 group">
-        <Music size={52} className={`transition-transform duration-500 ${isPlaying ? 'scale-110 text-purple-300' : 'scale-100'}`} />
-        {isPlaying && (
-          <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span>
-          </span>
-        )}
+      {/* Rotating Vinyl Record (Turnable Disc) */}
+      <div className="relative w-40 h-40 flex items-center justify-center my-3 select-none">
+        {/* Glow ambient background */}
+        <div
+          className={`absolute inset-0 rounded-full bg-purple-600/20 blur-xl transition-opacity duration-700 ${
+            isPlaying ? 'opacity-100' : 'opacity-40'
+          }`}
+        />
+
+        {/* Rotating Vinyl Record */}
+        <div
+          className="relative w-36 h-36 rounded-full bg-[#13121A] border-2 border-purple-500/40 flex items-center justify-center shadow-2xl shadow-purple-950/80 transition-transform"
+          style={{
+            animation: 'spin 8s linear infinite',
+            animationPlayState: isPlaying ? 'running' : 'paused'
+          }}
+        >
+          {/* Concentric Grooves */}
+          <div className="absolute w-30 h-30 rounded-full border border-white/[0.08]" />
+          <div className="absolute w-24 h-24 rounded-full border border-white/[0.08]" />
+          <div className="absolute w-18 h-18 rounded-full border border-white/[0.08]" />
+
+          {/* Vinyl Center Label */}
+          <div className="relative w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-500 border-2 border-purple-300/50 flex items-center justify-center shadow-lg">
+            <Music size={20} className="text-white drop-shadow" />
+            {/* Center Spindle Hole */}
+            <div className="absolute w-2.5 h-2.5 rounded-full bg-[#13121A] border border-white/30" />
+          </div>
+        </div>
       </div>
 
       {/* Title & Size */}
@@ -192,7 +180,7 @@ export const YouTubeWebAudioPlayer: React.FC<YouTubeWebAudioPlayerProps> = ({
 
           {/* Background Track (Sleek 3.5px line, expands to 5px on hover) */}
           <div className="relative w-full h-[3.5px] group-hover/bar:h-[5px] bg-white/20 rounded-full overflow-hidden transition-all duration-150">
-            {/* Active Played Progress (Smooth Continuous Purple/Blue) */}
+            {/* Active Played Progress (Smooth Continuous Purple) */}
             <div
               className="absolute top-0 bottom-0 left-0 bg-purple-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
@@ -215,71 +203,31 @@ export const YouTubeWebAudioPlayer: React.FC<YouTubeWebAudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* Audio Playback Controls */}
-      <div className="flex items-center justify-between w-full px-4 mt-2">
-        {/* Speed Selector */}
-        <div className="flex items-center gap-1">
-          {[0.75, 1, 1.25, 1.5].map((spd) => (
-            <button
-              key={spd}
-              onClick={() => changeSpeed(spd)}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
-                playbackSpeed === spd
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white/5 hover:bg-white/10 text-slate-400'
-              }`}
-            >
-              {spd}x
-            </button>
-          ))}
-        </div>
+      {/* Centered Audio Playback Controls (Middle below slide bar) */}
+      <div className="flex items-center justify-center gap-7 w-full mt-3">
+        <button
+          onClick={() => skipTime(-10)}
+          className="p-3 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all flex items-center justify-center"
+          title="Replay 10 seconds"
+        >
+          <RotateCcw size={22} />
+        </button>
 
-        {/* Center Main Controls: 10s Replay, Play/Pause, 10s Forward */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => skipTime(-10)}
-            className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
-            title="Replay 10 seconds"
-          >
-            <RotateCcw size={18} />
-          </button>
+        <button
+          onClick={togglePlay}
+          className="w-15 h-15 rounded-full bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shadow-xl shadow-purple-600/40 active:scale-95 hover:scale-105 transition-all"
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? <Pause size={28} className="fill-white" /> : <Play size={28} className="fill-white translate-x-0.5" />}
+        </button>
 
-          <button
-            onClick={togglePlay}
-            className="w-13 h-13 rounded-full bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 active:scale-95 hover:scale-105 transition-all"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <Pause size={24} className="fill-white" /> : <Play size={24} className="fill-white translate-x-0.5" />}
-          </button>
-
-          <button
-            onClick={() => skipTime(10)}
-            className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
-            title="Forward 10 seconds"
-          >
-            <RotateCw size={18} />
-          </button>
-        </div>
-
-        {/* Volume Control */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={toggleMute}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
-            title={isMuted ? 'Unmute' : 'Mute'}
-          >
-            {isMuted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={isMuted ? 0 : volume}
-            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-            className="w-14 h-1 accent-purple-500 bg-white/20 rounded-lg cursor-pointer"
-          />
-        </div>
+        <button
+          onClick={() => skipTime(10)}
+          className="p-3 rounded-full text-slate-300 hover:text-white hover:bg-white/10 active:scale-90 transition-all flex items-center justify-center"
+          title="Forward 10 seconds"
+        >
+          <RotateCw size={22} />
+        </button>
       </div>
     </div>
   );
