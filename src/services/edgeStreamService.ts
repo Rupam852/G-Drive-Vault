@@ -28,12 +28,15 @@ export function setCloudflareEdgeEnabled(enabled: boolean): void {
  * Generates an accelerated edge streaming URL using Cloudflare Worker CDN.
  * Returns null if Cloudflare is disabled or tokens are absent.
  */
-export function getCloudflareStreamUrl(fileId: string, tokens: any): string | null {
+export function getCloudflareStreamUrl(fileId: string, tokens: any, filename?: string): string | null {
   if (!isCloudflareEdgeEnabled()) return null;
   const token = tokens?.access_token;
   if (!token) return null;
 
-  const base = `${CLOUDFLARE_WORKER_URL}/stream/${fileId}?token=${encodeURIComponent(token)}`;
+  let base = `${CLOUDFLARE_WORKER_URL}/stream/${fileId}?token=${encodeURIComponent(token)}`;
+  if (filename) {
+    base += `&filename=${encodeURIComponent(filename)}`;
+  }
   return tokens.refresh_token ? `${base}&refresh_token=${encodeURIComponent(tokens.refresh_token)}` : base;
 }
 

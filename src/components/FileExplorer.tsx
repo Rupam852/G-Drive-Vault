@@ -373,7 +373,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       let ticketId: string | null = null;
 
       // 1. Prioritize Cloudflare Edge CDN for ultra-fast 0-Render-bandwidth downloads on all devices
-      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
+      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens, finalFilename) : null;
       let downloadUrl = cfUrl;
 
       // 2. If no Cloudflare URL (or if downloading a zipped folder), get one-time ticket from backend
@@ -401,6 +401,49 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       }
 
       if (!downloadUrl) throw new Error('No download URL available');
+
+      // ── Web / PC Browser Direct Stream Download (Instant Chrome/Edge Downloads) ──
+      if (!isNative) {
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+          ...d,
+          progress: 100,
+          status: 'completed',
+          speed: 'Direct Browser Stream',
+          sizeText: file.sizeBytes > 0 ? formatBytesHelper(file.sizeBytes) : 'Ready',
+          eta: 'Saving directly to PC Downloads'
+        } : d));
+
+        // Trigger browser's native download manager immediately
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = finalFilename;
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        try {
+          const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+          const histEntry = {
+            id: dlId,
+            name: finalFilename,
+            date: new Date().toISOString(),
+            size: file.sizeBytes || 0,
+            status: 'completed'
+          };
+          hist.unshift(histEntry);
+          localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+          window.dispatchEvent(new CustomEvent('vault-transfers-synced'));
+        } catch (e) {
+          console.error('Failed to save download history:', e);
+        }
+
+        toast.success('Download Started', { 
+          description: `${truncateFilename(finalFilename, 35)} • Check your browser downloads!`,
+          duration: 5000
+        });
+        return;
+      }
 
       if (isAndroid) {
         keepActive = true;
@@ -577,6 +620,14 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       const startTime = Date.now();
       let lastNotificationTime = 0;
+      let lastUiUpdateTime = 0;
+      let lastLoadedBytes = 0;
+      let lastSpeedTime = startTime;
+      let smoothedSpeed = 0;
+      let smoothedEta = 0;
+      let speedText = 'Connecting...';
+      let etaText = 'Estimating...';
+      let progressSizeText = '';
 
       const formatBytes = (bytes: number, decimals = 1) => {
         if (bytes === 0) return '0 Bytes';
@@ -626,31 +677,52 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         if (done) break;
         if (value) {
           received += value.length;
-          const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
-          const now = Date.now();
-          const elapsedSeconds = (now - startTime) / 1000;
-          const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
-          const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
-          const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
-          
-          const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
-          const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
-          const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
-
-          setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
-            ...d,
-            progress: pct,
-            speed: speedText,
-            eta: etaText,
-            sizeText: progressSizeText,
-            status: 'downloading'
-          } : d));
 
           if (isNative) {
-            // Update custom notification with app logo, progress speed, growing size/total size, and bacha hua time
-            if (now - lastNotificationTime > 800) {
-              const speedDetails = total > 0 ? `${progressSizeText} • ${speedText} • ${etaText}` : `${progressSizeText} • ${speedText}`;
+            accumulatedChunks.push(value);
+            accumulatedSize += value.length;
+            if (accumulatedSize >= CHUNK_SIZE_THRESHOLD) {
+              await writeAccumulatedToNative();
+            }
+          } else {
+            webChunks.push(value);
+          }
 
+          const now = Date.now();
+          // Throttle UI and speed calculations to every 300ms so it is silky smooth and never jitters!
+          if (now - lastUiUpdateTime >= 300) {
+            const dt = (now - lastSpeedTime) / 1000;
+            if (dt >= 0.25) {
+              const instantSpeed = (received - lastLoadedBytes) / dt;
+              smoothedSpeed = smoothedSpeed === 0 ? instantSpeed : (0.25 * instantSpeed) + (0.75 * smoothedSpeed);
+              lastLoadedBytes = received;
+              lastSpeedTime = now;
+
+              if (smoothedSpeed > 0 && total > 0) {
+                const remaining = Math.max(0, total - received);
+                const instantEta = remaining / smoothedSpeed;
+                smoothedEta = smoothedEta === 0 ? instantEta : (0.25 * instantEta) + (0.75 * smoothedEta);
+              }
+            }
+
+            const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
+            speedText = smoothedSpeed > 1048576 ? `${(smoothedSpeed / 1048576).toFixed(1)} MB/s` : `${(smoothedSpeed / 1024).toFixed(0)} KB/s`;
+            etaText = smoothedEta >= 60 
+              ? `${Math.floor(smoothedEta / 60)}m left` 
+              : `${Math.max(1, Math.round(smoothedEta))}s left`;
+            progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
+
+            setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+              ...d,
+              progress: pct,
+              speed: speedText,
+              eta: etaText,
+              sizeText: progressSizeText,
+              status: 'downloading'
+            } : d));
+
+            if (isNative && now - lastNotificationTime > 800) {
+              const speedDetails = total > 0 ? `${progressSizeText} • ${speedText} • ${etaText}` : `${progressSizeText} • ${speedText}`;
               try {
                 const UploadNotification = Capacitor.registerPlugin<any>('UploadNotification');
                 await UploadNotification.showProgressNotification({
@@ -666,13 +738,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
               lastNotificationTime = now;
             }
 
-            accumulatedChunks.push(value);
-            accumulatedSize += value.length;
-            if (accumulatedSize >= CHUNK_SIZE_THRESHOLD) {
-              await writeAccumulatedToNative();
-            }
-          } else {
-            webChunks.push(value);
+            lastUiUpdateTime = now;
           }
         }
       }

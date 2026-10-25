@@ -265,7 +265,7 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
       let ticketId: string | null = null;
 
       // 1. Prioritize Cloudflare Edge CDN for ultra-fast 0-Render-bandwidth downloads on all devices
-      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
+      const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens, finalFilename) : null;
       let downloadUrl = cfUrl;
 
       // 2. If no Cloudflare URL (or if downloading a zipped folder), get one-time ticket from backend
@@ -291,6 +291,48 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
       }
 
       if (!downloadUrl) throw new Error('No download URL available');
+
+      // ── Web / PC Browser Direct Stream Download (Instant Chrome/Edge Downloads) ──
+      if (!isNative) {
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+          ...d,
+          progress: 100,
+          status: 'completed',
+          speed: 'Direct Browser Stream',
+          sizeText: file.sizeBytes > 0 ? formatBytesHelper(file.sizeBytes) : 'Ready',
+          eta: 'Saving directly to PC Downloads'
+        } : d));
+
+        // Trigger browser's native download manager immediately
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = finalFilename;
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        try {
+          const hist = JSON.parse(localStorage.getItem('drive_vault_download_history') || '[]');
+          const histEntry = {
+            id: dlId,
+            name: finalFilename,
+            date: new Date().toISOString(),
+            size: file.sizeBytes || 0,
+            status: 'completed'
+          };
+          hist.unshift(histEntry);
+          localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+          window.dispatchEvent(new CustomEvent('vault-transfers-synced'));
+        } catch (e) {
+          console.error('Failed to save download history in dashboard:', e);
+        }
+
+        toast.success(`⬇️ Download Started: ${finalFilename}`, {
+          description: 'Check your browser downloads!'
+        });
+        return;
+      }
 
       if (isAndroid) {
         try {

@@ -143,8 +143,13 @@ async function handleMediaStream(request, url, env, ctx) {
   // Set Cloudflare Edge Caching headers
   responseHeaders.set("Access-Control-Allow-Origin", "*");
   responseHeaders.set("Access-Control-Allow-Headers", "*");
-  responseHeaders.set("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+  responseHeaders.set("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges, Content-Disposition");
   responseHeaders.set("Accept-Ranges", "bytes");
+
+  const dlFilename = url.searchParams.get("filename") || url.searchParams.get("download");
+  if (dlFilename) {
+    responseHeaders.set("Content-Disposition", `attachment; filename="${encodeURIComponent(dlFilename)}"`);
+  }
 
   // Cache media streams at edge for 24 hours (if not an error)
   if (googleResponse.status === 200 || googleResponse.status === 206) {
