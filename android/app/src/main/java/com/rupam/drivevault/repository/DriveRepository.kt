@@ -61,6 +61,13 @@ class DriveRepository(private val authManager: AuthManager) {
         return "https://g-drive-vault.onrender.com/api/drive/download/$fileId?ticket=$ticket"
     }
 
+    fun getDirectGoogleDownloadUrl(fileId: String): String? {
+        val tokens = authManager.getTokens()
+        return if (!tokens?.accessToken.isNullOrBlank()) {
+            "https://www.googleapis.com/drive/v3/files/$fileId?alt=media"
+        } else null
+    }
+
     fun getCachedStorageStats(): StorageStats? = cachedStorageStats
 
     fun clearCache(folderId: String? = null) {

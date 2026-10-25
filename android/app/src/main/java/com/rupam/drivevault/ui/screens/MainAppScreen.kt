@@ -239,7 +239,7 @@ fun MainAppScreen(
                 val renderUrl = repository.getRenderDownloadUrl(file.id, ticket)
                 // For folders, always stream from backend renderUrl since it has the live ZIP compression engine
                 val streamUrl = if (isFolder) renderUrl else repository.getStreamUrl(file.id, ticket)
-                val fallbackUrl = renderUrl
+                val fallbackUrl = if (isFolder) renderUrl else (repository.getDirectGoogleDownloadUrl(file.id) ?: renderUrl)
                 TransferManager.startDownload(
                     context = context,
                     file = file,
@@ -259,10 +259,12 @@ fun MainAppScreen(
                 } else {
                     repository.getFastStreamUrl(file.id)
                 }
+                val fallbackUrl = if (!isFolder) repository.getDirectGoogleDownloadUrl(file.id) else null
                 TransferManager.startDownload(
                     context = context,
                     file = file,
                     streamUrl = streamUrl,
+                    fallbackUrl = fallbackUrl,
                     onComplete = { success, err ->
                         if (success) {
                             Toast.makeText(context, "📥 Downloaded $displayName to Downloads!", Toast.LENGTH_SHORT).show()
@@ -988,8 +990,9 @@ fun MainAppScreen(
                     val url = previewStreamUrl
                     if (!url.isNullOrBlank()) {
                         scope.launch {
+                            val directGoogleUrl = if (file.type != FileCategoryType.FOLDER) repository.getDirectGoogleDownloadUrl(file.id) else null
                             val ticket = repository.getDownloadTicket().getOrNull()
-                            val fallbackUrl = if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null
+                            val fallbackUrl = directGoogleUrl ?: (if (ticket != null) repository.getRenderDownloadUrl(file.id, ticket) else null)
                             TransferManager.startDownload(
                                 context = context,
                                 file = file,

@@ -16,9 +16,13 @@ import com.rupam.drivevault.FileTransferService
 import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.network.NetworkClient
 import com.rupam.drivevault.repository.DriveRepository
+import com.rupam.drivevault.auth.AuthManager
+import com.rupam.drivevault.auth.AuthTokens
+import com.rupam.drivevault.network.DriveFileDto
 import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.*
 import java.io.File
 import java.io.FileOutputStream
@@ -269,28 +273,113 @@ object TransferManager {
                     }
                 }
 
-                val actualFolder = if (targetFolderId?.startsWith("cat_") == true) "root" else (targetFolderId ?: "root")
+                val actualFolder = if (targetFolderId?.startsWith("cat_") == true || targetFolderId.isNullOrBlank()) "root" else targetFolderId
+                var resolvedFolderId = actualFolder
 
-                val multipart = MultipartBody.Builder()
-                    .setType(MultipartBody.FORM)
-                    .addFormDataPart("file", fileName, requestBody)
-                    .addFormDataPart("parentId", actualFolder)
-                    .addFormDataPart("relativePath", "")
-                    .build()
-
-                val reqBuilder = Request.Builder()
-                    .url("https://g-drive-vault.onrender.com/api/drive/upload")
-                    .post(multipart)
-                if (!authTokensHeader.isNullOrBlank()) {
-                    reqBuilder.header("x-goog-tokens", authTokensHeader)
+                // 1. Resolve accessToken directly from AuthManager or authTokensHeader
+                val authTokens = try {
+                    if (!authTokensHeader.isNullOrBlank()) {
+                        com.google.gson.Gson().fromJson(authTokensHeader, AuthTokens::class.java)
+                    } else {
+                        AuthManager(context).getTokens()
+                    }
+                } catch (e: Exception) {
+                    AuthManager(context).getTokens()
                 }
-                val request = reqBuilder.build()
 
-                val client = NetworkClient.uploadOkHttpClient
-                val call = client.newCall(request)
-                activeCalls[transferId] = call
+                var accessToken = authTokens?.accessToken
+
+                // If backend /api/drive/upload-init is available, fetch latest fresh accessToken and folderId (<200 bytes)
+                try {
+                    val initPayload = com.google.gson.JsonObject().apply {
+                        addProperty("parentId", actualFolder)
+                        addProperty("filename", fileName)
+                    }
+                    val initReqBuilder = Request.Builder()
+                        .url("https://g-drive-vault.onrender.com/api/drive/upload-init")
+                        .post(initPayload.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull()))
+                    if (!authTokensHeader.isNullOrBlank()) {
+                        initReqBuilder.header("x-goog-tokens", authTokensHeader)
+                    }
+                    val initCall = NetworkClient.okHttpClient.newCall(initReqBuilder.build())
+                    val initResp = initCall.execute()
+                    if (initResp.isSuccessful) {
+                        val initBody = initResp.body?.string()
+                        initResp.close()
+                        if (!initBody.isNullOrBlank()) {
+                            val jsonObj = com.google.gson.JsonParser.parseString(initBody).asJsonObject
+                            val serverToken = jsonObj.get("accessToken")?.asString
+                            if (!serverToken.isNullOrBlank()) {
+                                accessToken = serverToken
+                            }
+                            val serverFolder = jsonObj.get("targetFolderId")?.asString
+                            if (!serverFolder.isNullOrBlank()) {
+                                resolvedFolderId = serverFolder
+                            }
+                        }
+                    } else {
+                        initResp.close()
+                    }
+                } catch (ignored: Exception) {
+                    // If Render is suspended or network error, fallback to client-side stored accessToken
+                }
+
+                if (accessToken.isNullOrBlank()) {
+                    throw Exception("Authentication token missing. Please sign in again.")
+                }
+
+                // 2. Direct-to-Google Resumable Upload Session Initiation (0 Render bandwidth!)
+                val metadata = com.google.gson.JsonObject().apply {
+                    addProperty("name", fileName)
+                    val parentsArr = com.google.gson.JsonArray().apply { add(resolvedFolderId) }
+                    add("parents", parentsArr)
+                }
+
+                val sessionReqBuilder = Request.Builder()
+                    .url("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable")
+                    .post(metadata.toString().toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull()))
+                    .header("Authorization", "Bearer $accessToken")
+                    .header("X-Upload-Content-Type", mimeType)
+
+                if (fileSize > 0) {
+                    sessionReqBuilder.header("X-Upload-Content-Length", fileSize.toString())
+                }
+
+                val sessionCall = NetworkClient.uploadOkHttpClient.newCall(sessionReqBuilder.build())
+                activeCalls[transferId] = sessionCall
+                val sessionResponse = try {
+                    sessionCall.execute()
+                } finally {
+                    activeCalls.remove(transferId)
+                }
+
+                if (!sessionResponse.isSuccessful) {
+                    val errCode = sessionResponse.code
+                    sessionResponse.close()
+                    throw Exception("Google Drive upload initialization failed: HTTP $errCode")
+                }
+
+                val uploadSessionUrl = sessionResponse.header("Location")
+                sessionResponse.close()
+
+                if (uploadSessionUrl.isNullOrBlank()) {
+                    throw Exception("Google Drive did not return a resumable upload URL")
+                }
+
+                // 3. Stream binary chunks directly to Google's resumable session URL (0 Render bandwidth!)
+                val uploadReqBuilder = Request.Builder()
+                    .url(uploadSessionUrl)
+                    .put(requestBody)
+
+                if (fileSize > 0) {
+                    uploadReqBuilder.header("Content-Length", fileSize.toString())
+                    uploadReqBuilder.header("Content-Range", "bytes 0-${fileSize - 1}/$fileSize")
+                }
+
+                val uploadCall = NetworkClient.uploadOkHttpClient.newCall(uploadReqBuilder.build())
+                activeCalls[transferId] = uploadCall
                 val response = try {
-                    call.execute()
+                    uploadCall.execute()
                 } finally {
                     activeCalls.remove(transferId)
                 }
@@ -300,7 +389,22 @@ object TransferManager {
                     response.close()
                     val uploadedDto = try {
                         if (!rawBody.isNullOrBlank()) {
-                            com.google.gson.Gson().fromJson(rawBody, com.rupam.drivevault.network.DriveFileDto::class.java)
+                            val gObj = com.google.gson.JsonParser.parseString(rawBody).asJsonObject
+                            DriveFileDto(
+                                id = gObj.get("id")?.asString ?: "",
+                                name = gObj.get("name")?.asString ?: fileName,
+                                mimeType = gObj.get("mimeType")?.asString ?: mimeType,
+                                size = if (fileSize > 0) fileSize.toString() else null,
+                                sizeBytes = if (fileSize > 0) fileSize else null,
+                                modifiedTime = null,
+                                createdTime = null,
+                                thumbnailLink = null,
+                                webViewLink = null,
+                                starred = false,
+                                shared = false,
+                                isHidden = false,
+                                parents = listOf(resolvedFolderId)
+                            )
                         } else null
                     } catch (e: Exception) {
                         null
@@ -320,7 +424,7 @@ object TransferManager {
                 } else {
                     val code = response.code
                     response.close()
-                    val err = "Upload failed: HTTP $code"
+                    val err = "Upload failed: Google HTTP $code"
                     updateTransfer(transferId) { current ->
                         current.copy(status = TransferStatus.FAILED, errorMessage = err, speedBps = 0L)
                     }
@@ -384,7 +488,14 @@ object TransferManager {
                 val client = NetworkClient.uploadOkHttpClient
 
                 var currentUrl = streamUrl
-                var request = Request.Builder().url(currentUrl).get().build()
+                val reqBuilder = Request.Builder().url(currentUrl).get()
+                if (currentUrl.contains("googleapis.com")) {
+                    val token = AuthManager(context).getTokens()?.accessToken
+                    if (!token.isNullOrBlank()) {
+                        reqBuilder.header("Authorization", "Bearer $token")
+                    }
+                }
+                var request = reqBuilder.build()
                 var call = client.newCall(request)
                 activeCalls[transferId] = call
                 var response = call.execute()
@@ -393,7 +504,14 @@ object TransferManager {
                 if (!response.isSuccessful && !fallbackUrl.isNullOrBlank() && currentUrl != fallbackUrl) {
                     response.close()
                     currentUrl = fallbackUrl
-                    request = Request.Builder().url(currentUrl).get().build()
+                    val fallbackReq = Request.Builder().url(currentUrl).get()
+                    if (currentUrl.contains("googleapis.com")) {
+                        val token = AuthManager(context).getTokens()?.accessToken
+                        if (!token.isNullOrBlank()) {
+                            fallbackReq.header("Authorization", "Bearer $token")
+                        }
+                    }
+                    request = fallbackReq.build()
                     call = client.newCall(request)
                     activeCalls[transferId] = call
                     response = call.execute()

@@ -135,26 +135,40 @@ export default function FileDetails({ file, isOpen, tokens, onClose, onDelete, o
           setIsLoading(true);
           (async () => {
             try {
-              const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tokens }),
-              });
-              if (ticketRes.ok && active) {
-                const { ticketId } = await ticketRes.json();
-                const proxyUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
-                setRawProxyUrl(proxyUrl);
+              // 1. Try Cloudflare Edge CDN stream first for 0-Render-bandwidth document/PDF preview
+              const cfStreamUrl = getCloudflareStreamUrl(file.id, tokens);
+              let docStreamUrl = cfStreamUrl;
+
+              // 2. Fallback to Render backend signed proxy only if Cloudflare is not available
+              if (!docStreamUrl) {
+                try {
+                  const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tokens }),
+                  });
+                  if (ticketRes.ok && active) {
+                    const { ticketId } = await ticketRes.json();
+                    docStreamUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}&inline=true&v=${Date.now()}`;
+                  }
+                } catch (ticketErr) {
+                  console.warn('Backend ticket fetch failed:', ticketErr);
+                }
+              }
+
+              if (docStreamUrl && active) {
+                setRawProxyUrl(docStreamUrl);
                 const fileNameLower = file.name.toLowerCase();
                 const isPdf = fileNameLower.endsWith('.pdf') || file.mimeType === 'application/pdf';
 
                 if (isPdf) {
                   // Direct native PDF viewing in browser (zero dependency on Google Docs viewer, instant!)
-                  setPreviewUrl(proxyUrl);
+                  setPreviewUrl(docStreamUrl);
                 } else if (docViewerType === 'office') {
-                  const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(proxyUrl)}`;
+                  const officeUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(docStreamUrl)}`;
                   setPreviewUrl(officeUrl);
                 } else {
-                  const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}`;
+                  const viewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(docStreamUrl)}`;
                   setPreviewUrl(viewerUrl);
                 }
               } else if (active) {

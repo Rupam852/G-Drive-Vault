@@ -346,23 +346,37 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     onTransfersClick?.();
 
     try {
-      // Get one-time ticket
-      const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokens }),
-        signal: controller.signal,
-      });
-      if (!ticketRes.ok) throw new Error('Ticket failed');
-      const { ticketId } = await ticketRes.json();
-
       const isNative = Capacitor.isNativePlatform();
       const isAndroid = isNative && Capacitor.getPlatform() === 'android';
 
+      // 1. Prioritize Cloudflare Edge CDN for ultra-fast 0-Render-bandwidth downloads on all devices
       const cfUrl = !isFolder ? getCloudflareStreamUrl(file.id, tokens) : null;
-      const downloadUrl = (cfUrl && !isAndroid) 
-        ? cfUrl 
-        : `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
+      let downloadUrl = cfUrl;
+
+      // 2. If no Cloudflare URL (or if downloading a zipped folder), get one-time ticket from backend
+      if (!downloadUrl) {
+        try {
+          const ticketRes = await fetch(`${API_BASE_URL}/api/drive/download/ticket`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tokens }),
+            signal: controller.signal,
+          });
+          if (ticketRes.ok) {
+            const { ticketId } = await ticketRes.json();
+            downloadUrl = `${API_BASE_URL}/api/drive/download/${file.id}?ticket=${ticketId}`;
+          }
+        } catch (ticketErr) {
+          console.warn('Failed to get download ticket from backend:', ticketErr);
+        }
+      }
+
+      // 3. Direct Google Drive API fallback if backend is suspended or unavailable
+      if (!downloadUrl && tokens?.access_token && !isFolder) {
+        downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&access_token=${tokens.access_token}`;
+      }
+
+      if (!downloadUrl) throw new Error('No download URL available');
 
       if (isAndroid) {
         keepActive = true;
