@@ -127,7 +127,7 @@ export default function TransfersModal({
 
   // Filter lists
   const currentActiveUploads = activeUploads.filter(t => t.status === 'uploading' || t.status === 'pending' || t.status === 'paused');
-  const currentActiveDownloads = activeDownloads.filter(d => d.status === 'downloading' || d.status === 'paused');
+  const currentActiveDownloads = activeDownloads.filter(d => !d.status || d.status === 'downloading' || d.status === 'paused');
   const totalActiveCount = currentActiveUploads.length + currentActiveDownloads.length;
 
   // Calculate live transfer speeds
@@ -346,7 +346,14 @@ export default function TransfersModal({
           {/* ── ACTIVE DOWNLOADS ── */}
           {(selectedFilter === 'all' || selectedFilter === 'downloads') && currentActiveDownloads.map(dl => {
             const dlProgress = typeof dl.progress === 'number' && dl.progress >= 0 ? dl.progress : 0;
-            const dlSpeed = dl.speed || dl.speedText || 'Downloading...';
+            const dlSpeed = dl.speed || (dl as any).speedText || 'Downloading...';
+            const dlSize = dl.sizeText || '';
+            const dlEta = dl.eta || '';
+            const dlDetails = [
+              dlSize,
+              dlSpeed,
+              dlEta
+            ].filter(Boolean).join(' • ');
 
             return (
               <div
@@ -362,7 +369,7 @@ export default function TransfersModal({
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{dl.name}</p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                        {dl.status === 'paused' ? 'Paused' : `${dlProgress}% • ${dlSpeed}`}
+                        {dl.status === 'paused' ? 'Paused' : `${dlProgress}% • ${dlDetails || dlSpeed}`}
                       </p>
                     </div>
                   </div>

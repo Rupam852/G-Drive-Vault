@@ -341,8 +341,29 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
     
     const isFolder = file.type === 'folder';
     const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
+    const formatBytesHelper = (bytes: number, decimals = 1) => {
+      if (!bytes || bytes <= 0) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
 
-    setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
+    setActiveDownloads(prev => [
+      ...prev,
+      {
+        id: dlId,
+        name: finalFilename,
+        progress: 0,
+        controller,
+        status: 'downloading',
+        sizeBytes: file.sizeBytes || 0,
+        speed: 'Connecting...',
+        sizeText: file.sizeBytes > 0 ? `0 B / ${formatBytesHelper(file.sizeBytes)}` : 'Connecting...',
+        eta: 'Estimating...'
+      }
+    ]);
     onTransfersClick?.();
 
     try {
@@ -428,7 +449,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
                 progress: progressPct,
                 speed: speedText,
                 eta: etaText,
-                sizeText: progressSizeText
+                sizeText: progressSizeText,
+                status: 'downloading'
               } : d));
             }
           }).then(l => progressListener = l);
@@ -620,7 +642,8 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
             progress: pct,
             speed: speedText,
             eta: etaText,
-            sizeText: progressSizeText
+            sizeText: progressSizeText,
+            status: 'downloading'
           } : d));
 
           if (isNative) {
@@ -656,7 +679,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
 
       if (isNative) {
         await writeAccumulatedToNative();
-        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100, status: 'completed' } : d));
         
         // Custom success notification
         try {
@@ -676,7 +699,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
           toast.success('Saved to Downloads', { description: truncateFilename(finalFilename, 35) });
         }
       } else {
-        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100, status: 'completed' } : d));
         const blob = new Blob(webChunks as any);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -696,6 +719,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         };
         hist.unshift(histEntry);
         localStorage.setItem('drive_vault_download_history', JSON.stringify(hist.slice(0, 200)));
+        window.dispatchEvent(new CustomEvent('vault-transfers-synced'));
       } catch (e) {
         console.error('Failed to save download history:', e);
       }
@@ -706,6 +730,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
         console.error('Download error:', err);
         toast.error(`Error: ${err.message || 'Failed to download file'}`);
       }
+      setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, status: 'error' } : d));
       
       // Cancel notification if failed/cancelled
       if (Capacitor.isNativePlatform()) {
@@ -716,7 +741,7 @@ export default function FileExplorer({ files, tokens, breadcrumb, filterType, on
       }
     } finally {
       if (!keepActive) {
-        setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
+        setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 2500);
       }
     }
   };

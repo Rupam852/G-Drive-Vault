@@ -285,7 +285,7 @@ export default function App() {
 
   // Live active transfers count (Uploads + Downloads)
   const activeUploadsCount = transfers.filter(t => t.status === 'uploading' || t.status === 'pending' || t.status === 'paused').length;
-  const activeDownloadsCount = activeDownloads.filter(d => d.status === 'downloading' || d.status === 'paused').length;
+  const activeDownloadsCount = activeDownloads.filter(d => !d.status || d.status === 'downloading' || d.status === 'paused').length;
   const totalActiveTransfers = activeUploadsCount + activeDownloadsCount;
 
   const handleToggleNotification = async (val: boolean) => {

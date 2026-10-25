@@ -233,7 +233,29 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
     const isFolder = file.type === 'folder';
     const finalFilename = isFolder ? (file.name.endsWith('.zip') ? file.name : `${file.name}.zip`) : file.name;
 
-    setActiveDownloads(prev => [...prev, { id: dlId, name: finalFilename, progress: 0, controller }]);
+    const formatBytesHelper = (bytes: number, decimals = 1) => {
+      if (!bytes || bytes <= 0) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+
+    setActiveDownloads(prev => [
+      ...prev,
+      {
+        id: dlId,
+        name: finalFilename,
+        progress: 0,
+        controller,
+        status: 'downloading',
+        sizeBytes: file.sizeBytes || 0,
+        speed: 'Connecting...',
+        sizeText: file.sizeBytes > 0 ? `0 B / ${formatBytesHelper(file.sizeBytes)}` : 'Connecting...',
+        eta: 'Estimating...'
+      }
+    ]);
     onTransfersClick?.();
 
     try {
@@ -282,7 +304,8 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
                 progress: data.progress,
                 speed: data.speedText,
                 eta: data.etaText,
-                sizeText: data.sizeText
+                sizeText: data.sizeText,
+                status: 'downloading'
               } : d));
             }
           }).then(l => progressListener = l);
@@ -442,20 +465,28 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
         if (value) {
           received += value.length;
           const pct = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : -1;
-          setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: pct } : d));
+          const now = Date.now();
+          const elapsedSeconds = (now - startTime) / 1000;
+          const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
+          const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
+          const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
+          
+          const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
+          const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
+          const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
+
+          setActiveDownloads(prev => prev.map(d => d.id === dlId ? {
+            ...d,
+            progress: pct,
+            speed: speedText,
+            eta: etaText,
+            sizeText: progressSizeText,
+            status: 'downloading'
+          } : d));
 
           if (isNative) {
             // Update custom notification with app logo, progress speed, growing size/total size, and bacha hua time
-            const now = Date.now();
             if (now - lastNotificationTime > 800) {
-              const elapsedSeconds = (now - startTime) / 1000;
-              const speed = elapsedSeconds > 0 ? received / elapsedSeconds : 0;
-              const remainingBytes = total > 0 ? Math.max(0, total - received) : 0;
-              const remainingSeconds = speed > 0 ? remainingBytes / speed : 0;
-              
-              const speedText = speed > 1048576 ? `${(speed / 1048576).toFixed(1)} MB/s` : `${(speed / 1024).toFixed(0)} KB/s`;
-              const etaText = remainingSeconds > 60 ? `${Math.floor(remainingSeconds/60)}m left` : `${Math.round(remainingSeconds)}s left`;
-              const progressSizeText = total > 0 ? `${formatBytes(received)} / ${formatBytes(total)}` : formatBytes(received);
               const speedDetails = total > 0 ? `${progressSizeText} • ${speedText} • ${etaText}` : `${progressSizeText} • ${speedText}`;
 
               try {
@@ -486,7 +517,7 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
 
       if (isNative) {
         await writeAccumulatedToNative();
-        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100, status: 'completed' } : d));
         
         // Custom success notification
         try {
@@ -506,7 +537,7 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
           toast.success(`✅ Saved to Downloads: ${finalFilename}`);
         }
       } else {
-        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100 } : d));
+        setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, progress: 100, status: 'completed' } : d));
         const blob = new Blob(webChunks as BlobPart[]);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = blobUrl; a.download = finalFilename; a.click();
@@ -535,6 +566,7 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
         console.error('Download error:', err); 
         toast.error(`Error: ${err.message || 'Failed to download file'}`);
       }
+      setActiveDownloads(prev => prev.map(d => d.id === dlId ? { ...d, status: 'error' } : d));
       
       // Cancel notification if failed/cancelled
       if (Capacitor.isNativePlatform()) {
@@ -544,7 +576,7 @@ export default function Dashboard({ user, tokens, files, recentFiles, storageInf
         } catch (e) {}
       }
     } finally {
-      setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 1200);
+      setTimeout(() => setActiveDownloads(prev => prev.filter(d => d.id !== dlId)), 2500);
     }
   };
 
