@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "type": "link",
+  "provider_name": "Drive Vault",
+  "provider_url": "https://g-drive-vault.pages.dev/",
+  "title": "Drive Vault - Next-Gen Cloud Storage & Media Streaming",
+  "author_name": "Rupam",
+  "description": "Secure and modern Google Drive client, 4K media streaming platform & native cloud vault. Fast, encrypted, edge-accelerated file access with Chromecast support.",
+  "thumbnail_url": "https://g-drive-vault.pages.dev/og-image.jpg",
+  "thumbnail_width": 1376,
+  "thumbnail_height": 768
+}

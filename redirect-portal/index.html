@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive Vault — Official Web Portal & Redirect</title>
+    
+    <!-- SEO & Metadata -->
+    <meta name="description" content="Official Drive Vault Portal: Secure Google Drive client with native 4K video streaming, Chromecast TV support, and encrypted personal vault.">
+    <meta name="keywords" content="Drive Vault, Google Drive Streaming, Cloud Storage, Chromecast Player, Encrypted Vault, Video Streamer">
+    <meta name="author" content="Rupam">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph (LinkedIn, Facebook, Discord) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Drive Vault — Next-Gen Cloud Storage & Media Streaming">
+    <meta property="og:description" content="Official Drive Vault Web Portal: Access your Google Drive files with seamless 4K video playback, TV casting, and encrypted secure storage.">
+    <meta property="og:image" content="https://g-drive-vault.pages.dev/og-image.jpg">
+    <meta property="og:image:secure_url" content="https://g-drive-vault.pages.dev/og-image.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1376">
+    <meta property="og:image:height" content="768">
+    <meta property="og:image:alt" content="Drive Vault Web Portal Preview Banner">
+    <meta property="og:url" content="https://g-drive-vault.pages.dev/">
+    <meta property="og:site_name" content="Drive Vault">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Drive Vault — Next-Gen Cloud Storage & Media Streaming">
+    <meta name="twitter:description" content="Official Drive Vault Web Portal: Access your Google Drive files with seamless 4K video playback, TV casting, and encrypted secure storage.">
+    <meta name="twitter:image" content="https://g-drive-vault.pages.dev/og-image.jpg">
+
+    <!-- oEmbed support for LinkedIn / Discord / Slack -->
+    <link rel="alternate" type="application/json+oembed" href="./oembed.json" title="Drive Vault Portal">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="./logo.svg">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Drive Vault",
+      "applicationCategory": "MultimediaApplication, UtilitiesApplication",
+      "operatingSystem": "Web, Android, Chromecast",
+      "url": "https://g-drive-vault.pages.dev/",
+      "image": "https://g-drive-vault.pages.dev/og-image.jpg",
+      "description": "Secure Google Drive client with high-speed 4K media streaming, Chromecast integration, and encrypted vault storage.",
+      "author": {
+        "@type": "Person",
+        "name": "Rupam"
+      }
+    }
+    </script>
+
+    <style>
+        :root {
+            --bg-base: #F8FAFC;
+            --bg-card: rgba(255, 255, 255, 0.92);
+            --border-subtle: rgba(226, 232, 240, 0.85);
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --primary-light: #EFF6FF;
+            --primary-glow: rgba(37, 99, 235, 0.25);
+            --accent-cyan: #0284C7;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --text-light: #94A3B8;
+            --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --radius-card: 26px;
+            --radius-btn: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Background & Grid */
+        .ambient-mesh {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .ambient-glow-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 55vw;
+            height: 55vw;
+            max-width: 600px;
+            max-height: 600px;
+            background: radial-gradient(circle, rgba(191, 219, 254, 0.65) 0%, rgba(239, 246, 255, 0.1) 70%, transparent 100%);
+            border-radius: 50%;
+            filter: blur(60px);
+            animation: floatGlow 18s ease-in-out infinite alternate;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -15%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            max-width: 650px;
+            max-height: 650px;
+            background: radial-gradient(circle, rgba(147, 197, 253, 0.5) 0%, rgba(224, 242, 254, 0.1) 70%, transparent 100%);
+            border-radius: 50%;
+            filter: blur(70px);
+            animation: floatGlow2 22s ease-in-out infinite alternate;
+        }
+
+        .ambient-glow-3 {
+            position: absolute;
+            top: 40%;
+            right: 25%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(219, 234, 254, 0.5) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(50px);
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(rgba(37, 99, 235, 0.08) 1px, transparent 1px);
+            background-size: 26px 26px;
+            opacity: 0.7;
+        }
+
+        @keyframes floatGlow {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 35px) scale(1.06); }
+            100% { transform: translate(15px, 65px) scale(0.95); }
+        }
+
+        @keyframes floatGlow2 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-45px, -35px) scale(1.05); }
+            100% { transform: translate(-25px, -60px) scale(0.94); }
+        }
+
+        /* Container Card */
+        .portal-card {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 560px;
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            padding: 34px 32px 28px;
+            box-shadow: 
+                0 25px 50px -12px rgba(37, 99, 235, 0.12),
+                0 0 0 1px rgba(255, 255, 255, 0.95) inset;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        @media (max-width: 640px) {
+            .portal-card {
+                padding: 26px 18px 22px;
+                border-radius: 20px;
+            }
+        }
+
+        /* Header / Logo */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #EFF6FF;
+            color: #1D4ED8;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 5px 13px;
+            border-radius: 9999px;
+            border: 1px solid rgba(191, 219, 254, 0.9);
+            margin-bottom: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10B981;
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+            animation: pulseDot 2s infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .logo-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .logo-container {
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+            border: 1px solid rgba(191, 219, 254, 0.85);
+            box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .portal-card:hover .logo-container {
+            transform: scale(1.06) rotate(2deg);
+        }
+
+        .logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Typography */
+        h1.title {
+            font-family: var(--font-display);
+            font-size: 1.95rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #0F172A 0%, #1E40AF 60%, #2563EB 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .tagline {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .description {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            max-width: 470px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Feature Pills */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 22px;
+            text-align: left;
+        }
+
+        @media (max-width: 480px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feature-item {
+            background: rgba(241, 245, 249, 0.65);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 12px;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .feature-item:hover {
+            background: #FFFFFF;
+            border-color: #BFDBFE;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 14px -3px rgba(37, 99, 235, 0.08);
+        }
+
+        .feature-icon {
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: #EFF6FF;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .feature-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feature-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .feature-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* Action Section */
+        .action-box {
+            background: linear-gradient(180deg, rgba(239, 246, 255, 0.55) 0%, rgba(219, 234, 254, 0.3) 100%);
+            border: 1px solid rgba(191, 219, 254, 0.8);
+            border-radius: 18px;
+            padding: 18px 16px;
+            margin-bottom: 18px;
+        }
+
+        .action-prompt {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #1E3A8A;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        /* Main CTA Button */
+        .btn-redirect {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+            color: #FFFFFF;
+            font-family: var(--font-display);
+            font-size: 1.02rem;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 15px 24px;
+            border-radius: var(--radius-btn);
+            box-shadow: 
+                0 10px 22px -5px rgba(37, 99, 235, 0.45),
+                0 4px 8px -2px rgba(37, 99, 235, 0.2);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-redirect:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            transition: 0.6s ease;
+        }
+
+        .btn-redirect:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 
+                0 16px 28px -5px rgba(37, 99, 235, 0.55),
+                0 6px 12px -2px rgba(37, 99, 235, 0.28);
+            background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+        }
+
+        .btn-redirect:hover:before {
+            left: 100%;
+        }
+
+        .btn-redirect:active {
+            transform: translateY(0) scale(0.99);
+        }
+
+        .btn-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .btn-redirect:hover .btn-icon {
+            transform: translate(3px, -3px);
+        }
+
+        .btn-destination {
+            margin-top: 9px;
+            font-size: 0.77rem;
+            color: #64748B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .btn-destination code {
+            background: #FFFFFF;
+            padding: 2px 7px;
+            border-radius: 6px;
+            border: 1px solid #E2E8F0;
+            color: #2563EB;
+            font-weight: 600;
+        }
+
+        /* Auto-Redirect Timer & Bar */
+        .timer-container {
+            margin-top: 13px;
+            padding-top: 11px;
+            border-top: 1px dashed rgba(191, 219, 254, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .timer-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .timer-pause-btn {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 2px 4px;
+        }
+
+        .timer-pause-btn:hover {
+            color: var(--primary-hover);
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 5px;
+            background: #E2E8F0;
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #3B82F6, #1D4ED8);
+            border-radius: 999px;
+            transition: width 0.1s linear;
+        }
+
+        /* Secondary Links */
+        .secondary-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 7px 12px;
+            border-radius: 9px;
+            border: 1px solid var(--border-subtle);
+            background: #FFFFFF;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-main);
+            border-color: #CBD5E1;
+            background: #F8FAFC;
+        }
+
+        /* Footer */
+        .portal-footer {
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(226, 232, 240, 0.7);
+            font-size: 0.74rem;
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .footer-secure {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #059669;
+            font-weight: 600;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            background: #0F172A;
+            color: #FFFFFF;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 0.84rem;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Gradient Backing -->
+    <div class="ambient-mesh">
+        <div class="ambient-glow-1"></div>
+        <div class="ambient-glow-2"></div>
+        <div class="ambient-glow-3"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <!-- Main Card -->
+    <main class="portal-card" role="main">
+        <!-- Verified Status Badge -->
+        <div>
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                <span>Official Drive Vault Gateway</span>
+            </div>
+        </div>
+
+        <!-- Logo Icon -->
+        <div class="logo-wrapper">
+            <div class="logo-container">
+                <img src="./logo.svg" alt="Drive Vault Logo" class="logo-img">
+            </div>
+        </div>
+
+        <!-- Headings -->
+        <h1 class="title">Drive Vault</h1>
+        <div class="tagline">Cloud File Manager • 4K Media Streamer • Private Vault</div>
+        
+        <p class="description">
+            Experience ultra-fast Google Drive exploration, seamless 4K video playback with TV casting, and encrypted secure cloud storage on all your devices.
+        </p>
+
+        <!-- Feature Highlights -->
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-text">
+                    <span class="feature-title">High-Speed Sync</span>
+                    <span class="feature-sub">Direct Google Drive access</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">📺</div>
+                <div class="feature-text">
+                    <span class="feature-title">TV & Chromecast</span>
+                    <span class="feature-sub">Real-time sync & subtitles</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🔒</div>
+                <div class="feature-text">
+                    <span class="feature-title">Encrypted Vault</span>
+                    <span class="feature-sub">Client-side zero knowledge lock</span>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">📱</div>
+                <div class="feature-text">
+                    <span class="feature-title">Multi-Platform</span>
+                    <span class="feature-sub">Web, Android APK & Desktop</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Action Box -->
+        <div class="action-box">
+            <div class="action-prompt">
+                <span>👉</span>
+                <span>Please press the button below to redirect to our official main page:</span>
+            </div>
+
+            <!-- PRIMARY REDIRECT BUTTON -->
+            <a 
+                id="mainRedirectBtn" 
+                href="https://g-drive-vault.pages.dev/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="btn-redirect"
+            >
+                <span>Launch Official Drive Vault App</span>
+                <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </a>
+
+            <div class="btn-destination">
+                <span>Destination:</span>
+                <code>https://g-drive-vault.pages.dev/</code>
+                <span>(Opens in a new tab)</span>
+            </div>
+
+            <!-- Auto-redirect Timer -->
+            <div class="timer-container">
+                <div class="timer-info">
+                    <span id="timerLabel">Auto-opening in <strong id="timerCount">5</strong>s...</span>
+                    <button id="toggleTimerBtn" class="timer-pause-btn" type="button">Pause Auto-Open</button>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progressBar" class="progress-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Actions (APK & GitHub) -->
+        <div class="secondary-actions">
+            <a href="https://github.com/Rupam852/G-Drive-Vault/releases" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Android APK</span>
+            </a>
+
+            <a href="https://github.com/Rupam852/G-Drive-Vault" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                <span>GitHub</span>
+            </a>
+
+            <button id="copyLinkBtn" type="button" class="btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy Official Link</span>
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <footer class="portal-footer">
+            <div class="footer-secure">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span>End-to-End Encrypted & Authenticated Gateway</span>
+            </div>
+            <div>Official Drive Vault Distribution • Hosted on Global Edge Network</div>
+        </footer>
+    </main>
+
+    <!-- Toast message -->
+    <div id="toast" class="toast">Link copied to clipboard!</div>
+
+    <script>
+        const OFFICIAL_URL = "https://g-drive-vault.pages.dev/";
+        const TOTAL_SECONDS = 5;
+        let remainingSeconds = TOTAL_SECONDS;
+        let isPaused = false;
+        let timerInterval = null;
+
+        const timerCountEl = document.getElementById("timerCount");
+        const timerLabelEl = document.getElementById("timerLabel");
+        const progressBarEl = document.getElementById("progressBar");
+        const toggleTimerBtn = document.getElementById("toggleTimerBtn");
+        const mainRedirectBtn = document.getElementById("mainRedirectBtn");
+        const copyLinkBtn = document.getElementById("copyLinkBtn");
+        const toastEl = document.getElementById("toast");
+
+        // Countdown timer logic
+        function startTimer() {
+            const stepMs = 100;
+            const totalSteps = (TOTAL_SECONDS * 1000) / stepMs;
+            let currentStep = totalSteps;
+
+            timerInterval = setInterval(() => {
+                if (isPaused) return;
+
+                currentStep--;
+                const percent = (currentStep / totalSteps) * 100;
+                progressBarEl.style.width = percent + "%";
+
+                const secLeft = Math.ceil((currentStep * stepMs) / 1000);
+                timerCountEl.textContent = secLeft;
+
+                if (currentStep <= 0) {
+                    clearInterval(timerInterval);
+                    timerLabelEl.innerHTML = "Opening official app in new tab...";
+                    progressBarEl.style.width = "0%";
+                    
+                    // Attempt to open in new tab
+                    const newWin = window.open(OFFICIAL_URL, "_blank");
+                    if (!newWin || newWin.closed || typeof newWin.closed === "undefined") {
+                        // Popup blocker prevented auto window.open, prompt user clearly
+                        timerLabelEl.innerHTML = "Click the button above to launch!";
+                    }
+                }
+            }, stepMs);
+        }
+
+        // Toggle pause/play
+        toggleTimerBtn.addEventListener("click", () => {
+            isPaused = !isPaused;
+            if (isPaused) {
+                toggleTimerBtn.textContent = "Resume Auto-Open";
+                timerLabelEl.innerHTML = "Auto-open paused";
+            } else {
+                toggleTimerBtn.textContent = "Pause Auto-Open";
+                timerLabelEl.innerHTML = `Auto-opening in <strong id="timerCount">${remainingSeconds}</strong>s...`;
+            }
+        });
+
+        // When user explicitly clicks the main button, pause the timer so it doesn't double-open
+        mainRedirectBtn.addEventListener("click", () => {
+            isPaused = true;
+            clearInterval(timerInterval);
+            timerLabelEl.innerHTML = "Launching application...";
+            progressBarEl.style.width = "0%";
+        });
+
+        // Copy link to clipboard
+        copyLinkBtn.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(OFFICIAL_URL);
+                showToast("Official app link copied to clipboard!");
+            } catch (err) {
+                showToast("Link: " + OFFICIAL_URL);
+            }
+        });
+
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add("show");
+            setTimeout(() => {
+                toastEl.classList.remove("show");
+            }, 3000);
+        }
+
+        // Start timer when page loads
+        window.addEventListener("DOMContentLoaded", () => {
+            startTimer();
+        });
+    </script>
+</body>
+</html>
