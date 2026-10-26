@@ -448,57 +448,6 @@
             font-weight: 600;
         }
 
-        /* Auto-Redirect Timer & Bar */
-        .timer-container {
-            margin-top: 13px;
-            padding-top: 11px;
-            border-top: 1px dashed rgba(191, 219, 254, 0.8);
-            display: flex;
-            flex-direction: column;
-            gap: 7px;
-        }
-
-        .timer-info {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .timer-pause-btn {
-            background: transparent;
-            border: none;
-            color: var(--primary);
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: underline;
-            padding: 2px 4px;
-        }
-
-        .timer-pause-btn:hover {
-            color: var(--primary-hover);
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            height: 5px;
-            background: #E2E8F0;
-            border-radius: 999px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            width: 100%;
-            background: linear-gradient(90deg, #3B82F6, #1D4ED8);
-            border-radius: 999px;
-            transition: width 0.1s linear;
-        }
-
         /* Secondary Links */
         .secondary-actions {
             display: flex;
@@ -761,17 +710,6 @@
                 <code>https://g-drive-vault.pages.dev/</code>
                 <span>(Opens in a new tab)</span>
             </div>
-
-            <!-- Auto-redirect Timer -->
-            <div class="timer-container">
-                <div class="timer-info">
-                    <span id="timerLabel">Auto-opening in <strong id="timerCount">5</strong>s...</span>
-                    <button id="toggleTimerBtn" class="timer-pause-btn" type="button">Pause Auto-Open</button>
-                </div>
-                <div class="progress-bar-bg">
-                    <div id="progressBar" class="progress-bar-fill"></div>
-                </div>
-            </div>
         </div>
 
         <!-- Secondary Actions (APK & Copy Link) -->
@@ -828,69 +766,8 @@
 
     <script>
         const OFFICIAL_URL = "https://g-drive-vault.pages.dev/";
-        const TOTAL_SECONDS = 5;
-        let remainingSeconds = TOTAL_SECONDS;
-        let isPaused = false;
-        let timerInterval = null;
-
-        const timerCountEl = document.getElementById("timerCount");
-        const timerLabelEl = document.getElementById("timerLabel");
-        const progressBarEl = document.getElementById("progressBar");
-        const toggleTimerBtn = document.getElementById("toggleTimerBtn");
-        const mainRedirectBtn = document.getElementById("mainRedirectBtn");
         const copyLinkBtn = document.getElementById("copyLinkBtn");
         const toastEl = document.getElementById("toast");
-
-        // Countdown timer logic
-        function startTimer() {
-            const stepMs = 100;
-            const totalSteps = (TOTAL_SECONDS * 1000) / stepMs;
-            let currentStep = totalSteps;
-
-            timerInterval = setInterval(() => {
-                if (isPaused) return;
-
-                currentStep--;
-                const percent = (currentStep / totalSteps) * 100;
-                progressBarEl.style.width = percent + "%";
-
-                const secLeft = Math.ceil((currentStep * stepMs) / 1000);
-                timerCountEl.textContent = secLeft;
-
-                if (currentStep <= 0) {
-                    clearInterval(timerInterval);
-                    timerLabelEl.innerHTML = "Opening official app in new tab...";
-                    progressBarEl.style.width = "0%";
-                    
-                    // Attempt to open in new tab
-                    const newWin = window.open(OFFICIAL_URL, "_blank");
-                    if (!newWin || newWin.closed || typeof newWin.closed === "undefined") {
-                        // Popup blocker prevented auto window.open, prompt user clearly
-                        timerLabelEl.innerHTML = "Click the button above to launch!";
-                    }
-                }
-            }, stepMs);
-        }
-
-        // Toggle pause/play
-        toggleTimerBtn.addEventListener("click", () => {
-            isPaused = !isPaused;
-            if (isPaused) {
-                toggleTimerBtn.textContent = "Resume Auto-Open";
-                timerLabelEl.innerHTML = "Auto-open paused";
-            } else {
-                toggleTimerBtn.textContent = "Pause Auto-Open";
-                timerLabelEl.innerHTML = `Auto-opening in <strong id="timerCount">${remainingSeconds}</strong>s...`;
-            }
-        });
-
-        // When user explicitly clicks the main button, pause the timer so it doesn't double-open
-        mainRedirectBtn.addEventListener("click", () => {
-            isPaused = true;
-            clearInterval(timerInterval);
-            timerLabelEl.innerHTML = "Launching application...";
-            progressBarEl.style.width = "0%";
-        });
 
         // Copy link to clipboard
         copyLinkBtn.addEventListener("click", async () => {
@@ -909,11 +786,6 @@
                 toastEl.classList.remove("show");
             }, 3000);
         }
-
-        // Start timer when page loads
-        window.addEventListener("DOMContentLoaded", () => {
-            startTimer();
-        });
     </script>
 </body>
 </html>
