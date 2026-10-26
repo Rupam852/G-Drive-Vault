@@ -66,6 +66,8 @@ import com.rupam.drivevault.model.FileCategoryType
 import com.rupam.drivevault.ui.components.getCategoryIcon
 import com.rupam.drivevault.ui.components.SquigglySlider
 import com.rupam.drivevault.ui.components.YouTubeVideoSlider
+import com.rupam.drivevault.cast.CastManager
+import androidx.fragment.app.FragmentActivity
 import com.rupam.drivevault.ui.components.NativePdfViewer
 import com.rupam.drivevault.ui.components.NativeDocPreview
 import com.rupam.drivevault.ui.theme.BluePrimary
@@ -199,22 +201,58 @@ fun MediaPreviewScreen(
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
 
-    // Live Playback Tracker Coroutine
-    LaunchedEffect(exoPlayer, isPlaying) {
+    val isWifiConnected by CastManager.isWifiConnected.collectAsState()
+    val isCasting by CastManager.isCasting.collectAsState()
+    val castDeviceName by CastManager.connectedDeviceName.collectAsState()
+    val isCastPlaying by CastManager.isCastPlaying.collectAsState()
+    val castPositionMs by CastManager.castPositionMs.collectAsState()
+    val castDurationMs by CastManager.castDurationMs.collectAsState()
+
+    // Auto-stream media to TV when Cast session is active
+    LaunchedEffect(isCasting) {
+        if (isCasting) {
+            val mediaUrl = activeUrl ?: streamUrl ?: file.thumbnail
+            if (!mediaUrl.isNullOrBlank()) {
+                val mime = file.mimeType ?: when (file.type) {
+                    FileCategoryType.VIDEO -> "video/mp4"
+                    FileCategoryType.AUDIO -> "audio/mp3"
+                    FileCategoryType.IMAGE -> "image/jpeg"
+                    else -> "application/octet-stream"
+                }
+                CastManager.castMedia(
+                    url = mediaUrl,
+                    title = file.name,
+                    mimeType = mime,
+                    positionMs = currentPositionMs,
+                    thumbnailUrl = file.thumbnail
+                )
+                exoPlayer?.pause()
+            }
+        }
+    }
+
+    // Live Playback Tracker Coroutine (tracks local ExoPlayer or remote Cast playback)
+    LaunchedEffect(exoPlayer, isPlaying, isCasting, castPositionMs, castDurationMs, isCastPlaying) {
         while (true) {
-            exoPlayer?.let { player ->
-                currentPositionMs = player.currentPosition
-                val dur = player.duration
-                if (dur > 0L) durationMs = dur
-                isPlaying = player.isPlaying
+            if (isCasting) {
+                currentPositionMs = castPositionMs
+                if (castDurationMs > 0L) durationMs = castDurationMs
+                isPlaying = isCastPlaying
+            } else {
+                exoPlayer?.let { player ->
+                    currentPositionMs = player.currentPosition
+                    val dur = player.duration
+                    if (dur > 0L) durationMs = dur
+                    isPlaying = player.isPlaying
+                }
             }
             delay(300L)
         }
     }
 
-    // Auto-hide controls after 3.5s of playback with no touch
-    LaunchedEffect(areVideoControlsVisible, lastInteractionTime, isPlaying) {
-        if (file.type == FileCategoryType.VIDEO && areVideoControlsVisible && isPlaying) {
+    // Auto-hide controls after 3.5s of playback with no touch (keep visible when casting so phone acts as remote)
+    LaunchedEffect(areVideoControlsVisible, lastInteractionTime, isPlaying, isCasting) {
+        if (file.type == FileCategoryType.VIDEO && areVideoControlsVisible && isPlaying && !isCasting) {
             delay(3500)
             areVideoControlsVisible = false
         }
@@ -528,6 +566,34 @@ fun MediaPreviewScreen(
                                     color = Color.White.copy(alpha = 0.65f)
                                 )
 
+                                if (isCasting) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = BluePrimary.copy(alpha = 0.15f),
+                                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.45f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.CastConnected,
+                                                contentDescription = null,
+                                                tint = BluePrimary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Playing on ${castDeviceName ?: "TV Screen"}",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 // 3. Audio Progress Seek Bar & Timers
@@ -549,7 +615,11 @@ fun MediaPreviewScreen(
                                     },
                                     onSeekFinished = { targetMs ->
                                         isDraggingAudioSlider = false
-                                        exoPlayer?.seekTo(targetMs)
+                                        if (isCasting) {
+                                            CastManager.seekTo(targetMs)
+                                        } else {
+                                            exoPlayer?.seekTo(targetMs)
+                                        }
                                         currentPositionMs = targetMs
                                         lastInteractionTime = System.currentTimeMillis()
                                     },
@@ -589,7 +659,11 @@ fun MediaPreviewScreen(
                                     IconButton(
                                         onClick = {
                                             val target = maxOf(0L, currentPositionMs - 10000L)
-                                            exoPlayer?.seekTo(target)
+                                            if (isCasting) {
+                                                CastManager.skip(-10000L)
+                                            } else {
+                                                exoPlayer?.seekTo(target)
+                                            }
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -608,13 +682,17 @@ fun MediaPreviewScreen(
                                         color = Color(0xFF8B5CF6),
                                         shadowElevation = 8.dp,
                                         onClick = {
-                                            exoPlayer?.let { player ->
-                                                if (player.isPlaying) {
-                                                    player.pause()
-                                                    isPlaying = false
-                                                } else {
-                                                    player.play()
-                                                    isPlaying = true
+                                            if (isCasting) {
+                                                CastManager.togglePlayPause()
+                                            } else {
+                                                exoPlayer?.let { player ->
+                                                    if (player.isPlaying) {
+                                                        player.pause()
+                                                        isPlaying = false
+                                                    } else {
+                                                        player.play()
+                                                        isPlaying = true
+                                                    }
                                                 }
                                             }
                                         },
@@ -642,7 +720,11 @@ fun MediaPreviewScreen(
                                     IconButton(
                                         onClick = {
                                             val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
-                                            exoPlayer?.seekTo(target)
+                                            if (isCasting) {
+                                                CastManager.skip(10000L)
+                                            } else {
+                                                exoPlayer?.seekTo(target)
+                                            }
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -767,27 +849,98 @@ fun MediaPreviewScreen(
                                 }
                             }
                         } else if (exoPlayer != null) {
-                            // 1. AndroidView Video Surface
-                            AndroidView(
-                                factory = { ctx ->
-                                    PlayerView(ctx).apply {
-                                        player = exoPlayer
-                                        layoutParams = FrameLayout.LayoutParams(
-                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                            ViewGroup.LayoutParams.MATCH_PARENT
+                            if (isCasting) {
+                                // 1. Dedicated TV Casting Remote Display Surface
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                        modifier = Modifier.padding(24.dp)
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = BluePrimary.copy(alpha = 0.15f),
+                                            border = BorderStroke(2.dp, BluePrimary),
+                                            modifier = Modifier.size(92.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.CastConnected,
+                                                    contentDescription = null,
+                                                    tint = BluePrimary,
+                                                    modifier = Modifier.size(48.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(18.dp))
+
+                                        Text(
+                                            text = "Playing on ${castDeviceName ?: "TV Screen"}",
+                                            color = Color.White,
+                                            fontSize = 19.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
                                         )
-                                        useController = false
-                                        setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-                                        keepScreenOn = true
-                                        this.resizeMode = resizeMode
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        Text(
+                                            text = "Your phone is acting as remote control.\nScrub, play, pause, or skip below.",
+                                            color = Color.White.copy(alpha = 0.65f),
+                                            fontSize = 13.sp,
+                                            textAlign = TextAlign.Center,
+                                            lineHeight = 18.sp
+                                        )
+
+                                        Spacer(modifier = Modifier.height(20.dp))
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                (context as? FragmentActivity)?.let { CastManager.stopCast(it) }
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Close,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Disconnect Cast", fontSize = 12.sp)
+                                        }
                                     }
-                                },
-                                update = { playerView ->
-                                    playerView.player = exoPlayer
-                                    playerView.resizeMode = resizeMode
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
+                                }
+                            } else {
+                                // 1. AndroidView Video Surface
+                                AndroidView(
+                                    factory = { ctx ->
+                                        PlayerView(ctx).apply {
+                                            player = exoPlayer
+                                            layoutParams = FrameLayout.LayoutParams(
+                                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                                ViewGroup.LayoutParams.MATCH_PARENT
+                                            )
+                                            useController = false
+                                            setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                                            keepScreenOn = true
+                                            this.resizeMode = resizeMode
+                                        }
+                                    },
+                                    update = { playerView ->
+                                        playerView.player = exoPlayer
+                                        playerView.resizeMode = resizeMode
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
 
                             // 2. Gesture Detector Layer (Tap to toggle controls, Double tap to seek +/-10s)
                             Box(
@@ -804,12 +957,20 @@ fun MediaPreviewScreen(
                                                 areVideoControlsVisible = true
                                                 if (offset.x < size.width / 2) {
                                                     val target = maxOf(0L, currentPositionMs - 10000L)
-                                                    exoPlayer?.seekTo(target)
+                                                    if (isCasting) {
+                                                        CastManager.skip(-10000L)
+                                                    } else {
+                                                        exoPlayer?.seekTo(target)
+                                                    }
                                                     currentPositionMs = target
                                                     doubleTapSeekFeedback = "-10s"
                                                 } else {
                                                     val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
-                                                    exoPlayer?.seekTo(target)
+                                                    if (isCasting) {
+                                                        CastManager.skip(10000L)
+                                                    } else {
+                                                        exoPlayer?.seekTo(target)
+                                                    }
                                                     currentPositionMs = target
                                                     doubleTapSeekFeedback = "+10s"
                                                 }
@@ -902,7 +1063,11 @@ fun MediaPreviewScreen(
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
                                             val target = maxOf(0L, currentPositionMs - 10000L)
-                                            exoPlayer?.seekTo(target)
+                                            if (isCasting) {
+                                                CastManager.skip(-10000L)
+                                            } else {
+                                                exoPlayer?.seekTo(target)
+                                            }
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -924,13 +1089,17 @@ fun MediaPreviewScreen(
                                         shadowElevation = 8.dp,
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
-                                            exoPlayer?.let { player ->
-                                                if (player.isPlaying) {
-                                                    player.pause()
-                                                    isPlaying = false
-                                                } else {
-                                                    player.play()
-                                                    isPlaying = true
+                                            if (isCasting) {
+                                                CastManager.togglePlayPause()
+                                            } else {
+                                                exoPlayer?.let { player ->
+                                                    if (player.isPlaying) {
+                                                        player.pause()
+                                                        isPlaying = false
+                                                    } else {
+                                                        player.play()
+                                                        isPlaying = true
+                                                    }
                                                 }
                                             }
                                         },
@@ -953,7 +1122,11 @@ fun MediaPreviewScreen(
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
                                             val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
-                                            exoPlayer?.seekTo(target)
+                                            if (isCasting) {
+                                                CastManager.skip(10000L)
+                                            } else {
+                                                exoPlayer?.seekTo(target)
+                                            }
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -1020,7 +1193,11 @@ fun MediaPreviewScreen(
                                                 },
                                                 onSeekFinished = { targetMs ->
                                                     isDraggingSlider = false
-                                                    exoPlayer?.seekTo(targetMs)
+                                                    if (isCasting) {
+                                                        CastManager.seekTo(targetMs)
+                                                    } else {
+                                                        exoPlayer?.seekTo(targetMs)
+                                                    }
                                                     currentPositionMs = targetMs
                                                     lastInteractionTime = System.currentTimeMillis()
                                                 },
@@ -1296,32 +1473,67 @@ fun MediaPreviewScreen(
                         else if (!file.thumbnail.isNullOrBlank()) file.thumbnail
                         else "https://drive.google.com/thumbnail?id=${file.id}&sz=w1600"
                     }
-                    SubcomposeAsyncImage(
-                        model = imageModel,
-                        contentDescription = file.name,
-                        contentScale = ContentScale.Fit,
-                        loading = {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = imageModel,
+                            contentDescription = file.name,
+                            contentScale = ContentScale.Fit,
+                            loading = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = BluePrimary,
+                                        strokeWidth = 2.5.dp,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            },
+                            onError = {
+                                if (!triedFallback && !fallbackUrl.isNullOrBlank()) {
+                                    triedFallback = true
+                                    activeUrl = fallbackUrl
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.85f)
+                        )
+
+                        if (isCasting) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.Black.copy(alpha = 0.8f),
+                                border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.6f)),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 28.dp)
                             ) {
-                                CircularProgressIndicator(
-                                    color = BluePrimary,
-                                    strokeWidth = 2.5.dp,
-                                    modifier = Modifier.size(36.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CastConnected,
+                                        contentDescription = null,
+                                        tint = BluePrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Displaying on ${castDeviceName ?: "TV Screen"}",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
-                        },
-                        onError = {
-                            if (!triedFallback && !fallbackUrl.isNullOrBlank()) {
-                                triedFallback = true
-                                activeUrl = fallbackUrl
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(0.85f)
-                    )
+                        }
+                    }
                 }
 
                 // ── DOCUMENT PREVIEW (NATIVE PDF OR NATIVE PPT/DOC/XLS PREVIEW) ──
@@ -1473,6 +1685,26 @@ fun MediaPreviewScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Cast to TV Quick Button
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isCasting) BluePrimary else Color.Black.copy(alpha = 0.6f),
+                        onClick = {
+                            if (isWifiConnected || isCasting) {
+                                (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
+                            } else {
+                                Toast.makeText(context, "Connect to Wi-Fi to cast to TV / Chromecast", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
+                            contentDescription = "Cast to TV",
+                            tint = if (isCasting || isWifiConnected) Color.White else Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+
                     Surface(
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.6f),
@@ -1535,6 +1767,13 @@ fun MediaPreviewScreen(
                     }
                     showSettingsSheet = false
                 },
+                isWifiConnected = isWifiConnected,
+                isCasting = isCasting,
+                castDeviceName = castDeviceName,
+                onCastClick = {
+                    showSettingsSheet = false
+                    (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
+                },
                 onDismiss = { showSettingsSheet = false }
             )
         }
@@ -1556,6 +1795,10 @@ private fun VideoSettingsModal(
     isCloudflare: Boolean,
     hasFallback: Boolean,
     onSwitchQuality: (Boolean) -> Unit,
+    isWifiConnected: Boolean,
+    isCasting: Boolean,
+    castDeviceName: String?,
+    onCastClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Box(
@@ -1675,6 +1918,20 @@ private fun VideoSettingsModal(
                                 )
                             }
                         )
+
+                        // 6. Cast to TV / Chromecast
+                        val castSubtitle = when {
+                            isCasting -> castDeviceName ?: "Connected to TV"
+                            isWifiConnected -> "Available on Wi-Fi"
+                            else -> "Disabled (Wi-Fi Required)"
+                        }
+                        SettingsRowItem(
+                            icon = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
+                            title = if (isCasting) "Casting to TV" else "Cast to TV / Chromecast",
+                            subtitle = castSubtitle,
+                            enabled = isWifiConnected || isCasting,
+                            onClick = onCastClick
+                        )
                     }
 
                     VideoSettingSection.SPEED -> {
@@ -1762,12 +2019,14 @@ private fun SettingsRowItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.Transparent,
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1780,18 +2039,34 @@ private fun SettingsRowItem(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(22.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (enabled) BluePrimary else Color.White.copy(alpha = 0.25f),
+                    modifier = Modifier.size(22.dp)
+                )
                 Column {
-                    Text(text = title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(text = subtitle, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                    Text(
+                        text = title,
+                        color = if (enabled) Color.White else Color.White.copy(alpha = 0.4f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        color = if (enabled) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.3f),
+                        fontSize = 12.sp
+                    )
                 }
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(14.dp)
-            )
+            if (enabled) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }

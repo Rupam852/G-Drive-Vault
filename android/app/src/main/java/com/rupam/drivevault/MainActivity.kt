@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import com.rupam.drivevault.auth.AuthManager
+import com.rupam.drivevault.cast.CastManager
 import com.rupam.drivevault.repository.DriveRepository
 import com.rupam.drivevault.ui.screens.MainAppScreen
 import com.rupam.drivevault.ui.theme.DriveVaultTheme
@@ -31,6 +32,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
 
         ThemeManager.init(this)
+        CastManager.init(this)
         authManager = AuthManager(this)
         driveRepository = DriveRepository(authManager)
 
