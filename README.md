@@ -1,11 +1,11 @@
+<p align="center">
+  <img src="./public/og-image.jpg" width="100%" alt="DriveVault Showcase Banner" />
+</p>
+
 # 🌌 DriveVault
 
 <p align="center">
-  <img src="./public/logo.svg" width="96" height="96" alt="DriveVault Logo" />
-</p>
-
-<p align="center">
-  <strong>An elegant, decentralized Google Drive client, media streaming platform & native mobile cloud vault.</strong>
+  <strong>An elegant, decentralized Google Drive client, 4K media streaming platform & native mobile cloud vault.</strong>
 </p>
 
 <p align="center">
@@ -15,7 +15,15 @@
   <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-6-646CFF.svg?style=for-the-badge&logo=vite" alt="Vite 6" /></a>
   <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind-v4-06B6D4.svg?style=for-the-badge&logo=tailwindcss" alt="Tailwind CSS v4" /></a>
   <a href="https://neon.tech/"><img src="https://img.shields.io/badge/Database-Neon%20Postgres-00E599.svg?style=for-the-badge&logo=postgresql" alt="Neon Postgres" /></a>
-  <a href="https://render.com/"><img src="https://img.shields.io/badge/Backend-Render-46E3B7.svg?style=for-the-badge&logo=render" alt="Render" /></a>
+  <a href="https://g-drive-vault.pages.dev/"><img src="https://img.shields.io/badge/Deployment-Cloudflare%20Pages-F38020.svg?style=for-the-badge&logo=cloudflare" alt="Cloudflare Pages" /></a>
+  <a href="https://vercel.com/"><img src="https://img.shields.io/badge/Gateway-Vercel-000000.svg?style=for-the-badge&logo=vercel" alt="Vercel" /></a>
+</p>
+
+<p align="center">
+  <a href="https://g-drive-vault.pages.dev/"><b>🌐 Launch Official Web App</b></a> &nbsp;•&nbsp;
+  <a href="https://github.com/Rupam852/G-Drive-Vault/releases"><b>📱 Download Android APK</b></a> &nbsp;•&nbsp;
+  <a href="#-key-features"><b>✨ Key Features</b></a> &nbsp;•&nbsp;
+  <a href="#️-technology-stack--frameworks"><b>🛠️ Tech Stack</b></a>
 </p>
 
 ---
@@ -51,6 +59,12 @@ DriveVault is engineered as a unified cross-platform application:
 * **Native Video Engine (Android):** Powered by Android **Media3 (ExoPlayer)** with hardware acceleration, audio track selection, and subtitle support.
 * **HTTP Range Video Streaming (Web):** Full chunked video playback supporting instant scrubbing and low memory consumption.
 * **In-App Document Viewer:** Native and web-based previews for PDFs, text/code files, Markdown, and high-resolution images.
+
+### 📺 Smart TV & Chromecast Streaming
+* **Google Cast Integration:** Effortlessly stream 4K/1080p videos directly from Google Drive onto Smart TVs and Chromecast devices.
+* **Bidirectional Sync:** Real-time play/pause synchronization, fine-grained seek scrub bar with `hours:minutes:seconds` timestamp format, and volume control.
+* **Smart Media Filtering:** Cast button is dynamically enabled exclusively for supported playable video/audio files.
+* **Graceful Remote Fallback:** Resilient handling when the TV remote backs out or when reconnecting across mobile hotspot and Wi-Fi networks.
 
 ### 🔐 Enterprise-Grade Privacy & Security
 * **Biometric Vault:** Lock sensitive files inside a private vault protected by fingerprint, face unlock, or app passcode.
