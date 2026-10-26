@@ -1161,9 +1161,7 @@ fun MainAppScreen(
                         previewStreamUrl = repository.getStreamUrl(target.id, ticket)
                         previewFallbackUrl = repository.getRenderDownloadUrl(target.id, ticket) + "&inline=true"
                     }
-                    (context as? androidx.fragment.app.FragmentActivity)?.let {
-                        com.rupam.drivevault.cast.CastManager.showCastDialog(it)
-                    }
+                    com.rupam.drivevault.cast.CastManager.showCastDialog(context)
                 }
             }
         )

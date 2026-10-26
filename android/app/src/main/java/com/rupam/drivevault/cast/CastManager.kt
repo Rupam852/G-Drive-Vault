@@ -1,6 +1,7 @@
 package com.rupam.drivevault.cast
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -24,16 +25,29 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
+ * Extension to safely unwrap ContextWrapper (e.g. ContextThemeWrapper) to find FragmentActivity.
+ */
+fun Context.findFragmentActivity(): FragmentActivity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is FragmentActivity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
+}
+
+/**
  * CastManager provides end-to-end Chromecast & Smart TV casting capabilities:
- * - Real-time local Wi-Fi monitoring (enabled on Wi-Fi, disabled on mobile data/disconnected).
- * - Safe CastContext & SessionManager management.
+ * - Real-time network monitoring (supports local Wi-Fi, Mobile Hotspot subnet, and Ethernet).
+ * - Live bidirectional remote playback synchronization with Google Cast ProgressListener.
+ * - Millisecond-accurate wall-clock seekbar synchronization.
  * - Casting of Videos, Audio, and Photos to big-screen TVs with high-resolution metadata.
- * - Live bidirectional remote controls (Play, Pause, 10s Rewind/Forward, Seekbar slider).
- * - Native Google Cast device chooser dialog.
+ * - Bidirectional remote controls (Play, Pause, 10s Rewind/Forward, Seekbar slider).
+ * - Safe native Google Cast device chooser & controller dialogs.
  */
 object CastManager {
 
-    private val _isWifiConnected = MutableStateFlow(false)
+    private val _isWifiConnected = MutableStateFlow(true)
     val isWifiConnected: StateFlow<Boolean> = _isWifiConnected.asStateFlow()
 
     private val _isCasting = MutableStateFlow(false)
@@ -54,6 +68,16 @@ object CastManager {
     private var currentSession: CastSession? = null
     private var isInitialized = false
 
+    // Real-time progress listener for smooth live slider sync during playback
+    private val progressListener = RemoteMediaClient.ProgressListener { progressMs, durationMs ->
+        if (progressMs >= 0L) {
+            _castPositionMs.value = progressMs
+        }
+        if (durationMs > 0L) {
+            _castDurationMs.value = durationMs
+        }
+    }
+
     private val remoteMediaClientCallback = object : RemoteMediaClient.Callback() {
         override fun onStatusUpdated() {
             val rmc = currentSession?.remoteMediaClient ?: return
@@ -69,7 +93,7 @@ object CastManager {
             } else {
                 _isCastPlaying.value = rmc.isPlaying
                 val pos = rmc.approximateStreamPosition
-                if (pos > 0L) {
+                if (pos >= 0L) {
                     _castPositionMs.value = pos
                 }
                 val dur = rmc.streamDuration
@@ -81,7 +105,10 @@ object CastManager {
 
         override fun onMetadataUpdated() {
             val rmc = currentSession?.remoteMediaClient ?: return
-            _castDurationMs.value = rmc.streamDuration
+            val dur = rmc.streamDuration
+            if (dur > 0L) {
+                _castDurationMs.value = dur
+            }
         }
     }
 
@@ -93,6 +120,7 @@ object CastManager {
             _isCasting.value = true
             _connectedDeviceName.value = session.castDevice?.friendlyName ?: "TV Screen"
             session.remoteMediaClient?.registerCallback(remoteMediaClientCallback)
+            session.remoteMediaClient?.addProgressListener(progressListener, 500L)
         }
 
         override fun onSessionStartFailed(session: CastSession, error: Int) {
@@ -102,10 +130,13 @@ object CastManager {
         }
 
         override fun onSessionEnding(session: CastSession) {
+            session.remoteMediaClient?.removeProgressListener(progressListener)
             session.remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
         }
 
         override fun onSessionEnded(session: CastSession, error: Int) {
+            session.remoteMediaClient?.removeProgressListener(progressListener)
+            session.remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
             currentSession = null
             _isCasting.value = false
             _connectedDeviceName.value = null
@@ -121,6 +152,7 @@ object CastManager {
             _isCasting.value = true
             _connectedDeviceName.value = session.castDevice?.friendlyName ?: "TV Screen"
             session.remoteMediaClient?.registerCallback(remoteMediaClientCallback)
+            session.remoteMediaClient?.addProgressListener(progressListener, 500L)
         }
 
         override fun onSessionResumeFailed(session: CastSession, error: Int) {
@@ -151,6 +183,7 @@ object CastManager {
                 _isCasting.value = true
                 _connectedDeviceName.value = current.castDevice?.friendlyName ?: "TV Screen"
                 current.remoteMediaClient?.registerCallback(remoteMediaClientCallback)
+                current.remoteMediaClient?.addProgressListener(progressListener, 500L)
             }
         } catch (e: Exception) {
             // Google Play Services might be disabled/missing; app remains stable without crash
@@ -158,42 +191,86 @@ object CastManager {
         }
     }
 
+    /**
+     * Monitors network connection in real-time.
+     * Supports external Wi-Fi, Mobile Hotspot (phone serving Wi-Fi to TV via tethering),
+     * and Ethernet networks.
+     */
     private fun startWifiMonitoring(context: Context) {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
 
-        // Immediate check
-        val activeNetwork = cm.activeNetwork
-        val caps = cm.getNetworkCapabilities(activeNetwork)
-        _isWifiConnected.value = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        fun updateNetworkStatus() {
+            val active = cm.activeNetwork
+            val caps = if (active != null) cm.getNetworkCapabilities(active) else null
+            val isAvailable = caps != null && (
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            )
+            _isWifiConnected.value = isAvailable
+        }
 
-        // Real-time network callback
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
+        updateNetworkStatus()
 
         try {
+            val request = NetworkRequest.Builder().build()
             cm.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     _isWifiConnected.value = true
                 }
 
                 override fun onLost(network: Network) {
-                    val currentCaps = cm.getNetworkCapabilities(cm.activeNetwork)
-                    _isWifiConnected.value = currentCaps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                    updateNetworkStatus()
+                }
+
+                override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                    updateNetworkStatus()
                 }
             })
         } catch (e: Exception) {
-            e.printStackTrace()
+            _isWifiConnected.value = true
         }
     }
 
     /**
-     * Opens the native Google Cast device chooser dialog (shows nearby TVs on same Wi-Fi).
-     * If already casting, opens the controller dialog to control volume or disconnect.
+     * Returns the live millisecond playback position from Google Cast.
+     * Uses wall-clock interpolation so that seekbars animate smoothly.
      */
-    fun showCastDialog(activity: FragmentActivity) {
+    fun getApproximateStreamPosition(): Long {
+        val rmc = currentSession?.remoteMediaClient ?: return _castPositionMs.value
+        val pos = rmc.approximateStreamPosition
+        return if (pos >= 0L) {
+            _castPositionMs.value = pos
+            pos
+        } else {
+            _castPositionMs.value
+        }
+    }
+
+    /**
+     * Returns total media duration in milliseconds from the active TV stream.
+     */
+    fun getStreamDuration(): Long {
+        val rmc = currentSession?.remoteMediaClient ?: return _castDurationMs.value
+        val dur = rmc.streamDuration
+        return if (dur > 0L) {
+            _castDurationMs.value = dur
+            dur
+        } else {
+            _castDurationMs.value
+        }
+    }
+
+    /**
+     * Safely opens the native Google Cast device chooser dialog.
+     * Compatible with any Context (automatically finds FragmentActivity).
+     */
+    fun showCastDialog(context: Context) {
+        val activity = context.findFragmentActivity() ?: return
         try {
-            val castContext = CastContext.getSharedInstance(activity)
+            val castContext = CastContext.getSharedInstance(activity.applicationContext)
             if (_isCasting.value) {
                 val dialog = MediaRouteControllerDialogFragment()
                 dialog.show(activity.supportFragmentManager, "CastControllerDialog")
@@ -205,6 +282,10 @@ object CastManager {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun showCastDialog(activity: FragmentActivity) {
+        showCastDialog(activity as Context)
     }
 
     /**
@@ -247,26 +328,34 @@ object CastManager {
             .build()
 
         rmc.load(request)
+        rmc.addProgressListener(progressListener, 500L)
+        _isCastPlaying.value = true
+        _castPositionMs.value = positionMs
     }
 
     fun play() {
+        _isCastPlaying.value = true
         currentSession?.remoteMediaClient?.play()
     }
 
     fun pause() {
+        _isCastPlaying.value = false
         currentSession?.remoteMediaClient?.pause()
     }
 
     fun togglePlayPause() {
         val rmc = currentSession?.remoteMediaClient ?: return
         if (rmc.isPlaying) {
+            _isCastPlaying.value = false
             rmc.pause()
         } else {
+            _isCastPlaying.value = true
             rmc.play()
         }
     }
 
     fun seekTo(positionMs: Long) {
+        _castPositionMs.value = positionMs
         val rmc = currentSession?.remoteMediaClient ?: return
         val options = MediaSeekOptions.Builder()
             .setPosition(positionMs)
@@ -276,15 +365,32 @@ object CastManager {
 
     fun skip(deltaMs: Long) {
         val rmc = currentSession?.remoteMediaClient ?: return
-        val newPos = (rmc.approximateStreamPosition + deltaMs).coerceIn(0L, rmc.streamDuration)
-        seekTo(newPos)
+        val current = rmc.approximateStreamPosition
+        val dur = rmc.streamDuration
+        val target = if (dur > 0L) {
+            (current + deltaMs).coerceIn(0L, dur)
+        } else {
+            maxOf(0L, current + deltaMs)
+        }
+        seekTo(target)
     }
 
+    /**
+     * Immediately stops casting, ends the session on TV, and resets local state.
+     */
     fun stopCast(context: Context) {
         try {
-            CastContext.getSharedInstance(context).sessionManager.endCurrentSession(true)
+            CastContext.getSharedInstance(context.applicationContext).sessionManager.endCurrentSession(true)
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        currentSession?.remoteMediaClient?.removeProgressListener(progressListener)
+        currentSession?.remoteMediaClient?.unregisterCallback(remoteMediaClientCallback)
+        currentSession = null
+        _isCasting.value = false
+        _connectedDeviceName.value = null
+        _isCastPlaying.value = false
+        _castPositionMs.value = 0L
+        _castDurationMs.value = 0L
     }
 }

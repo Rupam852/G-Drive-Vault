@@ -129,8 +129,8 @@ fun FileActionBottomSheet(
                 if (isCastable) {
                     val castSubtitle = when {
                         isCasting -> "Currently casting to ${castDeviceName ?: "TV Screen"}"
-                        isWifiConnected -> "Stream to nearby Smart TV / Chromecast"
-                        else -> "Disabled (Wi-Fi Required)"
+                        isWifiConnected -> "Stream to nearby Smart TV / Chromecast (Wi-Fi or Hotspot)"
+                        else -> "Network Required (Connect to Wi-Fi or Hotspot)"
                     }
                     ActionMenuItem(
                         icon = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,

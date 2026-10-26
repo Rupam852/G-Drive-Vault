@@ -244,12 +244,18 @@ fun MediaPreviewScreen(
     }
 
     // Live Playback Tracker Coroutine (tracks local ExoPlayer or remote Cast playback)
-    LaunchedEffect(exoPlayer, isPlaying, isCasting, castPositionMs, castDurationMs, isCastPlaying) {
+    LaunchedEffect(isCasting, exoPlayer) {
         while (true) {
             if (isCasting) {
-                currentPositionMs = castPositionMs
-                if (castDurationMs > 0L) durationMs = castDurationMs
-                isPlaying = isCastPlaying
+                val livePos = CastManager.getApproximateStreamPosition()
+                if (livePos >= 0L) {
+                    currentPositionMs = livePos
+                }
+                val dur = CastManager.getStreamDuration()
+                if (dur > 0L) {
+                    durationMs = dur
+                }
+                isPlaying = CastManager.isCastPlaying.value
             } else {
                 exoPlayer?.let { player ->
                     currentPositionMs = player.currentPosition
@@ -258,7 +264,7 @@ fun MediaPreviewScreen(
                     isPlaying = player.isPlaying
                 }
             }
-            delay(300L)
+            delay(250L)
         }
     }
 
@@ -583,7 +589,8 @@ fun MediaPreviewScreen(
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
                                         color = BluePrimary.copy(alpha = 0.15f),
-                                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.45f))
+                                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.45f)),
+                                        onClick = { CastManager.stopCast(context) }
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -597,7 +604,7 @@ fun MediaPreviewScreen(
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Text(
-                                                text = "Playing on ${castDeviceName ?: "TV Screen"}",
+                                                text = "Playing on ${castDeviceName ?: "TV Screen"} (Tap to Disconnect)",
                                                 color = Color.White,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold
@@ -862,7 +869,7 @@ fun MediaPreviewScreen(
                             }
                         } else if (exoPlayer != null) {
                             if (isCasting) {
-                                // 1. Dedicated TV Casting Remote Display Surface
+                                // 1. Dedicated TV Casting Remote Display Surface (Touchable with zero overlay blocking)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -878,46 +885,45 @@ fun MediaPreviewScreen(
                                             shape = CircleShape,
                                             color = BluePrimary.copy(alpha = 0.15f),
                                             border = BorderStroke(2.dp, BluePrimary),
-                                            modifier = Modifier.size(92.dp)
+                                            modifier = Modifier.size(80.dp)
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.CastConnected,
                                                     contentDescription = null,
                                                     tint = BluePrimary,
-                                                    modifier = Modifier.size(48.dp)
+                                                    modifier = Modifier.size(42.dp)
                                                 )
                                             }
                                         }
 
-                                        Spacer(modifier = Modifier.height(18.dp))
+                                        Spacer(modifier = Modifier.height(14.dp))
 
                                         Text(
                                             text = "Playing on ${castDeviceName ?: "TV Screen"}",
                                             color = Color.White,
-                                            fontSize = 19.sp,
+                                            fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center
                                         )
 
-                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Spacer(modifier = Modifier.height(4.dp))
 
                                         Text(
-                                            text = "Your phone is acting as remote control.\nScrub, play, pause, or skip below.",
+                                            text = "Your phone is acting as remote control.",
                                             color = Color.White.copy(alpha = 0.65f),
-                                            fontSize = 13.sp,
-                                            textAlign = TextAlign.Center,
-                                            lineHeight = 18.sp
+                                            fontSize = 12.sp,
+                                            textAlign = TextAlign.Center
                                         )
 
-                                        Spacer(modifier = Modifier.height(20.dp))
+                                        Spacer(modifier = Modifier.height(16.dp))
 
                                         OutlinedButton(
                                             onClick = {
-                                                (context as? FragmentActivity)?.let { CastManager.stopCast(it) }
+                                                CastManager.stopCast(context)
                                             },
                                             shape = RoundedCornerShape(12.dp),
-                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
                                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                                         ) {
                                             Icon(
@@ -926,7 +932,77 @@ fun MediaPreviewScreen(
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Disconnect Cast", fontSize = 12.sp)
+                                            Text("Disconnect Cast", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+
+                                        Spacer(modifier = Modifier.height(24.dp))
+
+                                        // Central Remote Playback Controls Row (Rewind 10s, Play/Pause, Forward 10s)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                                        ) {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = Color.White.copy(alpha = 0.12f),
+                                                onClick = {
+                                                    val target = maxOf(0L, currentPositionMs - 10000L)
+                                                    CastManager.skip(-10000L)
+                                                    currentPositionMs = target
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                },
+                                                modifier = Modifier.size(48.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Replay10,
+                                                        contentDescription = "Rewind 10s",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(26.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = BluePrimary,
+                                                shadowElevation = 8.dp,
+                                                onClick = {
+                                                    CastManager.togglePlayPause()
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                },
+                                                modifier = Modifier.size(64.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                                        contentDescription = if (isPlaying) "Pause" else "Play",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(36.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = Color.White.copy(alpha = 0.12f),
+                                                onClick = {
+                                                    val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
+                                                    CastManager.skip(10000L)
+                                                    currentPositionMs = target
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                },
+                                                modifier = Modifier.size(48.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Forward10,
+                                                        contentDescription = "Forward 10s",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(26.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -952,44 +1028,36 @@ fun MediaPreviewScreen(
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )
-                            }
 
-                            // 2. Gesture Detector Layer (Tap to toggle controls, Double tap to seek +/-10s)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onTap = {
-                                                areVideoControlsVisible = !areVideoControlsVisible
-                                                lastInteractionTime = System.currentTimeMillis()
-                                            },
-                                            onDoubleTap = { offset ->
-                                                lastInteractionTime = System.currentTimeMillis()
-                                                areVideoControlsVisible = true
-                                                if (offset.x < size.width / 2) {
-                                                    val target = maxOf(0L, currentPositionMs - 10000L)
-                                                    if (isCasting) {
-                                                        CastManager.skip(-10000L)
-                                                    } else {
+                                // 2. Gesture Detector Layer (Tap to toggle controls, Double tap to seek +/-10s) - ONLY active when NOT casting
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    areVideoControlsVisible = !areVideoControlsVisible
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                },
+                                                onDoubleTap = { offset ->
+                                                    lastInteractionTime = System.currentTimeMillis()
+                                                    areVideoControlsVisible = true
+                                                    if (offset.x < size.width / 2) {
+                                                        val target = maxOf(0L, currentPositionMs - 10000L)
                                                         exoPlayer?.seekTo(target)
-                                                    }
-                                                    currentPositionMs = target
-                                                    doubleTapSeekFeedback = "-10s"
-                                                } else {
-                                                    val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
-                                                    if (isCasting) {
-                                                        CastManager.skip(10000L)
+                                                        currentPositionMs = target
+                                                        doubleTapSeekFeedback = "-10s"
                                                     } else {
+                                                        val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
                                                         exoPlayer?.seekTo(target)
+                                                        currentPositionMs = target
+                                                        doubleTapSeekFeedback = "+10s"
                                                     }
-                                                    currentPositionMs = target
-                                                    doubleTapSeekFeedback = "+10s"
                                                 }
-                                            }
-                                        )
-                                    }
-                            )
+                                            )
+                                        }
+                                )
+                            }
 
                             // 3. Live Buffering Overlay
                             if (isBuffering) {
@@ -1057,9 +1125,9 @@ fun MediaPreviewScreen(
                                 }
                             }
 
-                            // 5. Center Play / Pause / 10s Rewind / 10s Forward Controls
+                            // 5. Center Play / Pause / 10s Rewind / 10s Forward Controls (Local Player only)
                             AnimatedVisibility(
-                                visible = areVideoControlsVisible,
+                                visible = !isCasting && areVideoControlsVisible,
                                 enter = fadeIn(tween(250)),
                                 exit = fadeOut(tween(250)),
                                 modifier = Modifier.align(Alignment.Center)
@@ -1075,11 +1143,7 @@ fun MediaPreviewScreen(
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
                                             val target = maxOf(0L, currentPositionMs - 10000L)
-                                            if (isCasting) {
-                                                CastManager.skip(-10000L)
-                                            } else {
-                                                exoPlayer?.seekTo(target)
-                                            }
+                                            exoPlayer?.seekTo(target)
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -1101,17 +1165,13 @@ fun MediaPreviewScreen(
                                         shadowElevation = 8.dp,
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
-                                            if (isCasting) {
-                                                CastManager.togglePlayPause()
-                                            } else {
-                                                exoPlayer?.let { player ->
-                                                    if (player.isPlaying) {
-                                                        player.pause()
-                                                        isPlaying = false
-                                                    } else {
-                                                        player.play()
-                                                        isPlaying = true
-                                                    }
+                                            exoPlayer?.let { player ->
+                                                if (player.isPlaying) {
+                                                    player.pause()
+                                                    isPlaying = false
+                                                } else {
+                                                    player.play()
+                                                    isPlaying = true
                                                 }
                                             }
                                         },
@@ -1134,11 +1194,7 @@ fun MediaPreviewScreen(
                                         onClick = {
                                             lastInteractionTime = System.currentTimeMillis()
                                             val target = if (durationMs > 0L) minOf(durationMs, currentPositionMs + 10000L) else currentPositionMs + 10000L
-                                            if (isCasting) {
-                                                CastManager.skip(10000L)
-                                            } else {
-                                                exoPlayer?.seekTo(target)
-                                            }
+                                            exoPlayer?.seekTo(target)
                                             currentPositionMs = target
                                         },
                                         modifier = Modifier.size(48.dp)
@@ -1155,9 +1211,9 @@ fun MediaPreviewScreen(
                                 }
                             }
 
-                            // 6. Bottom Video Control Bar (Timeline Scrubber & Fullscreen Toggle)
+                            // 6. Bottom Video Control Bar (Timeline Scrubber & Fullscreen Toggle - Always visible when casting)
                             AnimatedVisibility(
-                                visible = areVideoControlsVisible,
+                                visible = areVideoControlsVisible || isCasting,
                                 enter = fadeIn(tween(250)),
                                 exit = fadeOut(tween(250)),
                                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -1519,8 +1575,9 @@ fun MediaPreviewScreen(
                         if (isCasting) {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = Color.Black.copy(alpha = 0.8f),
+                                color = Color.Black.copy(alpha = 0.85f),
                                 border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.6f)),
+                                onClick = { CastManager.stopCast(context) },
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .padding(bottom = 28.dp)
@@ -1537,7 +1594,7 @@ fun MediaPreviewScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Text(
-                                        text = "Displaying on ${castDeviceName ?: "TV Screen"}",
+                                        text = "Displaying on ${castDeviceName ?: "TV Screen"} (Tap to Disconnect)",
                                         color = Color.White,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
@@ -1705,9 +1762,9 @@ fun MediaPreviewScreen(
                             color = if (isCasting) BluePrimary else Color.Black.copy(alpha = 0.6f),
                             onClick = {
                                 if (isWifiConnected || isCasting) {
-                                    (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
+                                    CastManager.showCastDialog(context)
                                 } else {
-                                    Toast.makeText(context, "Connect to Wi-Fi to cast to TV / Chromecast", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Connect to Wi-Fi or turn on Hotspot to cast", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         ) {
@@ -1787,7 +1844,7 @@ fun MediaPreviewScreen(
                 castDeviceName = castDeviceName,
                 onCastClick = {
                     showSettingsSheet = false
-                    (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
+                    CastManager.showCastDialog(context)
                 },
                 onDismiss = { showSettingsSheet = false }
             )
@@ -1937,8 +1994,8 @@ private fun VideoSettingsModal(
                         // 6. Cast to TV / Chromecast
                         val castSubtitle = when {
                             isCasting -> castDeviceName ?: "Connected to TV"
-                            isWifiConnected -> "Available on Wi-Fi"
-                            else -> "Disabled (Wi-Fi Required)"
+                            isWifiConnected -> "Available (Wi-Fi or Hotspot)"
+                            else -> "Network Required (Wi-Fi or Hotspot)"
                         }
                         SettingsRowItem(
                             icon = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
