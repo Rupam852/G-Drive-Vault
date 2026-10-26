@@ -208,7 +208,9 @@ fun MediaPreviewScreen(
     val castPositionMs by CastManager.castPositionMs.collectAsState()
     val castDurationMs by CastManager.castDurationMs.collectAsState()
 
-    // Auto-stream media to TV when Cast session is active
+    var wasCasting by remember { mutableStateOf(false) }
+
+    // Auto-stream media to TV when Cast session is active, or seamlessly handover back to phone if TV remote presses back
     LaunchedEffect(isCasting) {
         if (isCasting) {
             val mediaUrl = activeUrl ?: streamUrl ?: file.thumbnail
@@ -228,7 +230,17 @@ fun MediaPreviewScreen(
                 )
                 exoPlayer?.pause()
             }
+        } else if (wasCasting) {
+            // TV remote pressed Back / Home / Power: sync phone player to exact position and pause
+            exoPlayer?.let { player ->
+                if (currentPositionMs > 0L) {
+                    player.seekTo(currentPositionMs)
+                }
+                player.pause()
+            }
+            Toast.makeText(context, "TV playback ended. Resumed on phone.", Toast.LENGTH_SHORT).show()
         }
+        wasCasting = isCasting
     }
 
     // Live Playback Tracker Coroutine (tracks local ExoPlayer or remote Cast playback)

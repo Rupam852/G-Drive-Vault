@@ -13,6 +13,7 @@ import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.MediaSeekOptions
+import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
@@ -56,9 +57,26 @@ object CastManager {
     private val remoteMediaClientCallback = object : RemoteMediaClient.Callback() {
         override fun onStatusUpdated() {
             val rmc = currentSession?.remoteMediaClient ?: return
-            _isCastPlaying.value = rmc.isPlaying
-            _castPositionMs.value = rmc.approximateStreamPosition
-            _castDurationMs.value = rmc.streamDuration
+            val mediaStatus = rmc.mediaStatus
+            val playerState = mediaStatus?.playerState ?: rmc.playerState
+            val idleReason = mediaStatus?.idleReason ?: rmc.idleReason
+
+            if (playerState == MediaStatus.PLAYER_STATE_IDLE &&
+                (idleReason == MediaStatus.IDLE_REASON_CANCELED || idleReason == MediaStatus.IDLE_REASON_FINISHED)
+            ) {
+                // TV remote pressed Back / Stop or video finished playing on TV
+                _isCastPlaying.value = false
+            } else {
+                _isCastPlaying.value = rmc.isPlaying
+                val pos = rmc.approximateStreamPosition
+                if (pos > 0L) {
+                    _castPositionMs.value = pos
+                }
+                val dur = rmc.streamDuration
+                if (dur > 0L) {
+                    _castDurationMs.value = dur
+                }
+            }
         }
 
         override fun onMetadataUpdated() {
@@ -111,7 +129,11 @@ object CastManager {
             _connectedDeviceName.value = null
         }
 
-        override fun onSessionSuspended(session: CastSession, reason: Int) {}
+        override fun onSessionSuspended(session: CastSession, reason: Int) {
+            // TV remote turned off TV, changed input or killed connection
+            _isCasting.value = false
+            _isCastPlaying.value = false
+        }
     }
 
     fun init(context: Context) {
