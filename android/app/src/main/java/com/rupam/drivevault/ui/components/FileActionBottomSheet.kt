@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.rupam.drivevault.model.DriveFile
 import com.rupam.drivevault.model.FileCategoryType
 import com.rupam.drivevault.ui.theme.BluePrimary
+import com.rupam.drivevault.cast.CastManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,11 +36,16 @@ fun FileActionBottomSheet(
     onToggleStar: (DriveFile) -> Unit,
     onShare: (DriveFile) -> Unit,
     onDelete: (DriveFile) -> Unit,
-    onViewDetails: (DriveFile) -> Unit
+    onViewDetails: (DriveFile) -> Unit,
+    onCast: (DriveFile) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val iconColor = getCategoryColor(file.type)
     val isFolder = file.type == FileCategoryType.FOLDER
+    val isWifiConnected by CastManager.isWifiConnected.collectAsState()
+    val isCasting by CastManager.isCasting.collectAsState()
+    val castDeviceName by CastManager.connectedDeviceName.collectAsState()
+    val isCastable = file.type == FileCategoryType.VIDEO || file.type == FileCategoryType.AUDIO || file.type == FileCategoryType.IMAGE
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -118,6 +124,26 @@ fun FileActionBottomSheet(
                         onOpen(file)
                     }
                 )
+
+                // Cast to Smart TV / Chromecast (Only visible for Video, Audio, and Photos. Hidden for folders and other files)
+                if (isCastable) {
+                    val castSubtitle = when {
+                        isCasting -> "Currently casting to ${castDeviceName ?: "TV Screen"}"
+                        isWifiConnected -> "Stream to nearby Smart TV / Chromecast"
+                        else -> "Disabled (Wi-Fi Required)"
+                    }
+                    ActionMenuItem(
+                        icon = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
+                        title = if (isCasting) "Casting to TV" else "Cast to TV / Chromecast",
+                        subtitle = castSubtitle,
+                        iconTint = if (isWifiConnected || isCasting) BluePrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        enabled = isWifiConnected || isCasting,
+                        onClick = {
+                            onDismiss()
+                            onCast(file)
+                        }
+                    )
+                }
 
                 // Download (Direct for files, ZIP archive for folders)
                 if (!isFolder) {
@@ -220,10 +246,12 @@ private fun ActionMenuItem(
     subtitle: String? = null,
     iconTint: Color = MaterialTheme.colorScheme.onSurface,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(14.dp),
         color = Color.Transparent,
         modifier = Modifier.fillMaxWidth()
@@ -237,14 +265,14 @@ private fun ActionMenuItem(
         ) {
             Surface(
                 shape = CircleShape,
-                color = iconTint.copy(alpha = 0.12f),
+                color = if (enabled) iconTint.copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                 modifier = Modifier.size(38.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = title,
-                        tint = iconTint,
+                        tint = if (enabled) iconTint else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -255,14 +283,14 @@ private fun ActionMenuItem(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
-                    color = textColor
+                    color = if (enabled) textColor else textColor.copy(alpha = 0.38f)
                 )
                 if (!subtitle.isNullOrBlank()) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.28f)
                     )
                 }
             }

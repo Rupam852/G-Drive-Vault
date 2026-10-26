@@ -1152,6 +1152,19 @@ fun MainAppScreen(
             },
             onViewDetails = { target ->
                 detailsTargetFile = target
+            },
+            onCast = { target ->
+                activePreviewFile = target
+                previewStreamUrl = repository.getFastStreamUrl(target.id)
+                scope.launch {
+                    repository.getDownloadTicket().onSuccess { ticket ->
+                        previewStreamUrl = repository.getStreamUrl(target.id, ticket)
+                        previewFallbackUrl = repository.getRenderDownloadUrl(target.id, ticket) + "&inline=true"
+                    }
+                    (context as? androidx.fragment.app.FragmentActivity)?.let {
+                        com.rupam.drivevault.cast.CastManager.showCastDialog(it)
+                    }
+                }
             }
         )
     }

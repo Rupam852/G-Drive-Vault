@@ -1685,24 +1685,27 @@ fun MediaPreviewScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Cast to TV Quick Button
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isCasting) BluePrimary else Color.Black.copy(alpha = 0.6f),
-                        onClick = {
-                            if (isWifiConnected || isCasting) {
-                                (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
-                            } else {
-                                Toast.makeText(context, "Connect to Wi-Fi to cast to TV / Chromecast", Toast.LENGTH_SHORT).show()
+                    val isCastable = file.type == FileCategoryType.VIDEO || file.type == FileCategoryType.AUDIO || file.type == FileCategoryType.IMAGE
+                    if (isCastable) {
+                        // Cast to TV Quick Button
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isCasting) BluePrimary else Color.Black.copy(alpha = 0.6f),
+                            onClick = {
+                                if (isWifiConnected || isCasting) {
+                                    (context as? FragmentActivity)?.let { CastManager.showCastDialog(it) }
+                                } else {
+                                    Toast.makeText(context, "Connect to Wi-Fi to cast to TV / Chromecast", Toast.LENGTH_SHORT).show()
+                                }
                             }
+                        ) {
+                            Icon(
+                                imageVector = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
+                                contentDescription = "Cast to TV",
+                                tint = if (isCasting || isWifiConnected) Color.White else Color.White.copy(alpha = 0.35f),
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (isCasting) Icons.Rounded.CastConnected else Icons.Rounded.Cast,
-                            contentDescription = "Cast to TV",
-                            tint = if (isCasting || isWifiConnected) Color.White else Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier.padding(10.dp)
-                        )
                     }
 
                     Surface(
