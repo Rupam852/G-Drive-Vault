@@ -530,6 +530,97 @@
             background: #F8FAFC;
         }
 
+        /* Dedicated Star Repo Row */
+        .star-repo-row {
+            margin-top: 14px;
+            background: linear-gradient(135deg, rgba(254, 243, 199, 0.5) 0%, rgba(239, 246, 255, 0.8) 100%);
+            border: 1px dashed rgba(245, 158, 11, 0.45);
+            border-radius: 14px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            transition: all 0.25s ease;
+        }
+
+        .star-repo-row:hover {
+            border-color: rgba(245, 158, 11, 0.75);
+            background: linear-gradient(135deg, rgba(254, 243, 199, 0.7) 0%, rgba(239, 246, 255, 0.95) 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
+        }
+
+        .star-repo-text {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #92400E;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-align: left;
+        }
+
+        .star-repo-icon {
+            font-size: 1.1rem;
+            display: inline-block;
+            animation: pulseStar 2.2s ease-in-out infinite;
+        }
+
+        @keyframes pulseStar {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(12deg); }
+        }
+
+        .btn-star-repo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #0F172A;
+            color: #FFFFFF;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 7px 13px;
+            border-radius: 9px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .btn-star-repo:hover {
+            background: #1E293B;
+            color: #FBBF24;
+            transform: scale(1.02);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+        }
+
+        .star-svg {
+            transition: transform 0.3s ease;
+        }
+
+        .btn-star-repo:hover .star-svg {
+            transform: rotate(72deg) scale(1.15);
+            fill: #FBBF24;
+            stroke: #FBBF24;
+        }
+
+        @media (max-width: 480px) {
+            .star-repo-row {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+                gap: 8px;
+            }
+            .star-repo-text {
+                justify-content: center;
+            }
+            .btn-star-repo {
+                justify-content: center;
+            }
+        }
+
         /* Footer */
         .portal-footer {
             margin-top: 20px;
@@ -683,7 +774,7 @@
             </div>
         </div>
 
-        <!-- Secondary Actions (APK & GitHub) -->
+        <!-- Secondary Actions (APK & Copy Link) -->
         <div class="secondary-actions">
             <a href="https://github.com/Rupam852/G-Drive-Vault/releases" target="_blank" rel="noopener noreferrer" class="btn-secondary">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -691,14 +782,7 @@
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Android APK</span>
-            </a>
-
-            <a href="https://github.com/Rupam852/G-Drive-Vault" target="_blank" rel="noopener noreferrer" class="btn-secondary">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                </svg>
-                <span>GitHub</span>
+                <span>Download Android APK</span>
             </a>
 
             <button id="copyLinkBtn" type="button" class="btn-secondary">
@@ -708,6 +792,23 @@
                 </svg>
                 <span>Copy Official Link</span>
             </button>
+        </div>
+
+        <!-- Dedicated GitHub Star Row -->
+        <div class="star-repo-row">
+            <div class="star-repo-text">
+                <span class="star-repo-icon">⭐</span>
+                <span>Please star our repo if you like Drive Vault!</span>
+            </div>
+            <a href="https://github.com/Rupam852/G-Drive-Vault" target="_blank" rel="noopener noreferrer" class="btn-star-repo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                <svg class="star-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                <span>Star on GitHub</span>
+            </a>
         </div>
 
         <!-- Footer -->
